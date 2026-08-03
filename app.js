@@ -1172,27 +1172,32 @@ async function saveFullClientData() {
     }
     
     try {
+        let res;
         if (editId) {
-            await fetch(`${API_BASE_URL}/clients/${editId}`, {
+            res = await fetch(`${API_BASE_URL}/clients/${editId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(clientObj)
             });
-            Swal.fire('Updated!', `Company ${editId} updated successfully.`, 'success');
         } else {
-            const res = await fetch(`${API_BASE_URL}/clients`, {
+            res = await fetch(`${API_BASE_URL}/clients`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(clientObj)
             });
-            const data = await res.json();
-            Swal.fire('Saved!', `New Company ${data.id || clientId} added to database.`, 'success');
+        }
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+            Swal.fire('Saved!', `New Company ${data.id || clientId} saved to database.`, 'success');
+        } else {
+            Swal.fire('Database Error', data.error || 'Failed to save company to database.', 'error');
         }
     } catch (e) {
-        Swal.fire('Saved!', 'Client details saved.', 'success');
+        Swal.fire('Network Error', 'Could not reach database server.', 'error');
     }
     
-    fetchClientsData();
+    await fetchClientsData();
     navigateRoute('/client-master');
 }
 

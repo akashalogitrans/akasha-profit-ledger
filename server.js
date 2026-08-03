@@ -34,6 +34,50 @@ if (IS_MYSQL) {
         queueLimit: 0
     });
     console.log('Connected to Hostinger MySQL Database:', process.env.DB_NAME || process.env.MYSQL_DATABASE);
+    
+    // Auto-create Clean Schema Tables for MySQL
+    (async () => {
+        try {
+            await mysqlPool.query(`CREATE TABLE IF NOT EXISTS users (
+                id VARCHAR(50) PRIMARY KEY,
+                name VARCHAR(100),
+                email VARCHAR(150) UNIQUE,
+                password_hash VARCHAR(255),
+                role VARCHAR(100),
+                avatar VARCHAR(255),
+                code VARCHAR(50)
+            )`);
+            await mysqlPool.query(`CREATE TABLE IF NOT EXISTS clients (
+                id VARCHAR(50) PRIMARY KEY,
+                name VARCHAR(200) NOT NULL,
+                owner VARCHAR(150) NOT NULL
+            )`);
+            await mysqlPool.query(`CREATE TABLE IF NOT EXISTS shipments (
+                id VARCHAR(100) PRIMARY KEY,
+                date DATE NOT NULL,
+                client_id VARCHAR(50),
+                company_name VARCHAR(200),
+                line_name VARCHAR(150),
+                transport_name VARCHAR(150),
+                sb_be_no VARCHAR(100),
+                shipment_type VARCHAR(50),
+                purchase_date DATE,
+                purchase_amount DECIMAL(12, 2) DEFAULT 0,
+                purchase_status VARCHAR(30) DEFAULT 'Pending',
+                purchase_items TEXT,
+                payment_receive_date DATE,
+                sale_amount DECIMAL(12, 2) DEFAULT 0,
+                received_amount DECIMAL(12, 2) DEFAULT 0,
+                sale_status VARCHAR(30) DEFAULT 'Pending',
+                sale_items TEXT,
+                net_profit DECIMAL(12, 2) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`);
+            console.log('Hostinger MySQL Schema Tables verified / auto-created.');
+        } catch(err) {
+            console.error('MySQL Auto-Init Error:', err.message);
+        }
+    })();
 } else {
     const sqlite3 = require('sqlite3').verbose();
     const dbPath = path.join(__dirname, 'freight_erp.db');
