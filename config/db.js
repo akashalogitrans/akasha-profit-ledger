@@ -1,42 +1,60 @@
 /* ==========================================================================
    AKASHA LOGITRANS LLP - MYSQL DATABASE CONNECTION POOL CONFIG
-   Bulletproof Hostinger Host Resolution & Smart Database Fallback
+   Smart Dual-Name Hostinger Database Resolver (u614117022_u614117022_erp)
    ========================================================================== */
 
 const mysql = require('mysql2/promise');
-try { require('dotenv').config(); } catch (e) {}
+const path = require('path');
+try { require('dotenv').config({ path: path.join(__dirname, '..', '.env') }); } catch (e) {}
 
-// Force host to 127.0.0.1 (Fixes 'srv1234.hostinger.com' DNS resolution error)
-let host = process.env.DB_HOST || '127.0.0.1';
-if (host.includes('srv1234') || host.includes('hostinger.com') || host === 'localhost') {
-    host = '127.0.0.1';
-}
-
-const user = process.env.USERNAME || process.env.DB_USER || 'u614117022_u614117022_erp';
-const password = process.env.PASSWORD || process.env.DB_PASSWORD || 'Alt@7776';
-const database = process.env.DATABASE || process.env.DB_NAME || 'u614117022_u614117022_erp';
+// Always connect to 127.0.0.1 locally on Hostinger
+const host = '127.0.0.1';
 const port = parseInt(process.env.DB_PORT || '3306');
+const password = process.env.PASSWORD || process.env.DB_PASSWORD || 'Alt@7776';
 
-console.log(`[MySQL Config] Target Host: ${host}:${port} | DB: ${database} | User: ${user}`);
+// Prioritize full phpMyAdmin Database Name: u614117022_u614117022_erp
+const primaryDb = 'u614117022_u614117022_erp';
+const primaryUser = 'u614117022_u614117022_erp';
 
-const pool = mysql.createPool({
-    host: '127.0.0.1', // Always connect locally to 127.0.0.1 on Hostinger Node.js
+const dbConfig = {
+    host,
     port,
-    user,
+    user: process.env.USERNAME || process.env.DB_USER || primaryUser,
     password,
-    database,
+    database: process.env.DATABASE || process.env.DB_NAME || primaryDb,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
     dateStrings: true
-});
+};
 
-// Auto Verify Connection & Initialize Tables
+console.log(`[MySQL Config] Connecting to Hostinger Database: ${dbConfig.database} @ ${host}:${port}`);
+
+let pool = mysql.createPool(dbConfig);
+
+// Auto Verify Connection & Fallback to Full phpMyAdmin DB Name if Short Name Fails
 (async () => {
     try {
         await pool.query('SELECT 1');
-        console.log(`✅ [Hostinger MySQL Pool Connected] DB: ${database} @ 127.0.0.1`);
+        console.log(`✅ [Hostinger MySQL Pool Connected] DB: ${dbConfig.database} @ 127.0.0.1`);
+    } catch (err) {
+        console.warn(`[MySQL Initial Connection Failed]: ${err.message}. Retrying with primary phpMyAdmin DB: ${primaryDb}...`);
+        
+        // Fallback to exact phpMyAdmin credentials
+        dbConfig.database = primaryDb;
+        dbConfig.user = primaryUser;
+        pool = mysql.createPool(dbConfig);
 
+        try {
+            await pool.query('SELECT 1');
+            console.log(`✅ [Hostinger MySQL Pool Fallback Connected] DB: ${primaryDb} @ 127.0.0.1`);
+        } catch (e) {
+            console.error('❌ [Hostinger MySQL Connection Failed]:', e.message);
+        }
+    }
+
+    // Ensure Tables Exist
+    try {
         await pool.query(`CREATE TABLE IF NOT EXISTS users (
             id VARCHAR(50) PRIMARY KEY,
             name VARCHAR(100) NOT NULL,
@@ -76,9 +94,9 @@ const pool = mysql.createPool({
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
 
-        console.log('✅ [Hostinger MySQL Tables Ready]');
-    } catch (err) {
-        console.error('❌ [Hostinger MySQL Pool Connection Error]:', err.message);
+        console.log('✅ [Hostinger MySQL Tables Verified Active]');
+    } catch (tblErr) {
+        console.error('❌ [Table Init Error]:', tblErr.message);
     }
 })();
 
