@@ -1100,16 +1100,16 @@ async function saveFullShipmentData() {
 
         const data = await res.json();
         if (res.ok && data.success) {
-            Swal.fire({ icon: 'success', title: 'Saved to MySQL Database!', text: `Shipment Voucher ${shpObj.id} saved into ERP!` });
+            Swal.fire({ icon: 'success', title: 'Shipment Entry Saved!', text: `Shipment Job ${shpObj.id} updated in ERP system.` });
             await fetchShipmentsData();
             await fetchDashboardKPIs();
             navigateRoute('/shipment-entry');
         } else {
-            Swal.fire({ icon: 'error', title: 'MySQL Save Failed', text: data.message || 'Could not save shipment to MySQL database.' });
+            Swal.fire({ icon: 'error', title: 'Save Failed', text: data.message || 'Could not save shipment entry.' });
         }
     } catch (e) {
         console.error("Save Shipment Error:", e);
-        Swal.fire({ icon: 'error', title: 'API Connection Error', text: 'Failed to connect to backend MySQL API: ' + e.message });
+        Swal.fire({ icon: 'error', title: 'Connection Error', text: 'Unable to reach ERP server. Please try again.' });
     }
 }
 
@@ -1223,15 +1223,15 @@ async function saveFullClientData() {
 
         const data = await res.json();
         if (res.ok && data.success) {
-            Swal.fire({ icon: 'success', title: 'Saved to MySQL Database!', text: `Client ${clientObj.name} (${clientObj.id}) stored successfully!` });
+            Swal.fire({ icon: 'success', title: 'Client Saved Successfully!', text: `Client ${clientObj.name} (${clientObj.id}) added to Master Directory.` });
             await fetchClientsData();
             navigateRoute('/client-master');
         } else {
-            Swal.fire({ icon: 'error', title: 'MySQL Save Failed', text: data.message || 'Error saving client to database.' });
+            Swal.fire({ icon: 'error', title: 'Save Failed', text: data.message || 'Could not save client details.' });
         }
     } catch (e) {
         console.error("Save Client Error:", e);
-        Swal.fire({ icon: 'error', title: 'API Connection Error', text: 'Could not connect to MySQL Backend API: ' + e.message });
+        Swal.fire({ icon: 'error', title: 'Connection Error', text: 'Unable to reach ERP server. Please try again.' });
     }
 }
 
