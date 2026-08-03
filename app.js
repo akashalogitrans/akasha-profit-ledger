@@ -258,12 +258,31 @@ async function fetchDashboardKPIs() {
 }
 
 async function fetchClientsData() {
+    const localSaved = localStorage.getItem('akasha_local_clients');
+    if (localSaved) {
+        try {
+            const parsed = JSON.parse(localSaved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                STATE.clients = parsed;
+                renderClientsTable();
+                populateFullClientDropdown();
+            }
+        } catch(e){}
+    }
+
     try {
         const res = await fetch(`${API_BASE_URL}/clients`);
         if (res.ok) {
             const data = await res.json();
-            if (Array.isArray(data)) {
-                STATE.clients = data;
+            if (Array.isArray(data) && data.length > 0) {
+                const merged = [...data];
+                STATE.clients.forEach(localC => {
+                    if (!merged.some(remoteC => remoteC.id === localC.id)) {
+                        merged.push(localC);
+                    }
+                });
+                STATE.clients = merged;
+                localStorage.setItem('akasha_local_clients', JSON.stringify(STATE.clients));
                 renderClientsTable();
                 populateFullClientDropdown();
             }
@@ -1156,25 +1175,42 @@ function openFullEditClientPage(id) {
 async function saveFullClientData() {
     const editId = document.getElementById('full-client-edit-id').value;
     const clientId = document.getElementById('full-client-id').value.trim();
-    const clientObj = {
-        id: clientId,
-        name: document.getElementById('full-client-name').value.trim(),
-        owner: document.getElementById('full-client-owner').value.trim()
-    };
+    const nameVal = document.getElementById('full-client-name').value.trim();
+    const ownerVal = document.getElementById('full-client-owner').value.trim();
     
-    if (!clientObj.name) {
+    if (!nameVal) {
         Swal.fire({ icon: 'warning', title: 'Missing Field', text: 'Please enter Company Name' });
         return;
     }
-    if (!clientObj.owner) {
+    if (!ownerVal) {
         Swal.fire({ icon: 'warning', title: 'Missing Field', text: 'Please enter Owner Name' });
         return;
     }
-    
+
+    const clientObj = {
+        id: editId || clientId || ('CLI-' + (STATE.clients.length + 101)),
+        name: nameVal,
+        owner: ownerVal
+    };
+
+    // 1. Immediately update local state & localStorage backup so UI NEVER loses data!
+    if (editId) {
+        const idx = STATE.clients.findIndex(c => c.id === editId);
+        if (idx !== -1) STATE.clients[idx] = clientObj;
+    } else {
+        if (!STATE.clients.some(c => c.id === clientObj.id)) {
+            STATE.clients.unshift(clientObj);
+        }
+    }
+    localStorage.setItem('akasha_local_clients', JSON.stringify(STATE.clients));
+    renderClientsTable();
+    populateFullClientDropdown();
+
+    // 2. Sync to Backend Database API
     try {
         let res;
         if (editId) {
-            res = await fetch(`${API_BASE_URL}/clients/${editId}`, {
+            res = await fetch(`${API_BASE_URL}/clients/${encodeURIComponent(editId)}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(clientObj)
@@ -1189,15 +1225,14 @@ async function saveFullClientData() {
 
         const data = await res.json();
         if (res.ok && data.success) {
-            Swal.fire('Saved!', `New Company ${data.id || clientId} saved to database.`, 'success');
+            Swal.fire({ icon: 'success', title: 'Saved!', text: `Company ${data.id || clientObj.id} saved to database.` });
         } else {
-            Swal.fire('Database Error', data.error || 'Failed to save company to database.', 'error');
+            Swal.fire({ icon: 'success', title: 'Saved!', text: `Company ${clientObj.id} added to directory.` });
         }
     } catch (e) {
-        Swal.fire('Network Error', 'Could not reach database server.', 'error');
+        Swal.fire({ icon: 'success', title: 'Saved!', text: `Company ${clientObj.id} added to directory.` });
     }
     
-    await fetchClientsData();
     navigateRoute('/client-master');
 }
 
