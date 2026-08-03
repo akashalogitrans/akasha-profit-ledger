@@ -809,45 +809,38 @@ function addFullPurchaseRow(data = null) {
 
     const rowId = 'pur_row_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
     const box = document.createElement('div');
-    box.className = 'purchase-row-box';
+    box.className = 'row-entry-box purchase-row-box';
     box.id = rowId;
     
     const today = new Date().toISOString().split('T')[0];
     
     box.innerHTML = `
-        <div class="grid-12" style="align-items: center; gap: 8px;">
-            <div class="col-2 form-group" style="margin: 0;">
-                <label style="font-size: 11px;">Cost Date</label>
+        <div class="row-entry-flex">
+            <div class="field-item" style="flex: 1.2; min-width: 140px;">
+                <label class="field-label">Cost Date</label>
                 <input type="date" class="form-control light-input purchase-row-date" value="${data ? data.date : today}">
             </div>
-            <div class="col-3 form-group" style="margin: 0;">
-                <label style="font-size: 11px;">Charges Type *</label>
-                <select class="form-control light-input purchase-row-type">
-                    <option ${data && data.type === 'Ocean Freight' ? 'selected' : ''}>Ocean Freight</option>
-                    <option ${data && data.type === 'Local Transport Cost' ? 'selected' : ''}>Local Transport Cost</option>
-                    <option ${data && data.type === 'CFS / Terminal Charges' ? 'selected' : ''}>CFS / Terminal Charges</option>
-                    <option ${data && data.type === 'Customs Clearance' ? 'selected' : ''}>Customs Clearance</option>
-                    <option ${data && data.type === 'CHA Documentation' ? 'selected' : ''}>CHA Documentation</option>
-                    <option ${data && data.type === 'BL Release Fee' ? 'selected' : ''}>BL Release Fee</option>
+            <div class="field-item" style="flex: 2; min-width: 180px;">
+                <label class="field-label">Charges Type *</label>
+                <input type="text" class="form-control light-input purchase-row-type" placeholder="e.g. Ocean Freight, Local Transport" value="${data ? (data.type || 'Ocean Freight') : 'Ocean Freight'}">
+            </div>
+            <div class="field-item" style="flex: 2.2; min-width: 190px;">
+                <label class="field-label">Vendor Name</label>
+                <input type="text" class="form-control light-input purchase-row-vendor" placeholder="e.g. Maersk / Transporter Name" value="${data ? (data.vendor_name || '') : ''}">
+            </div>
+            <div class="field-item" style="flex: 1.5; min-width: 140px;">
+                <label class="field-label">Purchase Amt (₹) *</label>
+                <input type="number" step="any" class="form-control light-input purchase-row-amount" placeholder="0.00" value="${data ? (data.amount !== undefined ? data.amount : '') : ''}" oninput="calcFullShipmentTotals()">
+            </div>
+            <div class="field-item" style="flex: 1.5; min-width: 150px;">
+                <label class="field-label">Payment Status</label>
+                <select class="form-control light-input purchase-row-status">
+                    <option value="Completed" ${data && data.status === 'Completed' ? 'selected' : ''}>Paid (Completed)</option>
+                    <option value="Pending" ${data && data.status === 'Pending' ? 'selected' : ''}>Unpaid (Pending)</option>
                 </select>
             </div>
-            <div class="col-3 form-group" style="margin: 0;">
-                <label style="font-size: 11px;">Vendor Name</label>
-                <input type="text" class="form-control light-input purchase-row-vendor" placeholder="e.g. Maersk / CHA Vendor" value="${data ? (data.vendor_name || '') : ''}">
-            </div>
-            <div class="col-2 form-group" style="margin: 0;">
-                <label style="font-size: 11px;">Purchase Amt (₹) *</label>
-                <input type="number" class="form-control light-input purchase-row-amount" placeholder="0.00" value="${data ? data.amount : ''}" oninput="calcFullShipmentTotals()">
-            </div>
-            <div class="col-2 form-group" style="margin: 0;">
-                <label style="font-size: 11px;">Payment Status</label>
-                <div style="display: flex; gap: 4px;">
-                    <select class="form-control light-input purchase-row-status">
-                        <option value="Completed" ${data && data.status === 'Completed' ? 'selected' : ''}>Paid (Completed)</option>
-                        <option value="Pending" ${data && data.status === 'Pending' ? 'selected' : ''}>Unpaid (Pending)</option>
-                    </select>
-                    <button type="button" class="btn-action" style="color: var(--danger); padding: 4px 8px;" onclick="document.getElementById('${rowId}').remove(); calcFullShipmentTotals();"><i class="fa-solid fa-trash"></i></button>
-                </div>
+            <div class="field-item-action">
+                <button type="button" class="btn-action-danger" title="Remove Row" onclick="document.getElementById('${rowId}').remove(); calcFullShipmentTotals();"><i class="fa-solid fa-trash"></i></button>
             </div>
         </div>
     `;
@@ -861,43 +854,47 @@ function addFullSaleRow(data = null) {
 
     const rowId = 'sale_row_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
     const box = document.createElement('div');
-    box.className = 'sale-row-box';
+    box.className = 'row-entry-box sale-row-box';
     box.id = rowId;
 
+    const initialRate = data ? (data.amount !== undefined ? data.amount : (data.final_amount !== undefined ? data.final_amount : '')) : '';
+    const initialQty = data ? (data.qty !== undefined ? data.qty : 1) : 1;
+    const initialEx = data ? (data.ex_rate !== undefined ? data.ex_rate : 1) : 1;
+    const initialGst = data ? (data.gst !== undefined ? data.gst : '0') : '0';
+    const initialType = data ? (data.type || 'Freight Sale Revenue') : 'Freight Sale Revenue';
+
     box.innerHTML = `
-        <div class="grid-12" style="align-items: center; gap: 8px;">
-            <div class="col-3 form-group" style="margin: 0;">
-                <label style="font-size: 11px;">Sale Item Name *</label>
-                <select class="form-control light-input sale-row-type">
-                    <option ${data && data.type === 'Freight Sale Revenue' ? 'selected' : ''}>Freight Sale Revenue</option>
-                    <option ${data && data.type === 'THC / Terminal Handling' ? 'selected' : ''}>THC / Terminal Handling</option>
-                    <option ${data && data.type === 'Customs Clearance Billing' ? 'selected' : ''}>Customs Clearance Billing</option>
-                    <option ${data && data.type === 'Transportation Billing' ? 'selected' : ''}>Transportation Billing</option>
-                    <option ${data && data.type === 'BL Charges Invoiced' ? 'selected' : ''}>BL Charges Invoiced</option>
-                </select>
+        <div class="row-entry-flex">
+            <div class="field-item" style="flex: 2.2; min-width: 180px;">
+                <label class="field-label">Sale Item Name *</label>
+                <input type="text" class="form-control light-input sale-row-type" placeholder="Item / Charge Name (e.g. Freight, THC)" value="${initialType}">
             </div>
-            <div class="col-2 form-group" style="margin: 0;">
-                <label style="font-size: 11px;">Rate (₹ / $)</label>
-                <input type="number" class="form-control light-input sale-row-amount" placeholder="0.00" value="${data ? data.amount : ''}" oninput="calcFullShipmentTotals()">
+            <div class="field-item" style="flex: 1.3; min-width: 130px;">
+                <label class="field-label">Rate (₹ / $)</label>
+                <input type="number" step="any" class="form-control light-input sale-row-amount" placeholder="0.00" value="${initialRate}" oninput="calcFullShipmentTotals()">
             </div>
-            <div class="col-2 form-group" style="margin: 0;">
-                <label style="font-size: 11px;">Qty / Units</label>
-                <input type="number" class="form-control light-input sale-row-qty" value="${data ? (data.qty || 1) : 1}" oninput="calcFullShipmentTotals()">
+            <div class="field-item" style="flex: 1; min-width: 90px;">
+                <label class="field-label">Qty</label>
+                <input type="number" step="any" class="form-control light-input sale-row-qty" value="${initialQty}" oninput="calcFullShipmentTotals()">
             </div>
-            <div class="col-2 form-group" style="margin: 0;">
-                <label style="font-size: 11px;">Ex Rate (₹)</label>
-                <input type="number" class="form-control light-input sale-row-exrate" value="${data ? (data.ex_rate || 1) : 1}" oninput="calcFullShipmentTotals()">
+            <div class="field-item" style="flex: 1; min-width: 90px;">
+                <label class="field-label">Ex Rate (₹)</label>
+                <input type="number" step="any" class="form-control light-input sale-row-exrate" value="${initialEx}" oninput="calcFullShipmentTotals()">
             </div>
-            <div class="col-2 form-group" style="margin: 0;">
-                <label style="font-size: 11px;">GST %</label>
+            <div class="field-item" style="flex: 1.2; min-width: 110px;">
+                <label class="field-label">GST %</label>
                 <select class="form-control light-input sale-row-gst" onchange="calcFullShipmentTotals()">
-                    <option value="0" ${data && data.gst == '0' ? 'selected' : ''}>0% (Export/Nil)</option>
-                    <option value="18" ${data && data.gst == '18' ? 'selected' : ''}>18% GST</option>
-                    <option value="5" ${data && data.gst == '5' ? 'selected' : ''}>5% GST</option>
+                    <option value="0" ${initialGst == '0' ? 'selected' : ''}>0% (Nil)</option>
+                    <option value="18" ${initialGst == '18' ? 'selected' : ''}>18% GST</option>
+                    <option value="5" ${initialGst == '5' ? 'selected' : ''}>5% GST</option>
                 </select>
             </div>
-            <div class="col-1 form-group" style="margin: 0; text-align: right;">
-                <button type="button" class="btn-action" style="color: var(--danger); padding: 4px 8px; margin-top: 14px;" onclick="document.getElementById('${rowId}').remove(); calcFullShipmentTotals();"><i class="fa-solid fa-trash"></i></button>
+            <div class="field-item" style="flex: 1.6; min-width: 140px;">
+                <label class="field-label">Final Total (₹)</label>
+                <input type="text" class="form-control light-input sale-row-final" readonly value="₹0.00" style="font-weight: 800; color: #10B981; background: #f8fafc;">
+            </div>
+            <div class="field-item-action">
+                <button type="button" class="btn-action-danger" title="Remove Row" onclick="document.getElementById('${rowId}').remove(); calcFullShipmentTotals();"><i class="fa-solid fa-trash"></i></button>
             </div>
         </div>
     `;
@@ -913,13 +910,18 @@ function calcFullShipmentTotals() {
 
     let totSale = 0;
     document.querySelectorAll('#full-sale-rows-container .sale-row-box').forEach(box => {
-        const amt = parseFloat(box.querySelector('.sale-row-amount').value) || 0;
-        const qty = parseFloat(box.querySelector('.sale-row-qty').value) || 1;
-        const exRate = parseFloat(box.querySelector('.sale-row-exrate').value) || 1;
-        const gst = parseFloat(box.querySelector('.sale-row-gst').value) || 0;
+        const amt = parseFloat(box.querySelector('.sale-row-amount')?.value) || 0;
+        const qty = parseFloat(box.querySelector('.sale-row-qty')?.value) || 1;
+        const exRate = parseFloat(box.querySelector('.sale-row-exrate')?.value) || 1;
+        const gst = parseFloat(box.querySelector('.sale-row-gst')?.value) || 0;
         const sub = amt * qty * exRate;
         const finalAmt = sub + (sub * (gst / 100));
         totSale += finalAmt;
+
+        const finalInput = box.querySelector('.sale-row-final');
+        if (finalInput) {
+            finalInput.value = '₹' + finalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
     });
 
     const netProfit = totSale - totPurchase;
@@ -1005,7 +1007,7 @@ function openFullEditShipmentPage(id) {
     if (sItems.length > 0) {
         sItems.forEach(item => addFullSaleRow(item));
     } else {
-        addFullSaleRow({ sb_be: s.sb_be_no, ex_rate: s.sale_amount, gst: '0' });
+        addFullSaleRow({ amount: s.sale_amount, qty: 1, ex_rate: 1, gst: '0', type: 'Freight Sale Revenue' });
     }
 }
 
