@@ -1521,6 +1521,8 @@ function viewShipmentVoucher(id, mode = 'general') {
 
     const purAmt = parseFloat(s.purchase_amount) || 0;
     const saleAmt = parseFloat(s.sale_amount) || 0;
+    const recAmt = s.received_amount !== undefined ? parseFloat(s.received_amount) : (s.sale_status === 'Completed' ? saleAmt : 0);
+    const balAmt = Math.max(0, saleAmt - recAmt);
     const marginPct = saleAmt > 0 ? (((s.net_profit || (saleAmt - purAmt)) / saleAmt) * 100).toFixed(1) : "0.0";
 
     let purRowsHTML = pItems.map(item => `
@@ -1528,7 +1530,7 @@ function viewShipmentVoucher(id, mode = 'general') {
             <td>${item.type || 'Vendor Purchase Expense'}</td>
             <td><strong>${item.vendor_name || 'N/A'}</strong></td>
             <td>${item.date || s.date}</td>
-            <td>₹${(parseFloat(item.amount) || 0).toLocaleString('en-IN')}</td>
+            <td>₹${(parseFloat(item.amount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
             <td><span class="status-pill ${item.status === 'Completed' ? 'status-completed' : 'status-pending'}">${item.status || 'Pending'}</span></td>
         </tr>
     `).join('');
@@ -1539,7 +1541,7 @@ function viewShipmentVoucher(id, mode = 'general') {
                 <td>Freight & Logistics Handling Charges</td>
                 <td>Standard Carrier Vendor</td>
                 <td>${s.date}</td>
-                <td>₹${purAmt.toLocaleString('en-IN')}</td>
+                <td>₹${purAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                 <td><span class="status-pill ${s.purchase_status === 'Completed' ? 'status-completed' : 'status-pending'}">${s.purchase_status || 'Pending'}</span></td>
             </tr>
         `;
@@ -1548,11 +1550,11 @@ function viewShipmentVoucher(id, mode = 'general') {
     let saleRowsHTML = sItems.map(item => `
         <tr>
             <td>${item.type || 'Freight Billing Charge'}</td>
-            <td>₹${(parseFloat(item.amount) || 0).toLocaleString('en-IN')}</td>
+            <td>₹${(parseFloat(item.amount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
             <td>${item.qty || 1}</td>
             <td>₹${item.ex_rate || 1}</td>
             <td>${item.gst || 0}%</td>
-            <td><strong>₹${(parseFloat(item.final_amount || item.amount) || 0).toLocaleString('en-IN')}</strong></td>
+            <td><strong>₹${(parseFloat(item.final_amount || item.amount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong></td>
         </tr>
     `).join('');
 
@@ -1560,12 +1562,134 @@ function viewShipmentVoucher(id, mode = 'general') {
         saleRowsHTML = `
             <tr>
                 <td>Export/Import Freight Customer Invoice</td>
-                <td>₹${saleAmt.toLocaleString('en-IN')}</td>
+                <td>₹${saleAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                 <td>1</td>
                 <td>1.0</td>
                 <td>0%</td>
-                <td><strong>₹${saleAmt.toLocaleString('en-IN')}</strong></td>
+                <td><strong>₹${saleAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong></td>
             </tr>
+        `;
+    }
+
+    let titleText = 'JOB PROFIT & COST VOUCHER';
+    let contentHTML = '';
+
+    if (mode === 'payment') {
+        titleText = 'PAYMENT RECEIVED VOUCHER';
+        contentHTML = `
+            <div class="voucher-table-title" style="background: #ecfdf5; color: #065f46;">CUSTOMER SALE BILLING & PAYMENT RECEIVED BREAKDOWN</div>
+            <table class="voucher-table">
+                <thead>
+                    <tr>
+                        <th>Particulars / Charge Name</th>
+                        <th>Rate</th>
+                        <th>Qty</th>
+                        <th>Ex Rate</th>
+                        <th>GST %</th>
+                        <th>Invoiced Total (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${saleRowsHTML}
+                </tbody>
+            </table>
+
+            <div class="voucher-summary-banner" style="background: linear-gradient(135deg, #065f46, #047857);">
+                <div class="voucher-summary-item">
+                    <span>TOTAL INVOICED AMOUNT</span>
+                    <strong>₹${saleAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                </div>
+                <div class="voucher-summary-item">
+                    <span>RECEIVED PAYMENT</span>
+                    <strong style="color: #6ee7b7;">₹${recAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                </div>
+                <div class="voucher-summary-item">
+                    <span>PENDING BALANCE</span>
+                    <strong style="color: ${balAmt > 0 ? '#fde68a' : '#ffffff'};">₹${balAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (${s.sale_status || 'Pending'})</strong>
+                </div>
+            </div>
+        `;
+    } else if (mode === 'purchase') {
+        titleText = 'PURCHASE VENDOR COST VOUCHER';
+        contentHTML = `
+            <div class="voucher-table-title" style="background: #eff6ff; color: #1e40af;">PURCHASE VENDOR EXPENSES & PAYMENT STATUS</div>
+            <table class="voucher-table">
+                <thead>
+                    <tr>
+                        <th>Charges Type</th>
+                        <th>Vendor Name</th>
+                        <th>Date</th>
+                        <th>Purchase Amount (₹)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${purRowsHTML}
+                </tbody>
+            </table>
+
+            <div class="voucher-summary-banner" style="background: linear-gradient(135deg, #1e3a8a, #1e40af);">
+                <div class="voucher-summary-item">
+                    <span>TOTAL PURCHASE VENDOR COST</span>
+                    <strong>₹${purAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                </div>
+                <div class="voucher-summary-item">
+                    <span>PAYMENT STATUS</span>
+                    <strong style="color: ${s.purchase_status === 'Completed' ? '#6ee7b7' : '#fde68a'};">${s.purchase_status || 'Pending'}</strong>
+                </div>
+            </div>
+        `;
+    } else {
+        // Mode === 'general'
+        titleText = 'JOB PROFIT & COST VOUCHER';
+        contentHTML = `
+            <div class="voucher-table-title" style="background: #eff6ff; color: #1e40af;">SECTION 2: PURCHASE VENDOR COST BREAKDOWN</div>
+            <table class="voucher-table">
+                <thead>
+                    <tr>
+                        <th>Charges Type</th>
+                        <th>Vendor Name</th>
+                        <th>Date</th>
+                        <th>Amount (₹)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${purRowsHTML}
+                </tbody>
+            </table>
+
+            <div class="voucher-table-title" style="background: #ecfdf5; color: #065f46;">SECTION 3: SALE CUSTOMER BILLING BREAKDOWN</div>
+            <table class="voucher-table">
+                <thead>
+                    <tr>
+                        <th>Charges Name</th>
+                        <th>Amount (₹)</th>
+                        <th>Qty</th>
+                        <th>Ex Rate</th>
+                        <th>GST %</th>
+                        <th>Final Total (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${saleRowsHTML}
+                </tbody>
+            </table>
+
+            <div class="voucher-summary-banner">
+                <div class="voucher-summary-item">
+                    <span>TOTAL PURCHASE EXPENSES</span>
+                    <strong>₹${purAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                </div>
+                <div class="voucher-summary-item">
+                    <span>TOTAL SALE REVENUE</span>
+                    <strong>₹${saleAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                </div>
+                <div class="voucher-summary-item">
+                    <span>NET MARGIN (${marginPct}%)</span>
+                    <strong style="color: #34d399;">₹${(s.net_profit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                </div>
+            </div>
         `;
     }
 
@@ -1576,7 +1700,7 @@ function viewShipmentVoucher(id, mode = 'general') {
                 <div style="font-size: 11px; font-weight: 700; color: #64748b; margin-top: 4px;">AKASHA LOGITRANS LLP</div>
             </div>
             <div class="voucher-title-box">
-                <h2>JOB PROFIT & COST VOUCHER</h2>
+                <h2>${titleText}</h2>
                 <div style="font-weight: 800; font-size: 14px; color: #D71920;">JOB REF: ${s.id}</div>
                 <small>Generated Date: ${new Date().toLocaleDateString('en-IN')}</small>
             </div>
@@ -1597,53 +1721,7 @@ function viewShipmentVoucher(id, mode = 'general') {
             </div>
         </div>
 
-        <div class="voucher-table-title" style="background: #eff6ff; color: #1e40af;">SECTION 2: PURCHASE VENDOR COST BREAKDOWN</div>
-        <table class="voucher-table">
-            <thead>
-                <tr>
-                    <th>Charges Type</th>
-                    <th>Vendor Name</th>
-                    <th>Date</th>
-                    <th>Amount (₹)</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${purRowsHTML}
-            </tbody>
-        </table>
-
-        <div class="voucher-table-title" style="background: #ecfdf5; color: #065f46;">SECTION 3: SALE CUSTOMER BILLING BREAKDOWN</div>
-        <table class="voucher-table">
-            <thead>
-                <tr>
-                    <th>Charges Name</th>
-                    <th>Amount (₹)</th>
-                    <th>Qty</th>
-                    <th>Ex Rate</th>
-                    <th>GST %</th>
-                    <th>Final Total (₹)</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${saleRowsHTML}
-            </tbody>
-        </table>
-
-        <div class="voucher-summary-banner">
-            <div class="voucher-summary-item">
-                <span>TOTAL PURCHASE EXPENSES</span>
-                <strong>₹${purAmt.toLocaleString('en-IN')}</strong>
-            </div>
-            <div class="voucher-summary-item">
-                <span>TOTAL SALE REVENUE</span>
-                <strong>₹${saleAmt.toLocaleString('en-IN')}</strong>
-            </div>
-            <div class="voucher-summary-item">
-                <span>NET MARGIN (${marginPct}%)</span>
-                <strong style="color: #34d399;">₹${(s.net_profit || 0).toLocaleString('en-IN')}</strong>
-            </div>
-        </div>
+        ${contentHTML}
 
         <div class="voucher-footer-sign">
             <div>Prepared By: Akasha LogiTrans ERP System</div>
