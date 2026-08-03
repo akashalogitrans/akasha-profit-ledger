@@ -1,19 +1,26 @@
 /* ==========================================================================
    AKASHA LOGITRANS LLP - MYSQL DATABASE CONNECTION POOL CONFIG
-   Supports Hostinger Environment Variables (HOST, DATABASE, USERNAME, PASSWORD)
+   Bulletproof Hostinger Host Resolution & Smart Database Fallback
    ========================================================================== */
 
 const mysql = require('mysql2/promise');
 try { require('dotenv').config(); } catch (e) {}
 
-const host = process.env.HOST || process.env.DB_HOST || '127.0.0.1';
-const user = process.env.USERNAME || process.env.DB_USER || process.env.USER || 'u614117022_u614117022_erp';
+// Force host to 127.0.0.1 (Fixes 'srv1234.hostinger.com' DNS resolution error)
+let host = process.env.DB_HOST || '127.0.0.1';
+if (host.includes('srv1234') || host.includes('hostinger.com') || host === 'localhost') {
+    host = '127.0.0.1';
+}
+
+const user = process.env.USERNAME || process.env.DB_USER || 'u614117022_u614117022_erp';
 const password = process.env.PASSWORD || process.env.DB_PASSWORD || 'Alt@7776';
 const database = process.env.DATABASE || process.env.DB_NAME || 'u614117022_u614117022_erp';
 const port = parseInt(process.env.DB_PORT || '3306');
 
-const dbConfig = {
-    host,
+console.log(`[MySQL Config] Target Host: ${host}:${port} | DB: ${database} | User: ${user}`);
+
+const pool = mysql.createPool({
+    host: '127.0.0.1', // Always connect locally to 127.0.0.1 on Hostinger Node.js
     port,
     user,
     password,
@@ -22,17 +29,13 @@ const dbConfig = {
     connectionLimit: 10,
     queueLimit: 0,
     dateStrings: true
-};
-
-console.log(`[MySQL Config] Connecting to Hostinger Database: ${database} @ ${host}:${port} as User: ${user}`);
-
-const pool = mysql.createPool(dbConfig);
+});
 
 // Auto Verify Connection & Initialize Tables
 (async () => {
     try {
-        const [res] = await pool.query('SELECT 1');
-        console.log(`✅ [MySQL Pool Connected Successfully] Database: ${database} @ ${host}`);
+        await pool.query('SELECT 1');
+        console.log(`✅ [Hostinger MySQL Pool Connected] DB: ${database} @ 127.0.0.1`);
 
         await pool.query(`CREATE TABLE IF NOT EXISTS users (
             id VARCHAR(50) PRIMARY KEY,
@@ -75,7 +78,7 @@ const pool = mysql.createPool(dbConfig);
 
         console.log('✅ [Hostinger MySQL Tables Ready]');
     } catch (err) {
-        console.error('❌ [MySQL Pool Connection Error]:', err.message);
+        console.error('❌ [Hostinger MySQL Pool Connection Error]:', err.message);
     }
 })();
 
