@@ -1,7 +1,17 @@
+PassengerEnabled on
+PassengerAppEnv production
+PassengerNodeEngine /usr/bin/node
+PassengerStartupFile server.js
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
-  RewriteRule ^index\.html$ - [L]
+
+  # DO NOT rewrite API requests to index.html
+  RewriteCond %{REQUEST_URI} ^/api [NC]
+  RewriteRule ^ - [L]
+
+  # Single Page App Routing Rule
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]
