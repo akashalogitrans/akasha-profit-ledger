@@ -50,7 +50,8 @@ if (IS_MYSQL) {
             await mysqlPool.query(`CREATE TABLE IF NOT EXISTS clients (
                 id VARCHAR(50) PRIMARY KEY,
                 name VARCHAR(200) NOT NULL,
-                owner VARCHAR(150) NOT NULL
+                owner VARCHAR(150) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )`);
             await mysqlPool.query(`CREATE TABLE IF NOT EXISTS shipments (
                 id VARCHAR(100) PRIMARY KEY,
@@ -101,7 +102,8 @@ if (IS_MYSQL) {
                 sqliteDb.run(`CREATE TABLE IF NOT EXISTS clients (
                     id VARCHAR(50) PRIMARY KEY,
                     name VARCHAR(200) NOT NULL,
-                    owner VARCHAR(150) NOT NULL
+                    owner VARCHAR(150) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )`);
 
                 sqliteDb.run(`CREATE TABLE IF NOT EXISTS shipments (
@@ -392,10 +394,15 @@ app.get('/api/profit-ledger', async (req, res) => {
     }
 });
 
-// 7. CLIENT MASTER CRUD APIS
+// 7. CLIENT MASTER CRUD APIS (WITH WILDCARD SLASHTOLERANT ROUTES & CREATED_AT FALLBACK)
 app.get('/api/clients', async (req, res) => {
     try {
-        const rows = await dbAll(`SELECT * FROM clients`, []);
+        let rows;
+        try {
+            rows = await dbAll(`SELECT * FROM clients ORDER BY created_at DESC`, []);
+        } catch(e) {
+            rows = await dbAll(`SELECT * FROM clients ORDER BY id DESC`, []);
+        }
         res.json(rows || []);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -418,9 +425,9 @@ app.post('/api/clients', async (req, res) => {
     }
 });
 
-app.put('/api/clients/:id', async (req, res) => {
+app.put('/api/clients/*', async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = decodeURIComponent(req.params[0]);
         const { name, owner } = req.body;
         const sql = `UPDATE clients SET name = ?, owner = ? WHERE id = ?`;
         await dbRun(sql, [name, owner, id]);
@@ -430,9 +437,9 @@ app.put('/api/clients/:id', async (req, res) => {
     }
 });
 
-app.delete('/api/clients/:id', async (req, res) => {
+app.delete('/api/clients/*', async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = decodeURIComponent(req.params[0]);
         await dbRun(`DELETE FROM clients WHERE id = ?`, [id]);
         res.json({ success: true, message: 'Client deleted successfully' });
     } catch (err) {
