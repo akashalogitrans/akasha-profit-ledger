@@ -341,14 +341,15 @@ async function fetchClientsData() {
         const res = await fetch(`${API_BASE_URL}/clients`);
         if (res.ok) {
             const data = await res.json();
-            if (Array.isArray(data) && data.length > 0) {
+            if (Array.isArray(data)) {
                 STATE.clients = data;
-                localStorage.setItem('AKASHA_ERP_CLIENTS', JSON.stringify(STATE.clients));
                 renderClientsTable();
                 populateFullClientDropdown();
             }
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error("Fetch clients error:", e);
+    }
 }
 
 async function fetchShipmentsData() {
@@ -356,10 +357,9 @@ async function fetchShipmentsData() {
         const res = await fetch(`${API_BASE_URL}/shipments`);
         if (res.ok) {
             const data = await res.json();
-            if (Array.isArray(data) && data.length > 0) {
+            if (Array.isArray(data)) {
                 STATE.shipments = data;
                 STATE.filteredShipments = [...data];
-                localStorage.setItem('AKASHA_ERP_SHIPMENTS', JSON.stringify(STATE.shipments));
                 renderShipmentsTable();
                 renderPaymentReceivedTable(null);
                 renderPurchaseEntryTable(null);
@@ -367,7 +367,9 @@ async function fetchShipmentsData() {
                 recalculateKPIsFromState();
             }
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error("Fetch shipments error:", e);
+    }
 }
 
 async function fetchPaymentsReceivedData() {
@@ -1101,48 +1103,37 @@ async function saveFullShipmentData() {
         net_profit: totSale - totPurchase
     };
 
-    // 1. Immediately update local STATE & localStorage backup so ALL 5 tables update INSTANTLY!
-    if (editId) {
-        const idx = STATE.shipments.findIndex(item => item.id === editId);
-        if (idx !== -1) STATE.shipments[idx] = shpObj;
-    } else {
-        const existingIdx = STATE.shipments.findIndex(item => item.id === shpObj.id);
-        if (existingIdx !== -1) {
-            STATE.shipments[existingIdx] = shpObj;
-        } else {
-            STATE.shipments.unshift(shpObj);
-        }
-    }
+    Swal.fire({ title: 'Saving Shipment to MySQL...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-    STATE.filteredShipments = [...STATE.shipments];
-    localStorage.setItem('AKASHA_ERP_SHIPMENTS', JSON.stringify(STATE.shipments));
-
-    renderShipmentsTable();
-    renderPaymentReceivedTable(null);
-    renderPurchaseEntryTable(null);
-    renderProfitLedgerTable(null);
-    recalculateKPIsFromState();
-
-    Swal.fire({ icon: 'success', title: 'Shipment Saved!', text: `Shipment Voucher ${shpObj.id} saved into ERP!` });
-
-    // 2. Sync to Backend Database API silently
     try {
+        let res;
         if (editId) {
-            await fetch(`${API_BASE_URL}/shipments/${encodeURIComponent(editId)}`, {
+            res = await fetch(`${API_BASE_URL}/shipments/${encodeURIComponent(editId)}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(shpObj)
             });
         } else {
-            await fetch(`${API_BASE_URL}/shipments`, {
+            res = await fetch(`${API_BASE_URL}/shipments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(shpObj)
             });
         }
-    } catch (e) {}
 
-    navigateRoute('/shipment-entry');
+        const data = await res.json();
+        if (res.ok && data.success) {
+            Swal.fire({ icon: 'success', title: 'Saved to MySQL Database!', text: `Shipment Voucher ${shpObj.id} saved into ERP!` });
+            await fetchShipmentsData();
+            await fetchDashboardKPIs();
+            navigateRoute('/shipment-entry');
+        } else {
+            Swal.fire({ icon: 'error', title: 'MySQL Save Failed', text: data.message || 'Could not save shipment to MySQL database.' });
+        }
+    } catch (e) {
+        console.error("Save Shipment Error:", e);
+        Swal.fire({ icon: 'error', title: 'API Connection Error', text: 'Failed to connect to backend MySQL API: ' + e.message });
+    }
 }
 
 async function deleteShipment(id) {
@@ -1235,41 +1226,36 @@ async function saveFullClientData() {
         owner: ownerVal
     };
 
-    // 1. Immediately update local state & localStorage backup so UI NEVER loses data!
-    if (editId) {
-        const idx = STATE.clients.findIndex(c => c.id === editId);
-        if (idx !== -1) STATE.clients[idx] = clientObj;
-    } else {
-        const existingIdx = STATE.clients.findIndex(c => c.id === clientObj.id);
-        if (existingIdx !== -1) {
-            STATE.clients[existingIdx] = clientObj;
-        } else {
-            STATE.clients.unshift(clientObj);
-        }
-    }
-    localStorage.setItem('AKASHA_ERP_CLIENTS', JSON.stringify(STATE.clients));
-    renderClientsTable();
-    populateFullClientDropdown();
-    Swal.fire({ icon: 'success', title: 'Saved!', text: `Client ${clientObj.name} (${clientObj.id}) saved to Directory!` });
+    Swal.fire({ title: 'Saving Client to MySQL...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-    // 2. Sync to Backend Database API silently
     try {
+        let res;
         if (editId) {
-            await fetch(`${API_BASE_URL}/clients/${encodeURIComponent(editId)}`, {
+            res = await fetch(`${API_BASE_URL}/clients/${encodeURIComponent(editId)}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(clientObj)
             });
         } else {
-            await fetch(`${API_BASE_URL}/clients`, {
+            res = await fetch(`${API_BASE_URL}/clients`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(clientObj)
             });
         }
-    } catch (e) {}
-    
-    navigateRoute('/client-master');
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+            Swal.fire({ icon: 'success', title: 'Saved to MySQL Database!', text: `Client ${clientObj.name} (${clientObj.id}) stored successfully!` });
+            await fetchClientsData();
+            navigateRoute('/client-master');
+        } else {
+            Swal.fire({ icon: 'error', title: 'MySQL Save Failed', text: data.message || 'Error saving client to database.' });
+        }
+    } catch (e) {
+        console.error("Save Client Error:", e);
+        Swal.fire({ icon: 'error', title: 'API Connection Error', text: 'Could not connect to MySQL Backend API: ' + e.message });
+    }
 }
 
 async function deleteClient(id) {
