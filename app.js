@@ -342,13 +342,7 @@ async function fetchClientsData() {
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0) {
-                const merged = [...data];
-                STATE.clients.forEach(localC => {
-                    if (!merged.some(remoteC => remoteC.id === localC.id)) {
-                        merged.push(localC);
-                    }
-                });
-                STATE.clients = merged;
+                STATE.clients = data;
                 localStorage.setItem('AKASHA_ERP_CLIENTS', JSON.stringify(STATE.clients));
                 renderClientsTable();
                 populateFullClientDropdown();
@@ -363,14 +357,8 @@ async function fetchShipmentsData() {
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0) {
-                const merged = [...data];
-                STATE.shipments.forEach(localS => {
-                    if (!merged.some(remoteS => remoteS.id === localS.id)) {
-                        merged.push(localS);
-                    }
-                });
-                STATE.shipments = merged;
-                STATE.filteredShipments = [...merged];
+                STATE.shipments = data;
+                STATE.filteredShipments = [...data];
                 localStorage.setItem('AKASHA_ERP_SHIPMENTS', JSON.stringify(STATE.shipments));
                 renderShipmentsTable();
                 renderPaymentReceivedTable(null);
