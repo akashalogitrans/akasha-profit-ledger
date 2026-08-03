@@ -28,44 +28,21 @@ let revenueChart = null;
 
 // --- DOM INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
+    // Purge old offline localStorage caches
+    localStorage.removeItem('AKASHA_ERP_CLIENTS');
+    localStorage.removeItem('AKASHA_ERP_SHIPMENTS');
+
     restoreUserSession();
     initNavigation();
     initCompanyAutoID();
     initCharts();
-    loadLocalState();
     fetchBackendAPIData();
 });
 
 function loadLocalState() {
-    const savedClients = localStorage.getItem('AKASHA_ERP_CLIENTS');
-    const savedShipments = localStorage.getItem('AKASHA_ERP_SHIPMENTS');
-
-    if (savedClients) {
-        try {
-            const parsed = JSON.parse(savedClients);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                STATE.clients = parsed;
-            }
-        } catch(e){}
-    }
-
-    if (savedShipments) {
-        try {
-            const parsed = JSON.parse(savedShipments);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                STATE.shipments = parsed;
-                STATE.filteredShipments = [...parsed];
-            }
-        } catch(e){}
-    }
-
-    renderClientsTable();
-    populateFullClientDropdown();
-    renderShipmentsTable();
-    renderPaymentReceivedTable(null);
-    renderPurchaseEntryTable(null);
-    renderProfitLedgerTable(null);
-    recalculateKPIsFromState();
+    // Zero offline storage - All state is loaded directly from Hostinger MySQL API
+    STATE.clients = [];
+    STATE.shipments = [];
 }
 
 function recalculateKPIsFromState() {
