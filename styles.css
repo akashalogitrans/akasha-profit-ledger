@@ -1498,6 +1498,29 @@ body {
     display: block !important;
 }
 
+/* Mobile Touch & Backdrop Optimization */
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+}
+
+.sidebar-backdrop.active {
+    display: block !important;
+}
+
+input, select, textarea, button {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    pointer-events: auto !important;
+}
+
 @media (max-width: 768px) {
     .row-entry-flex {
         flex-direction: column;
@@ -1510,5 +1533,41 @@ body {
     .field-item-action {
         justify-content: flex-end;
         margin-top: 6px;
+    }
+    
+    .sidebar {
+        z-index: 1000 !important;
+    }
+    
+    .form-control, input, select {
+        font-size: 16px !important;
+        min-height: 44px !important;
+    }
+    
+    .grid-12 {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+    
+    .col-12, .col-8, .col-6, .col-5, .col-4, .col-3, .col-2, .col-1 {
+        grid-column: span 1 !important;
+        width: 100% !important;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .page-header > div:last-child {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .quick-add-btn, .btn-action {
+        min-height: 42px;
     }
 }

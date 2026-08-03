@@ -1872,3 +1872,11 @@ async function handleQuickPaymentSubmit(e) {
         console.log("Payment update API error");
     }
 }
+
+// --- MOBILE SIDEBAR DRAWER CONTROLLER ---
+function toggleMobileSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (sidebar) sidebar.classList.toggle('open');
+    if (backdrop) backdrop.classList.toggle('active');
+}
