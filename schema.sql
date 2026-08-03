@@ -1,121 +1,75 @@
 -- ==========================================================================
-   AKASHA LOGITRANS LLP - FREIGHT FORWARDING ERP SQL DATABASE SCHEMA
-   Database: MySQL / PostgreSQL / SQLite3 Compatible
-   ==========================================================================
+-- AKASHA LOGITRANS LLP - FREIGHT FORWARDING ERP MYSQL SCHEMA FOR HOSTINGER
+-- Target Database: Hostinger MySQL / phpMyAdmin
+-- ==========================================================================
 
--- 1. ADMIN USERS TABLE (Max 3 Admin Users)
-CREATE TABLE IF NOT EXISTS users (
+DROP TABLE IF EXISTS shipments;
+DROP TABLE IF EXISTS clients;
+DROP TABLE IF EXISTS users;
+
+-- 1. ADMIN USERS TABLE
+CREATE TABLE users (
     id VARCHAR(50) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    email VARCHAR(150) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password_hash VARCHAR(255),
+    role VARCHAR(100),
     avatar VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    code VARCHAR(50)
 );
 
--- 2. CLIENTS & VENDORS MASTER TABLE
-CREATE TABLE IF NOT EXISTS clients (
+-- 2. CLIENT MASTER TABLE
+CREATE TABLE clients (
     id VARCHAR(50) PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
-    type VARCHAR(20) CHECK (type IN ('Customer', 'Vendor')),
-    gstin VARCHAR(20) NOT NULL,
-    pan VARCHAR(20) NOT NULL,
-    iec VARCHAR(30) DEFAULT '-',
-    city VARCHAR(100) NOT NULL,
-    state VARCHAR(100) NOT NULL,
-    country VARCHAR(100) DEFAULT 'India',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    owner VARCHAR(150) NOT NULL
 );
 
--- 3. SHIPMENTS MASTER TABLE
-CREATE TABLE IF NOT EXISTS shipments (
-    id VARCHAR(50) PRIMARY KEY,
-    job_no VARCHAR(50) UNIQUE NOT NULL,
-    mbl VARCHAR(100) NOT NULL,
-    hbl VARCHAR(100) NOT NULL,
-    customer_id VARCHAR(50) REFERENCES clients(id),
-    carrier_line VARCHAR(100) NOT NULL,
-    container_size VARCHAR(50) NOT NULL,
-    pol VARCHAR(100) NOT NULL,
-    pod VARCHAR(100) NOT NULL,
-    status VARCHAR(30) CHECK (status IN ('Pending', 'In Transit', 'Completed', 'Canceled')),
-    etd DATE,
-    eta DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 4. CUSTOMER SALE INVOICES TABLE
-CREATE TABLE IF NOT EXISTS sale_invoices (
-    id VARCHAR(50) PRIMARY KEY,
-    invoice_no VARCHAR(50) UNIQUE NOT NULL,
-    customer_id VARCHAR(50) REFERENCES clients(id),
-    shipment_id VARCHAR(50) REFERENCES shipments(id),
-    invoice_date DATE NOT NULL,
-    freight_amount DECIMAL(12, 2) DEFAULT 0,
-    cha_amount DECIMAL(12, 2) DEFAULT 0,
-    handling_amount DECIMAL(12, 2) DEFAULT 0,
-    subtotal DECIMAL(12, 2) DEFAULT 0,
-    gst_amount DECIMAL(12, 2) DEFAULT 0,
-    grand_total DECIMAL(12, 2) DEFAULT 0,
-    amount_received DECIMAL(12, 2) DEFAULT 0,
-    amount_pending DECIMAL(12, 2) DEFAULT 0,
-    payment_status VARCHAR(30) CHECK (payment_status IN ('Pending', 'Partially Paid', 'Completed')),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 5. VENDOR PURCHASE VOUCHERS TABLE
-CREATE TABLE IF NOT EXISTS purchase_vouchers (
-    id VARCHAR(50) PRIMARY KEY,
-    voucher_no VARCHAR(50) UNIQUE NOT NULL,
-    vendor_id VARCHAR(50) REFERENCES clients(id),
-    shipment_id VARCHAR(50) REFERENCES shipments(id),
-    voucher_date DATE NOT NULL,
-    taxable_value DECIMAL(12, 2) DEFAULT 0,
-    cgst DECIMAL(12, 2) DEFAULT 0,
-    sgst DECIMAL(12, 2) DEFAULT 0,
-    igst DECIMAL(12, 2) DEFAULT 0,
-    tds_amount DECIMAL(12, 2) DEFAULT 0,
-    net_payable DECIMAL(12, 2) DEFAULT 0,
-    payment_status VARCHAR(30) CHECK (payment_status IN ('Pending', 'Partially Paid', 'Paid')),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 6. GENERAL ACCOUNTING LEDGER TABLE
-CREATE TABLE IF NOT EXISTS general_ledger (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    voucher_no VARCHAR(50) NOT NULL,
+-- 3. SHIPMENT MASTER & PROFIT LEDGER TABLE
+CREATE TABLE shipments (
+    id VARCHAR(100) PRIMARY KEY,
     date DATE NOT NULL,
-    particulars TEXT NOT NULL,
-    debit DECIMAL(12, 2) DEFAULT 0,
-    credit DECIMAL(12, 2) DEFAULT 0,
-    running_balance DECIMAL(12, 2) DEFAULT 0,
+    client_id VARCHAR(50),
+    company_name VARCHAR(200),
+    line_name VARCHAR(150),
+    transport_name VARCHAR(150),
+    sb_be_no VARCHAR(100),
+    shipment_type VARCHAR(50),
+    purchase_date DATE,
+    purchase_amount DECIMAL(12, 2) DEFAULT 0,
+    purchase_status VARCHAR(30) DEFAULT 'Pending',
+    purchase_items TEXT,
+    payment_receive_date DATE,
+    sale_amount DECIMAL(12, 2) DEFAULT 0,
+    received_amount DECIMAL(12, 2) DEFAULT 0,
+    sale_status VARCHAR(30) DEFAULT 'Pending',
+    sale_items TEXT,
+    net_profit DECIMAL(12, 2) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 7. AUDIT TRAIL LOGS TABLE
-CREATE TABLE IF NOT EXISTS activity_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_name VARCHAR(100) NOT NULL,
-    action_text TEXT NOT NULL,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- Seed Directors
+INSERT INTO users (id, name, email, password_hash, role, avatar, code) VALUES
+('usr_1', 'Khushal Patel', 'khushal@akashalogitrans.com', 'hash', 'CEO & Founder', 'https://akashalogitrans.com/khushal.png', '7776-KHUSHAL'),
+('usr_2', 'Dhruv Patel', 'dhruv@akashalogitrans.com', 'hash', 'Director - Rates & Procurement', 'https://akashalogitrans.com/dhruv_patel.png', '7717-DHRUV'),
+('usr_3', 'Yagnik Patel', 'info@akashalogitrans.com', 'hash', 'Director - Finance & Audit', 'https://akashalogitrans.com/yagnik.jpeg', '8866-YAGNIK');
+
+-- Seed Sample Clients
+INSERT INTO clients (id, name, owner) VALUES
+('CLI-101', 'Morbi Ceramic Tiles Ltd', 'Khushal Patel'),
+('CLI-102', 'Zecca Spices Exports', 'Dhruv Patel'),
+('CLI-103', 'Maersk Shipping India', 'Yagnik Patel');
+
+-- Seed Sample Shipment Job
+INSERT INTO shipments (
+    id, date, client_id, company_name, line_name, transport_name, sb_be_no, shipment_type,
+    purchase_date, purchase_amount, purchase_status, purchase_items,
+    payment_receive_date, sale_amount, received_amount, sale_status, sale_items, net_profit
+) VALUES (
+    'AKASHA/CLI-101/001', '2026-08-01', 'CLI-101', 'Morbi Ceramic Tiles Ltd', 'MAERSK LINE', 'VRL Logistics',
+    'SB-8829102', 'Export FCL', '2026-08-01', 51000.00, 'Paid',
+    '[{"vendor_name":"MAERSK LINE","expense_name":"Sea Freight Charge","amount":45000},{"vendor_name":"VRL Logistics","expense_name":"Trucking Transport","amount":6000}]',
+    '2026-08-02', 54000.00, 54000.00, 'Completed',
+    '[{"item_name":"Container Freight Ocean Charges","qty":1,"rate":48000,"amount":48000},{"item_name":"CHA Documentation & Handling","qty":1,"rate":6000,"amount":6000}]',
+    3000.00
 );
-
--- ==========================================================================
--- SEED ENTERPRISE DATA FOR AKASHA LOGITRANS
--- ==========================================================================
-
-INSERT INTO users (id, name, email, password_hash, role, avatar) VALUES
-('usr_1', 'Khushal Patel', 'khushal@akashalogitrans.com', '$2a$10$w8172615...hash', 'CEO & Founder', 'https://akashalogitrans.com/khushal.png'),
-('usr_2', 'Dhruv Patel', 'dhruv@akashalogitrans.com', '$2a$10$81726152...hash', 'Director - Procurement', 'https://akashalogitrans.com/dhruv_patel.png'),
-('usr_3', 'Yagnik Patel', 'info@akashalogitrans.com', '$2a$10$19283746...hash', 'Director - Finance & Audit', 'https://akashalogitrans.com/yagnik.jpeg');
-
-INSERT INTO clients (id, name, type, gstin, pan, iec, city, state, country) VALUES
-('CLI-101', 'Morbi Ceramic Tiles Exports Ltd', 'Customer', '24AAACM1234F1Z5', 'AAACM1234F', '0304958192', 'Morbi', 'Gujarat', 'India'),
-('CLI-102', 'Gujarat Agro Spices Global Pvt Ltd', 'Customer', '24AACCG5678G1Z2', 'AACCG5678G', '0819284719', 'Rajkot', 'Gujarat', 'India'),
-('CLI-103', 'Maersk Line Shipping India', 'Vendor', '27AABCM8819P1Z9', 'AABCM8819P', '-', 'Mumbai', 'Maharashtra', 'India'),
-('CLI-104', 'MSC Mediterranean Shipping Co', 'Vendor', '27AAACM9928K1Z1', 'AAACM9928K', '-', 'Mumbai', 'Maharashtra', 'India');
-
-INSERT INTO shipments (id, job_no, mbl, hbl, customer_id, carrier_line, container_size, pol, pod, status, etd, eta) VALUES
-('SHP-001', 'AK-2026-0881', 'MAEU992817261', 'AKSH202601', 'CLI-101', 'MAERSK LINE', '2x40'' HC', 'Mundra Port', 'Jebel Ali (UAE)', 'In Transit', '2026-08-04', '2026-08-14'),
-('SHP-002', 'AK-2026-0882', 'MEDU881920192', 'AKSH202602', 'CLI-102', 'MSC', '1x20'' Reefer', 'Kandla Port', 'Rotterdam (Netherlands)', 'Completed', '2026-07-15', '2026-08-01');

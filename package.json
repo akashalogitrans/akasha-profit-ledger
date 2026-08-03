@@ -14,13 +14,15 @@
     "accounting",
     "express",
     "sqlite3",
-    "mysql"
+    "mysql",
+    "mysql2"
   ],
   "author": "Akasha LogiTrans LLP",
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.19.2",
+    "mysql2": "^3.9.7",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
