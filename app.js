@@ -1,6 +1,6 @@
 /* ==========================================================================
    AKASHA LOGITRANS LLP - FREIGHT FORWARDING ERP ENGINE (JS)
-   Zero-Data-Loss Hybrid Persistence & Real-Time Sync
+   Zero-Data-Loss Hybrid Persistence & Real-Time Sync v3.0.0
    ========================================================================== */
 
 const STATE = {
@@ -695,9 +695,9 @@ function renderProfitLedgerTable(list) {
 
     const avgMargin = totalSale > 0 ? ((totalNetProfit / totalSale) * 100).toFixed(1) : "0.0";
 
-    const saleEl = document.getElementById('kpi-ledger-total-sale');
-    const costEl = document.getElementById('kpi-ledger-total-cost');
-    const profitEl = document.getElementById('kpi-ledger-net-profit');
+    const saleEl = document.getElementById('kpi-ledger-sales') || document.getElementById('kpi-ledger-total-sale');
+    const costEl = document.getElementById('kpi-ledger-purchases') || document.getElementById('kpi-ledger-total-cost');
+    const profitEl = document.getElementById('kpi-ledger-profit') || document.getElementById('kpi-ledger-net-profit');
     const marginEl = document.getElementById('kpi-ledger-avg-margin');
 
     if (saleEl) saleEl.innerText = '₹' + totalSale.toLocaleString('en-IN');
@@ -735,7 +735,7 @@ function renderProfitLedgerTable(list) {
 
 // --- SEARCH & FILTER ENGINE ---
 function handleShipmentSearch() {
-    const query = (document.getElementById('shipments-search-input').value || '').toLowerCase().trim();
+    const query = (document.getElementById('shipments-search-input')?.value || '').toLowerCase().trim();
     if (!query) {
         STATE.filteredShipments = [...STATE.shipments];
     } else {
@@ -751,6 +751,38 @@ function handleShipmentSearch() {
     renderShipmentsTable();
 }
 
+function filterShipmentsTable() { handleShipmentSearch(); }
+function filterPaymentsTable() {
+    const query = (document.getElementById('payments-search-input')?.value || '').toLowerCase().trim();
+    document.querySelectorAll('#table-payment-received-body tr').forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
+    });
+}
+function filterPurchasesTable() {
+    const query = (document.getElementById('purchases-search-input')?.value || '').toLowerCase().trim();
+    document.querySelectorAll('#table-purchase-entry-body tr').forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
+    });
+}
+function filterProfitLedgerTable() {
+    const query = (document.getElementById('profit-search-input')?.value || '').toLowerCase().trim();
+    document.querySelectorAll('#table-profit-ledger-body tr').forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
+    });
+}
+function resetPaymentsFilters() {
+    if (document.getElementById('payments-search-input')) document.getElementById('payments-search-input').value = '';
+    filterPaymentsTable();
+}
+function resetPurchasesFilters() {
+    if (document.getElementById('purchases-search-input')) document.getElementById('purchases-search-input').value = '';
+    filterPurchasesTable();
+}
+function resetProfitFilters() {
+    if (document.getElementById('profit-search-input')) document.getElementById('profit-search-input').value = '';
+    filterProfitLedgerTable();
+}
+
 // --- FULL PAGE SHIPMENT ENTRY WORKSPACE CONTROLLER ---
 function populateFullClientDropdown() {
     const select = document.getElementById('full-shp-client-select');
@@ -758,14 +790,17 @@ function populateFullClientDropdown() {
     
     select.innerHTML = '<option value="">-- Select Client / Company --</option>' + 
         STATE.clients.map(c => `<option value="${c.id}">${c.name} (${c.id})</option>`).join('');
+}
 
-    select.addEventListener('change', (e) => {
-        const selectedId = e.target.value;
-        const client = STATE.clients.find(c => c.id === selectedId);
-        if (client) {
-            document.getElementById('full-shp-company-name').value = client.name;
-        }
-    });
+function onFullShipmentClientSelectChange() {
+    const select = document.getElementById('full-shp-client-select');
+    if (!select) return;
+    const selectedId = select.value;
+    const client = STATE.clients.find(c => c.id === selectedId);
+    if (client) {
+        const nameInput = document.getElementById('full-shp-company-name');
+        if (nameInput) nameInput.value = client.name;
+    }
 }
 
 function addFullPurchaseRow(data = null) {
@@ -890,10 +925,10 @@ function calcFullShipmentTotals() {
     const netProfit = totSale - totPurchase;
     const marginPct = totSale > 0 ? ((netProfit / totSale) * 100).toFixed(1) : "0.0";
 
-    const pEl = document.getElementById('calc-total-purchase');
-    const sEl = document.getElementById('calc-total-sale');
-    const nEl = document.getElementById('calc-net-profit');
-    const mEl = document.getElementById('calc-margin-pct');
+    const pEl = document.getElementById('full-calc-purchase-total') || document.getElementById('calc-total-purchase');
+    const sEl = document.getElementById('full-calc-sale-total') || document.getElementById('calc-total-sale');
+    const nEl = document.getElementById('full-calc-profit') || document.getElementById('calc-net-profit');
+    const mEl = document.getElementById('full-calc-margin') || document.getElementById('calc-margin-pct');
 
     if (pEl) pEl.innerText = '₹' + totPurchase.toLocaleString('en-IN');
     if (sEl) sEl.innerText = '₹' + totSale.toLocaleString('en-IN');
@@ -901,29 +936,29 @@ function calcFullShipmentTotals() {
         nEl.innerText = '₹' + netProfit.toLocaleString('en-IN');
         nEl.style.color = netProfit >= 0 ? '#10B981' : '#EF4444';
     }
-    if (mEl) mEl.innerText = marginPct + '%';
+    if (mEl) mEl.innerText = marginPct + '% Margin';
 }
 
 function openFullAddShipmentPage() {
-    document.getElementById('full-shipment-edit-id').value = '';
-    document.getElementById('page-shipment-form-title').innerText = 'New Shipment Entry Workspace';
+    if (document.getElementById('full-shipment-edit-id')) document.getElementById('full-shipment-edit-id').value = '';
+    if (document.getElementById('page-shipment-form-title')) document.getElementById('page-shipment-form-title').innerText = 'New Shipment Entry Workspace';
     
     populateFullClientDropdown();
     
     const nextNum = String(STATE.shipments.length + 1).padStart(3, '0');
-    document.getElementById('full-shp-id').value = `AKASHA/JOB/${nextNum}`;
-    document.getElementById('full-shp-client-select').value = '';
-    document.getElementById('full-shp-company-name').value = '';
-    document.getElementById('full-shp-line-name').value = '';
-    document.getElementById('full-shp-transport-name').value = '';
+    if (document.getElementById('full-shp-id')) document.getElementById('full-shp-id').value = `AKASHA/JOB/${nextNum}`;
+    if (document.getElementById('full-shp-client-select')) document.getElementById('full-shp-client-select').value = '';
+    if (document.getElementById('full-shp-company-name')) document.getElementById('full-shp-company-name').value = '';
+    if (document.getElementById('full-shp-line-name')) document.getElementById('full-shp-line-name').value = '';
+    if (document.getElementById('full-shp-transport-name')) document.getElementById('full-shp-transport-name').value = '';
     
     const today = new Date().toISOString().split('T')[0];
-    document.getElementById('full-shp-date').value = today;
-    document.getElementById('full-shp-sb-be-no').value = '';
-    document.getElementById('full-shp-type').value = '';
+    if (document.getElementById('full-shp-date')) document.getElementById('full-shp-date').value = today;
+    if (document.getElementById('full-shp-sb-be-no')) document.getElementById('full-shp-sb-be-no').value = '';
+    if (document.getElementById('full-shp-type')) document.getElementById('full-shp-type').value = '';
     
-    document.getElementById('full-purchase-rows-container').innerHTML = '';
-    document.getElementById('full-sale-rows-container').innerHTML = '';
+    if (document.getElementById('full-purchase-rows-container')) document.getElementById('full-purchase-rows-container').innerHTML = '';
+    if (document.getElementById('full-sale-rows-container')) document.getElementById('full-sale-rows-container').innerHTML = '';
     addFullPurchaseRow();
     addFullSaleRow();
 }
@@ -933,20 +968,20 @@ function openFullEditShipmentPage(id) {
     if (!s) return;
     
     populateFullClientDropdown();
-    document.getElementById('full-shipment-edit-id').value = s.id;
-    document.getElementById('page-shipment-form-title').innerText = `Edit Shipment Entry (${s.id})`;
-    document.getElementById('full-shp-id').value = s.id;
-    document.getElementById('full-shp-client-select').value = s.client_id || '';
-    document.getElementById('full-shp-company-name').value = s.company_name || '';
-    document.getElementById('full-shp-line-name').value = s.line_name || '';
-    document.getElementById('full-shp-transport-name').value = s.transport_name || '';
+    if (document.getElementById('full-shipment-edit-id')) document.getElementById('full-shipment-edit-id').value = s.id;
+    if (document.getElementById('page-shipment-form-title')) document.getElementById('page-shipment-form-title').innerText = `Edit Shipment Entry (${s.id})`;
+    if (document.getElementById('full-shp-id')) document.getElementById('full-shp-id').value = s.id;
+    if (document.getElementById('full-shp-client-select')) document.getElementById('full-shp-client-select').value = s.client_id || '';
+    if (document.getElementById('full-shp-company-name')) document.getElementById('full-shp-company-name').value = s.company_name || '';
+    if (document.getElementById('full-shp-line-name')) document.getElementById('full-shp-line-name').value = s.line_name || '';
+    if (document.getElementById('full-shp-transport-name')) document.getElementById('full-shp-transport-name').value = s.transport_name || '';
     
-    document.getElementById('full-shp-date').value = s.date;
-    document.getElementById('full-shp-sb-be-no').value = s.sb_be_no || '';
-    document.getElementById('full-shp-type').value = s.shipment_type || '';
+    if (document.getElementById('full-shp-date')) document.getElementById('full-shp-date').value = s.date;
+    if (document.getElementById('full-shp-sb-be-no')) document.getElementById('full-shp-sb-be-no').value = s.sb_be_no || '';
+    if (document.getElementById('full-shp-type')) document.getElementById('full-shp-type').value = s.shipment_type || '';
     
-    document.getElementById('full-purchase-rows-container').innerHTML = '';
-    document.getElementById('full-sale-rows-container').innerHTML = '';
+    if (document.getElementById('full-purchase-rows-container')) document.getElementById('full-purchase-rows-container').innerHTML = '';
+    if (document.getElementById('full-sale-rows-container')) document.getElementById('full-sale-rows-container').innerHTML = '';
     
     let pItems = [];
     let sItems = [];
@@ -975,21 +1010,29 @@ function openFullEditShipmentPage(id) {
 }
 
 async function saveFullShipmentData() {
-    const editId = document.getElementById('full-shipment-edit-id').value;
+    const editId = document.getElementById('full-shipment-edit-id') ? document.getElementById('full-shipment-edit-id').value : '';
     
     const purchaseItems = [];
     let totPurchase = 0;
     let purStatus = 'Completed';
     document.querySelectorAll('#full-purchase-rows-container .purchase-row-box').forEach(box => {
-        const amt = parseFloat(box.querySelector('.purchase-row-amount').value) || 0;
-        const st = box.querySelector('.purchase-row-status').value;
-        const vendor = box.querySelector('.purchase-row-vendor') ? box.querySelector('.purchase-row-vendor').value.trim() : '';
+        const amtInput = box.querySelector('.purchase-row-amount');
+        const amt = amtInput ? parseFloat(amtInput.value) || 0 : 0;
+        const stInput = box.querySelector('.purchase-row-status');
+        const st = stInput ? stInput.value : 'Completed';
+        const vendorInput = box.querySelector('.purchase-row-vendor');
+        const vendor = vendorInput ? vendorInput.value.trim() : '';
+        const dateInput = box.querySelector('.purchase-row-date');
+        const purDate = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
+        const typeInput = box.querySelector('.purchase-row-type');
+        const purType = typeInput ? typeInput.value : 'Ocean Freight';
+
         totPurchase += amt;
         if (st === 'Pending') purStatus = 'Pending';
 
         purchaseItems.push({
-            date: box.querySelector('.purchase-row-date').value,
-            type: box.querySelector('.purchase-row-type').value,
+            date: purDate,
+            type: purType,
             vendor_name: vendor,
             amount: amt,
             status: st
@@ -999,15 +1042,20 @@ async function saveFullShipmentData() {
     const saleItems = [];
     let totSale = 0;
     document.querySelectorAll('#full-sale-rows-container .sale-row-box').forEach(box => {
-        const amt = parseFloat(box.querySelector('.sale-row-amount').value) || 0;
-        const qty = parseFloat(box.querySelector('.sale-row-qty').value) || 1;
-        const exRate = parseFloat(box.querySelector('.sale-row-exrate').value) || 1;
-        const gst = box.querySelector('.sale-row-gst').value;
+        const amtInput = box.querySelector('.sale-row-amount');
+        const amt = amtInput ? parseFloat(amtInput.value) || 0 : 0;
+        const qtyInput = box.querySelector('.sale-row-qty');
+        const qty = qtyInput ? parseFloat(qtyInput.value) || 1 : 1;
+        const exInput = box.querySelector('.sale-row-exrate');
+        const exRate = exInput ? parseFloat(exInput.value) || 1 : 1;
+        const gstInput = box.querySelector('.sale-row-gst');
+        const gst = gstInput ? gstInput.value : '0';
         const sub = amt * qty * exRate;
         const finalAmt = sub + (sub * (parseFloat(gst) / 100));
         totSale += finalAmt;
 
-        const typeVal = box.querySelector('.sale-row-type') ? box.querySelector('.sale-row-type').value : 'Freight';
+        const typeInput = box.querySelector('.sale-row-type');
+        const typeVal = typeInput ? typeInput.value : 'Freight Sale Revenue';
         saleItems.push({
             type: typeVal,
             amount: amt,
@@ -1020,32 +1068,42 @@ async function saveFullShipmentData() {
 
     const saleStatus = document.getElementById('full-sale-payment-status') ? document.getElementById('full-sale-payment-status').value : 'Pending';
 
-    const compName = document.getElementById('full-shp-company-name').value.trim();
+    const compNameInput = document.getElementById('full-shp-company-name');
+    const compName = compNameInput ? compNameInput.value.trim() : '';
     if (!compName) {
         Swal.fire({ icon: 'warning', title: 'Missing Information', text: 'Please enter or select Company Name' });
         return;
     }
 
-    const rawId = document.getElementById('full-shp-id').value.trim();
+    const rawIdInput = document.getElementById('full-shp-id');
+    const rawId = rawIdInput ? rawIdInput.value.trim() : '';
+    const clientSelectEl = document.getElementById('full-shp-client-select');
+    const cleanClientId = clientSelectEl ? clientSelectEl.value : '';
     const nextCount = String(STATE.shipments.length + 1).padStart(3, '0');
-    const cleanClientId = document.getElementById('full-shp-client-select').value || 'JOB';
-    const defaultShpId = `AKASHA/${cleanClientId.toUpperCase()}/${nextCount}`;
+    const prefixClient = cleanClientId ? cleanClientId.toUpperCase() : 'JOB';
+    const defaultShpId = `AKASHA/${prefixClient}/${nextCount}`;
     const shpId = editId || (rawId && rawId !== 'AUTO' ? rawId : defaultShpId);
+
+    const lineNameInput = document.getElementById('full-shp-line-name');
+    const transNameInput = document.getElementById('full-shp-transport-name');
+    const shpDateInput = document.getElementById('full-shp-date');
+    const sbBeInput = document.getElementById('full-shp-sb-be-no');
+    const shpTypeInput = document.getElementById('full-shp-type');
 
     const shpObj = {
         id: shpId,
-        client_id: document.getElementById('full-shp-client-select').value,
+        client_id: cleanClientId,
         company_name: compName,
-        line_name: document.getElementById('full-shp-line-name').value.trim(),
-        transport_name: document.getElementById('full-shp-transport-name').value.trim(),
-        date: document.getElementById('full-shp-date').value || new Date().toISOString().split('T')[0],
-        sb_be_no: document.getElementById('full-shp-sb-be-no').value.trim(),
-        shipment_type: document.getElementById('full-shp-type').value || 'Export Freight',
-        purchase_date: document.getElementById('full-shp-date').value,
+        line_name: lineNameInput ? lineNameInput.value.trim() : '',
+        transport_name: transNameInput ? transNameInput.value.trim() : '',
+        date: shpDateInput && shpDateInput.value ? shpDateInput.value : new Date().toISOString().split('T')[0],
+        sb_be_no: sbBeInput ? sbBeInput.value.trim() : '',
+        shipment_type: shpTypeInput && shpTypeInput.value ? shpTypeInput.value.trim() : 'Export Freight',
+        purchase_date: shpDateInput && shpDateInput.value ? shpDateInput.value : new Date().toISOString().split('T')[0],
         purchase_amount: totPurchase,
         purchase_status: purStatus,
         purchase_items: purchaseItems,
-        payment_receive_date: document.getElementById('full-shp-date').value,
+        payment_receive_date: shpDateInput && shpDateInput.value ? shpDateInput.value : new Date().toISOString().split('T')[0],
         sale_amount: totSale,
         received_amount: saleStatus === 'Completed' ? totSale : 0,
         sale_status: saleStatus,
@@ -1133,42 +1191,44 @@ function initCompanyAutoID() {
     if (!nameInput) return;
     
     nameInput.addEventListener('input', (e) => {
-        const isEdit = document.getElementById('full-client-edit-id').value;
+        const isEditEl = document.getElementById('full-client-edit-id');
+        const isEdit = isEditEl ? isEditEl.value : '';
         if (isEdit) return;
         
         const rawName = e.target.value.replace(/[^a-zA-Z0-9]/g, '').trim().toUpperCase();
         const prefix = rawName.length >= 3 ? rawName.substring(0, 3) : (rawName ? rawName.padEnd(3, 'X') : 'CLI');
         const nextNum = STATE.clients.length + 101;
-        document.getElementById('full-client-id').value = `${prefix}-${nextNum}`;
+        const idInput = document.getElementById('full-client-id');
+        if (idInput) idInput.value = `${prefix}-${nextNum}`;
     });
 }
 
 function openFullAddClientPage() {
-    document.getElementById('full-client-edit-id').value = '';
-    document.getElementById('page-client-form-title').innerText = 'Add New Company / Client';
+    if (document.getElementById('full-client-edit-id')) document.getElementById('full-client-edit-id').value = '';
+    if (document.getElementById('page-client-form-title')) document.getElementById('page-client-form-title').innerText = 'Add New Company / Client';
     
     const autoNum = STATE.clients.length + 101;
-    document.getElementById('full-client-id').value = 'CLI-' + autoNum;
-    document.getElementById('full-client-name').value = '';
-    document.getElementById('full-client-owner').value = '';
+    if (document.getElementById('full-client-id')) document.getElementById('full-client-id').value = 'CLI-' + autoNum;
+    if (document.getElementById('full-client-name')) document.getElementById('full-client-name').value = '';
+    if (document.getElementById('full-client-owner')) document.getElementById('full-client-owner').value = '';
 }
 
 function openFullEditClientPage(id) {
     const client = STATE.clients.find(c => c.id === id);
     if (!client) return;
     
-    document.getElementById('full-client-edit-id').value = client.id;
-    document.getElementById('page-client-form-title').innerText = `Edit Client (${client.id})`;
-    document.getElementById('full-client-id').value = client.id;
-    document.getElementById('full-client-name').value = client.name;
-    document.getElementById('full-client-owner').value = client.owner || '';
+    if (document.getElementById('full-client-edit-id')) document.getElementById('full-client-edit-id').value = client.id;
+    if (document.getElementById('page-client-form-title')) document.getElementById('page-client-form-title').innerText = `Edit Client (${client.id})`;
+    if (document.getElementById('full-client-id')) document.getElementById('full-client-id').value = client.id;
+    if (document.getElementById('full-client-name')) document.getElementById('full-client-name').value = client.name;
+    if (document.getElementById('full-client-owner')) document.getElementById('full-client-owner').value = client.owner || '';
 }
 
 async function saveFullClientData() {
-    const editId = document.getElementById('full-client-edit-id').value;
-    const clientId = document.getElementById('full-client-id').value.trim();
-    const nameVal = document.getElementById('full-client-name').value.trim();
-    const ownerVal = document.getElementById('full-client-owner').value.trim();
+    const editId = document.getElementById('full-client-edit-id') ? document.getElementById('full-client-edit-id').value : '';
+    const clientId = document.getElementById('full-client-id') ? document.getElementById('full-client-id').value.trim() : '';
+    const nameVal = document.getElementById('full-client-name') ? document.getElementById('full-client-name').value.trim() : '';
+    const ownerVal = document.getElementById('full-client-owner') ? document.getElementById('full-client-owner').value.trim() : '';
     
     if (!nameVal) {
         Swal.fire({ icon: 'warning', title: 'Missing Field', text: 'Please enter Company Name' });
@@ -1363,15 +1423,18 @@ function printShipmentVoucher(id) {
 
 // --- MODAL & TOAST HELPERS ---
 function openModal(modalId) {
-    document.getElementById(modalId).classList.add('active');
+    const el = document.getElementById(modalId);
+    if (el) el.classList.add('active');
 }
 
 function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('active');
+    const el = document.getElementById(modalId);
+    if (el) el.classList.remove('active');
 }
 
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
+    if (!container) return;
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.innerHTML = `
@@ -1631,22 +1694,22 @@ function openQuickPaymentModal(shipmentId) {
     const prevRec = s.received_amount !== undefined ? parseFloat(s.received_amount) : (s.sale_status === 'Completed' ? saleAmt : 0);
     const currBal = Math.max(0, saleAmt - prevRec);
 
-    document.getElementById('quick-pay-shipment-id').value = s.id;
-    document.getElementById('quick-pay-display-id').innerText = s.id;
-    document.getElementById('quick-pay-display-company').innerText = s.company_name;
-    document.getElementById('quick-pay-display-total').innerText = '₹' + saleAmt.toLocaleString('en-IN');
-    document.getElementById('quick-pay-display-prev').innerText = '₹' + prevRec.toLocaleString('en-IN');
-    document.getElementById('quick-pay-display-balance').innerText = '₹' + currBal.toLocaleString('en-IN');
+    if (document.getElementById('quick-pay-shipment-id')) document.getElementById('quick-pay-shipment-id').value = s.id;
+    if (document.getElementById('quick-pay-display-id')) document.getElementById('quick-pay-display-id').innerText = s.id;
+    if (document.getElementById('quick-pay-display-company')) document.getElementById('quick-pay-display-company').innerText = s.company_name;
+    if (document.getElementById('quick-pay-display-total')) document.getElementById('quick-pay-display-total').innerText = '₹' + saleAmt.toLocaleString('en-IN');
+    if (document.getElementById('quick-pay-display-prev')) document.getElementById('quick-pay-display-prev').innerText = '₹' + prevRec.toLocaleString('en-IN');
+    if (document.getElementById('quick-pay-display-balance')) document.getElementById('quick-pay-display-balance').innerText = '₹' + currBal.toLocaleString('en-IN');
     
-    document.getElementById('quick-pay-today-input').value = '';
-    document.getElementById('quick-pay-date-input').value = new Date().toISOString().split('T')[0];
+    if (document.getElementById('quick-pay-today-input')) document.getElementById('quick-pay-today-input').value = '';
+    if (document.getElementById('quick-pay-date-input')) document.getElementById('quick-pay-date-input').value = new Date().toISOString().split('T')[0];
 
     updateQuickPayCalcNotice();
     openModal('modal-quick-payment');
 }
 
 function payFullBalanceQuickly() {
-    const shpId = document.getElementById('quick-pay-shipment-id').value;
+    const shpId = document.getElementById('quick-pay-shipment-id') ? document.getElementById('quick-pay-shipment-id').value : '';
     const s = STATE.shipments.find(item => item.id === shpId);
     if (!s) return;
 
@@ -1654,19 +1717,21 @@ function payFullBalanceQuickly() {
     const prevRec = s.received_amount !== undefined ? parseFloat(s.received_amount) : (s.sale_status === 'Completed' ? saleAmt : 0);
     const currBal = Math.max(0, saleAmt - prevRec);
 
-    document.getElementById('quick-pay-today-input').value = currBal;
+    if (document.getElementById('quick-pay-today-input')) document.getElementById('quick-pay-today-input').value = currBal;
     updateQuickPayCalcNotice();
     showToast(`Loaded remaining balance ₹${currBal.toLocaleString('en-IN')}`, 'info');
 }
 
 function updateQuickPayCalcNotice() {
-    const shpId = document.getElementById('quick-pay-shipment-id').value;
+    const shpIdEl = document.getElementById('quick-pay-shipment-id');
+    if (!shpIdEl) return;
+    const shpId = shpIdEl.value;
     const s = STATE.shipments.find(item => item.id === shpId);
     if (!s) return;
 
     const saleAmt = parseFloat(s.sale_amount) || 0;
     const prevRec = s.received_amount !== undefined ? parseFloat(s.received_amount) : (s.sale_status === 'Completed' ? saleAmt : 0);
-    const todayPay = parseFloat(document.getElementById('quick-pay-today-input').value) || 0;
+    const todayPay = parseFloat(document.getElementById('quick-pay-today-input')?.value) || 0;
     
     const newTotalRec = prevRec + todayPay;
     const newBalance = Math.max(0, saleAmt - newTotalRec);
@@ -1688,15 +1753,15 @@ function updateQuickPayCalcNotice() {
 
 async function handleQuickPaymentSubmit(e) {
     if (e) e.preventDefault();
-    const shpId = document.getElementById('quick-pay-shipment-id').value;
+    const shpId = document.getElementById('quick-pay-shipment-id') ? document.getElementById('quick-pay-shipment-id').value : '';
     const s = STATE.shipments.find(item => item.id === shpId);
     if (!s) return;
 
     const saleAmt = parseFloat(s.sale_amount) || 0;
     const prevRec = s.received_amount !== undefined ? parseFloat(s.received_amount) : (s.sale_status === 'Completed' ? saleAmt : 0);
-    const todayPay = parseFloat(document.getElementById('quick-pay-today-input').value) || 0;
+    const todayPay = parseFloat(document.getElementById('quick-pay-today-input')?.value) || 0;
     const newTotalRec = prevRec + todayPay;
-    const payDate = document.getElementById('quick-pay-date-input').value || new Date().toISOString().split('T')[0];
+    const payDate = document.getElementById('quick-pay-date-input')?.value || new Date().toISOString().split('T')[0];
     const newStatus = newTotalRec >= saleAmt ? 'Completed' : (newTotalRec > 0 ? 'Partially Paid' : 'Pending');
 
     s.received_amount = newTotalRec;
