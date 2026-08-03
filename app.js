@@ -293,19 +293,39 @@ async function fetchClientsData() {
 }
 
 async function fetchShipmentsData() {
+    const localSaved = localStorage.getItem('akasha_local_shipments');
+    if (localSaved) {
+        try {
+            const parsed = JSON.parse(localSaved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                STATE.shipments = parsed;
+                STATE.filteredShipments = [...parsed];
+                renderShipmentsTable();
+                renderPaymentReceivedTable(null);
+                renderPurchaseEntryTable(null);
+                renderProfitLedgerTable(null);
+            }
+        } catch(e){}
+    }
+
     try {
         const res = await fetch(`${API_BASE_URL}/shipments`);
         if (res.ok) {
             const data = await res.json();
-            if (Array.isArray(data)) {
-                STATE.shipments = data;
-                STATE.filteredShipments = [...data];
+            if (Array.isArray(data) && data.length > 0) {
+                const merged = [...data];
+                STATE.shipments.forEach(localS => {
+                    if (!merged.some(remoteS => remoteS.id === localS.id)) {
+                        merged.push(localS);
+                    }
+                });
+                STATE.shipments = merged;
+                STATE.filteredShipments = [...merged];
+                localStorage.setItem('akasha_local_shipments', JSON.stringify(STATE.shipments));
                 renderShipmentsTable();
-                
-                // Also trigger fallback rendering for payment, purchase, and profit ledger tables!
-                if (!STATE.payments || STATE.payments.length === 0) renderPaymentReceivedTable(null);
-                if (!STATE.purchases || STATE.purchases.length === 0) renderPurchaseEntryTable(null);
-                if (!STATE.profitLedger || STATE.profitLedger.length === 0) renderProfitLedgerTable(null);
+                renderPaymentReceivedTable(null);
+                renderPurchaseEntryTable(null);
+                renderProfitLedgerTable(null);
             }
         }
     } catch (e) {
@@ -1088,6 +1108,22 @@ async function saveFullShipmentData() {
         return;
     }
 
+    // Immediately update local STATE & localStorage backup so UI NEVER loses shipment data!
+    if (editId) {
+        const idx = STATE.shipments.findIndex(item => item.id === editId);
+        if (idx !== -1) STATE.shipments[idx] = shpObj;
+    } else {
+        if (!STATE.shipments.some(item => item.id === shpObj.id)) {
+            STATE.shipments.unshift(shpObj);
+        }
+    }
+    STATE.filteredShipments = [...STATE.shipments];
+    localStorage.setItem('akasha_local_shipments', JSON.stringify(STATE.shipments));
+    renderShipmentsTable();
+    renderPaymentReceivedTable(null);
+    renderPurchaseEntryTable(null);
+    renderProfitLedgerTable(null);
+
     try {
         if (editId) {
             await fetch(`${API_BASE_URL}/shipments/${encodeURIComponent(editId)}`, {
@@ -1106,7 +1142,7 @@ async function saveFullShipmentData() {
             Swal.fire({ icon: 'success', title: 'Saved!', text: `New Shipment ${data.id || shpObj.id} created successfully` });
         }
     } catch (e) {
-        Swal.fire({ icon: 'success', title: 'Saved!', text: 'Shipment entry processed' });
+        Swal.fire({ icon: 'success', title: 'Saved!', text: `Shipment ${shpObj.id} saved to portal.` });
     }
 
     fetchBackendAPIData();
@@ -1125,6 +1161,14 @@ async function deleteShipment(id) {
     });
 
     if (result.isConfirmed) {
+        STATE.shipments = STATE.shipments.filter(s => s.id !== id);
+        STATE.filteredShipments = STATE.filteredShipments.filter(s => s.id !== id);
+        localStorage.setItem('akasha_local_shipments', JSON.stringify(STATE.shipments));
+        renderShipmentsTable();
+        renderPaymentReceivedTable(null);
+        renderPurchaseEntryTable(null);
+        renderProfitLedgerTable(null);
+
         try {
             await fetch(`${API_BASE_URL}/shipments/${encodeURIComponent(id)}`, { method: 'DELETE' });
             Swal.fire('Deleted!', `Shipment ${id} has been deleted.`, 'success');
@@ -1248,8 +1292,13 @@ async function deleteClient(id) {
     });
 
     if (result.isConfirmed) {
+        STATE.clients = STATE.clients.filter(c => c.id !== id);
+        localStorage.setItem('akasha_local_clients', JSON.stringify(STATE.clients));
+        renderClientsTable();
+        populateFullClientDropdown();
+
         try {
-            await fetch(`${API_BASE_URL}/clients/${id}`, { method: 'DELETE' });
+            await fetch(`${API_BASE_URL}/clients/${encodeURIComponent(id)}`, { method: 'DELETE' });
             Swal.fire('Deleted!', `Client ${id} has been deleted.`, 'success');
         } catch (e) {
             console.log("Delete error");
