@@ -1,5 +1,5 @@
 {
-  "name": "akasha-freight-erp-backend",
+  "name": "akasha-profit-ledger",
   "version": "1.0.0",
   "description": "Enterprise Freight Forwarding ERP & Profit Ledger Backend API for Akasha LogiTrans LLP",
   "main": "server.js",
@@ -13,17 +13,18 @@
     "profit-ledger",
     "accounting",
     "express",
-    "sqlite3",
-    "mysql",
     "mysql2"
   ],
   "author": "Akasha LogiTrans LLP",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "mysql2": "^3.9.7",
-    "sqlite3": "^5.1.7"
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.9.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"

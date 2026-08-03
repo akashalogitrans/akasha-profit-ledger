@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akasha LogiTrans LLP | Enterprise Freight Accounting & Profit Ledger ERP</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Chart.js for Financial Graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- SweetAlert2 for Premium Popups -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- html2canvas for High-DPI Screenshot / Image Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Master CSS System -->
+    <link rel="stylesheet" href="/styles.css?v=7.0.0">
+</head>
+
+<body>
+
+    <!-- ==========================================================================
+         LOGIN SCREEN (3 ADMIN USERS MANDATORY)
+         ========================================================================== -->
+    <div class="login-screen" id="login-screen">
+        <div class="login-card">
+            <div class="login-left">
+                <img src="https://lh3.googleusercontent.com/d/1BXwlXGmBgnASSSwvY4KvcKYFuHSgj6qy" alt="Akasha Logo">
+                <h2>Akasha LogiTrans LLP</h2>
+                <p>Internal Freight Forwarding Accounting & Profit Ledger ERP System</p>
+                <div style="margin-top: 24px; text-align: left; font-size: 13px; color: #94a3b8;">
+                    <div><i class="fa-solid fa-lock" style="color: var(--primary);"></i> Restricted to 3 Admin Accounts</div>
+                    <div style="margin-top: 6px;"><i class="fa-solid fa-shield-halved" style="color: var(--success);"></i> Bank-Grade Session Security</div>
+                </div>
+            </div>
+
+            <div class="login-right">
+                <div class="login-title">Director Security Authentication</div>
+                <div class="login-subtitle">Enter 4-digit PIN and Director Name to log in</div>
+
+                <form onsubmit="handleLogin(event)">
+                    <div class="form-group" style="margin-bottom: 18px;">
+                        <label style="font-weight: 700; margin-bottom: 8px; display: block; color: #f8fafc;">Enter Security PIN & Name</label>
+                        <div style="display: grid; grid-template-columns: 100px 1fr; gap: 10px; align-items: center;">
+                            <input type="password" id="login-code-pin" class="form-control" maxlength="4" placeholder="••••" required style="text-align: center; font-size: 20px; font-weight: 900; letter-spacing: 4px; color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; background: #1e293b !important; border: 2px solid #3b82f6 !important; caret-color: #ffffff;" oninput="autoTabLoginPin(this, 'login-code-name')">
+                            <input type="text" id="login-code-name" class="form-control" placeholder="Enter Name (e.g. DHRUV)" required style="font-size: 16px; font-weight: 800; text-transform: uppercase; color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; background: #1e293b !important; border: 2px solid #3b82f6 !important; caret-color: #ffffff;">
+                        </div>
+                    </div>
+
+                    <div id="login-error-message" style="display: none; color: #f87171; font-size: 13px; font-weight: 700; margin-bottom: 16px; text-align: center; background: rgba(239, 68, 68, 0.15); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.4);">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Invalid Credentials! Enter authorized PIN & Name (e.g. 7717 - DHRUV).
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: #cbd5e1; font-weight: 600;">
+                            <input type="checkbox" id="login-remember-me" checked style="width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer;">
+                            Remember Me
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn-primary" style="padding: 14px; font-size: 15px; font-weight: 700;">
+                        <i class="fa-solid fa-lock"></i> Verify & Enter ERP
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ==========================================================================
+         MAIN ENTERPRISE ERP APPLICATION SHELL
+         ========================================================================== -->
+    <div class="erp-shell" id="erp-shell" style="display: none;">
+        <div class="erp-container">
+
+            <!-- STICKY LEFT SIDEBAR (EXACTLY 6 MODULES WITH DEDICATED URL ROUTES) -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <div class="sidebar-logo">
+                        <img src="https://lh3.googleusercontent.com/d/1BXwlXGmBgnASSSwvY4KvcKYFuHSgj6qy" alt="Akasha Logo">
+                        <span>Akasha ERP</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-menu">
+                    <div class="menu-category">MAIN SYSTEM</div>
+                    <a class="menu-item active" href="/dashboard" data-view="dashboard" data-path="/dashboard">
+                        <div class="menu-item-left"><i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span></div>
+                    </a>
+                    <a class="menu-item" href="/shipment-entry" data-view="shipments" data-path="/shipment-entry">
+                        <div class="menu-item-left"><i class="fa-solid fa-ship"></i> <span>Shipment Entry</span></div>
+                    </a>
+
+                    <div class="menu-category">LEDGER & PAYMENTS</div>
+                    <a class="menu-item" href="/payment-received" data-view="payment_received" data-path="/payment-received">
+                        <div class="menu-item-left"><i class="fa-solid fa-money-check-dollar"></i> <span>Payment Received</span></div>
+                    </a>
+                    <a class="menu-item" href="/purchase-entry" data-view="purchase_entry" data-path="/purchase-entry">
+                        <div class="menu-item-left"><i class="fa-solid fa-receipt"></i> <span>Purchase Entry</span></div>
+                    </a>
+                    <a class="menu-item" href="/profit-ledger" data-view="profit_ledger" data-path="/profit-ledger">
+                        <div class="menu-item-left"><i class="fa-solid fa-sack-dollar"></i> <span>Profit Ledger</span></div>
+                    </a>
+
+                    <div class="menu-category">MASTERS</div>
+                    <a class="menu-item" href="/client-master" data-view="clients" data-path="/client-master">
+                        <div class="menu-item-left"><i class="fa-solid fa-users"></i> <span>Client Master</span></div>
+                    </a>
+                </div>
+
+                <!-- Sidebar User Profile Footer -->
+                <div class="sidebar-footer">
+                    <div class="user-card">
+                        <img id="current-user-avatar" class="user-avatar" src="https://akashalogitrans.com/khushal.png" alt="Avatar">
+                        <div class="user-info">
+                            <h5 id="current-user-name">Khushal Patel</h5>
+                            <p id="current-user-role">CEO & Founder</p>
+                        </div>
+                    </div>
+                    <button onclick="handleLogout()" class="btn-logout">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Secure Logout
+                    </button>
+                </div>
+            </aside>
+
+            <!-- SIDEBAR BACKDROP OVERLAY (MOBILE) -->
+            <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleMobileSidebar()"></div>
+
+            <!-- MAIN CONTENT WRAPPER -->
+            <div class="main-wrapper">
+
+                <!-- TOP NAVBAR -->
+                <header class="topbar">
+                    <div class="topbar-left">
+                        <button class="top-icon-btn mobile-hamburger" id="sidebar-toggle" onclick="toggleMobileSidebar()" title="Toggle Menu">
+                            <i class="fa-solid fa-bars" style="font-size: 18px;"></i>
+                        </button>
+                        <div class="global-search">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="global-search-input" placeholder="Search Shipment ID, Client ID, Company Name (Ctrl + K)..." onkeyup="handleGlobalSearch(event)">
+                        </div>
+                        <span class="date-chip"><i class="fa-solid fa-calendar-day"></i> Sun, 03 Aug 2026</span>
+                    </div>
+
+                    <div class="topbar-right">
+                        <button class="quick-add-btn" onclick="navigateRoute('/shipment-entry/new')">
+                            <i class="fa-solid fa-plus"></i> + Add Shipment
+                        </button>
+                        <div class="top-icon-btn" title="Notifications">
+                            <i class="fa-solid fa-bell"></i>
+                            <div class="badge-dot"></div>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- DYNAMIC CONTENT BODY -->
+                <main class="content-body">
+
+                    <!-- ==========================================================================
+                         VIEW 1: EXECUTIVE DASHBOARD (EXACT 4 CARDS + GRAPH BELOW)
+                         ========================================================================== -->
+                    <div id="view-dashboard" class="view-section">
+                        <div class="page-header">
+                            <div>
+                                <h2 class="page-title">Executive Profit & Operations Dashboard</h2>
+                                <p class="page-subtitle">Real-time financial performance summary for Akasha LogiTrans LLP</p>
+                            </div>
+                            <button class="quick-add-btn" onclick="navigateRoute('/shipment-entry/new')">+ Add Shipment</button>
+                        </div>
+
+                        <!-- 4 DASHBOARD KPI CARDS -->
+                        <div class="grid-12" style="margin-bottom: 24px;">
+                            <div class="kpi-card col-3">
+                                <div class="kpi-top">
+                                    <span class="kpi-title">MONTHLY REVENUE</span>
+                                    <div class="kpi-icon icon-red"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+                                </div>
+                                <div class="kpi-value" id="kpi-monthly-revenue">₹0.00</div>
+                                <div class="kpi-trend trend-up"><i class="fa-solid fa-circle-info"></i> Total Customer Invoiced</div>
+                            </div>
+
+                            <div class="kpi-card col-3">
+                                <div class="kpi-top">
+                                    <span class="kpi-title">TOTAL PURCHASE MONTHLY</span>
+                                    <div class="kpi-icon icon-blue"><i class="fa-solid fa-money-bill-transfer"></i></div>
+                                </div>
+                                <div class="kpi-value" id="kpi-total-purchase">₹0.00</div>
+                                <div class="kpi-trend trend-down"><i class="fa-solid fa-circle-info"></i> Vendor Carrier Expenses</div>
+                            </div>
+
+                            <div class="kpi-card col-3">
+                                <div class="kpi-top">
+                                    <span class="kpi-title">NET PROFIT MONTHLY</span>
+                                    <div class="kpi-icon icon-green"><i class="fa-solid fa-wallet"></i></div>
+                                </div>
+                                <div class="kpi-value" id="kpi-net-profit" style="color: var(--success);">₹0.00</div>
+                                <div class="kpi-trend trend-up"><i class="fa-solid fa-circle-check"></i> Live Profit Margin</div>
+                            </div>
+
+                            <div class="kpi-card col-3">
+                                <div class="kpi-top">
+                                    <span class="kpi-title">PENDING PAYMENT</span>
+                                    <div class="kpi-icon icon-orange"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                                </div>
+                                <div class="kpi-value" id="kpi-pending-payment" style="color: var(--warning);">₹0.00</div>
+                                <div class="kpi-trend trend-up"><i class="fa-solid fa-clock"></i> Client Payments Outstanding</div>
+                            </div>
+                        </div>
+
+                        <!-- GRAPH BELOW (REVENUE VS PURCHASE VS PROFIT) -->
+                        <div class="grid-12">
+                            <div class="panel-card col-12">
+                                <div class="panel-header">
+                                    <div class="panel-title"><i class="fa-solid fa-chart-line"></i> Revenue vs Purchase vs Net Profit Performance</div>
+                                </div>
+                                <div class="panel-body" style="height: 340px;">
+                                    <canvas id="revenueChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- ==========================================================================
+                         VIEW 2: SHIPMENT ENTRY (SHIPMENT MASTER LISTING)
+                         ========================================================================== -->
+                    <div id="view-shipments" class="view-section" style="display: none;">
+                        <div class="page-header">
+                            <div>
+                                <h2 class="page-title">Shipment Entry Master</h2>
+                                <p class="page-subtitle">Complete ocean & air shipment job register with month-wise filters</p>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn-action" style="width: auto; padding: 0 16px; background: #ffffff;" onclick="exportTableToCSV('table-shipments-body', 'Shipment_Master_Report')"><i class="fa-solid fa-file-excel" style="color: #10B981;"></i> Export Excel</button>
+                                <button class="quick-add-btn" onclick="navigateRoute('/shipment-entry/new')">+ Add Shipment</button>
+                            </div>
+                        </div>
+
+                        <!-- FILTERS BAR (SHIPMENT ID, MONTH SELECTOR, SEARCH) -->
+                        <div class="panel-card" style="margin-bottom: 20px;">
+                            <div class="panel-body" style="padding: 16px;">
+                                <div class="grid-12" style="align-items: center; gap: 14px;">
+                                    <div class="col-4">
+                                        <div class="input-with-icon">
+                                            <i class="fa-solid fa-magnifying-glass"></i>
+                                            <input type="text" id="shipment-search-input" class="form-control light-input" placeholder="Search Shipment ID, SB/BE No, Company..." onkeyup="filterShipmentsTable()">
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <input type="month" id="shipment-month-filter" class="form-control light-input" onchange="filterShipmentsTable()">
+                                    </div>
+                                    <div class="col-4" style="text-align: right;">
+                                        <button class="btn-action" style="width: auto; padding: 10px 18px;" onclick="resetShipmentFilters()"><i class="fa-solid fa-rotate-left"></i> Reset Filters</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SHIPMENT MASTER TABLE -->
+                        <div class="panel-card">
+                            <div class="panel-body" style="padding: 0;">
+                                <div class="table-container">
+                                    <table class="erp-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Shipment ID</th>
+                                                <th>Date</th>
+                                                <th>Client ID</th>
+                                                <th>Company Name</th>
+                                                <th>SB/BE No</th>
+                                                <th>Shipment Type</th>
+                                                <th>Purchase Amount</th>
+                                                <th>Purchase Payment</th>
+                                                <th>Sale Amount</th>
+                                                <th>Payment Received</th>
+                                                <th>Net Profit</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="table-shipments-body"></tbody>
+                                    </table>
+                                </div>
+                                <div class="pagination-bar" id="shipments-pagination"></div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- ==========================================================================
+                         NEW VIEW 2B: DEDICATED FULL-PAGE SHIPMENT ENTRY FORM (4 STACKED SECTIONS)
+                         ========================================================================== -->
+                    <div id="view-shipment-form" class="view-section" style="display: none;">
+                        <div class="page-header">
+                            <div>
+                                <div style="font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 4px;">
+                                    <a href="/shipment-entry" onclick="event.preventDefault(); navigateRoute('/shipment-entry');" style="color: var(--primary); text-decoration: none;"><i class="fa-solid fa-arrow-left"></i> Back to Shipment Master</a>
+                                </div>
+                                <h2 class="page-title" id="page-shipment-form-title">New Shipment Entry Workspace</h2>
+                                <p class="page-subtitle">Full-page 4-section dedicated shipment billing & profit workspace</p>
+                            </div>
+                            <button class="btn-action" style="width: auto; padding: 10px 18px;" onclick="navigateRoute('/shipment-entry')">Cancel</button>
+                        </div>
+
+                        <input type="hidden" id="full-shipment-edit-id">
+
+                        <!-- SECTION 1: SHIPMENT COMMON DETAILS -->
+                        <div class="panel-card section-block-card">
+                            <div class="section-block-title">
+                                <i class="fa-solid fa-ship"></i> <span>SECTION 1: SHIPMENT COMMON DETAILS</span>
+                            </div>
+                            <div class="grid-12" style="row-gap: 16px;">
+                                <div class="col-3 form-group" style="margin-bottom: 0;">
+                                    <label>Shipment ID (Auto Code)</label>
+                                    <input type="text" id="full-shp-id" class="form-control light-input" readonly value="AUTO" style="font-weight: 800; color: var(--primary);">
+                                </div>
+                                <div class="col-4 form-group" style="margin-bottom: 0;">
+                                    <label>Select Client / Company *</label>
+                                    <select id="full-shp-client-select" class="form-control light-input" onchange="onFullShipmentClientSelectChange()">
+                                        <option value="">-- Select Client --</option>
+                                    </select>
+                                </div>
+                                <div class="col-5 form-group" style="margin-bottom: 0;">
+                                    <label>Company Name (Full Name) *</label>
+                                    <input type="text" id="full-shp-company-name" class="form-control light-input" required style="font-weight: 700;">
+                                </div>
+
+                                <div class="col-4 form-group" style="margin-bottom: 0;">
+                                    <label>Shipping Line Name</label>
+                                    <input type="text" id="full-shp-line-name" class="form-control light-input">
+                                </div>
+                                <div class="col-4 form-group" style="margin-bottom: 0;">
+                                    <label>SB/BE Number *</label>
+                                    <input type="text" id="full-shp-sb-be-no" class="form-control light-input">
+                                </div>
+                                <div class="col-4 form-group" style="margin-bottom: 0;">
+                                    <label>Shipment Date *</label>
+                                    <input type="date" id="full-shp-date" class="form-control light-input">
+                                </div>
+
+                                <div class="col-6 form-group" style="margin-bottom: 0;">
+                                    <label>Transport Name</label>
+                                    <input type="text" id="full-shp-transport-name" class="form-control light-input">
+                                </div>
+                                <div class="col-6 form-group" style="margin-bottom: 0;">
+                                    <label>Shipment Type *</label>
+                                    <input type="text" id="full-shp-type" class="form-control light-input">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 2: PURCHASE ENTRY (VENDOR BILL) -->
+                        <div class="panel-card section-block-card">
+                            <div class="section-block-title" style="justify-content: space-between; background: #eff6ff; color: #1e40af; border-color: #bfdbfe;">
+                                <div><i class="fa-solid fa-cart-shopping"></i> <span>SECTION 2: PURCHASE ENTRY (VENDOR BILL)</span></div>
+                                <button type="button" class="btn-add-row-pill" onclick="addFullPurchaseRow()">
+                                    <i class="fa-solid fa-plus-circle"></i> + Add Purchase Row
+                                </button>
+                            </div>
+                            <div id="full-purchase-rows-container" style="display: flex; flex-direction: column; gap: 12px; min-height: 120px;"></div>
+                        </div>
+
+                        <!-- SECTION 3: SALE BILL ENTRY (CUSTOMER BILLING) -->
+                        <div class="panel-card section-block-card">
+                            <div class="section-block-title" style="justify-content: space-between; background: #ecfdf5; color: #065f46; border-color: #a7f3d0;">
+                                <div><i class="fa-solid fa-file-invoice-dollar"></i> <span>SECTION 3: SALE BILL ENTRY (CUSTOMER BILLING)</span></div>
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <select id="full-sale-payment-status" class="form-control light-input" style="width: auto; font-weight: 700; background: #ffffff;">
+                                        <option value="Pending">Payment Status: Pending</option>
+                                        <option value="Completed">Payment Status: Completed</option>
+                                        <option value="Partially Paid">Payment Status: Partially Paid</option>
+                                    </select>
+                                    <button type="button" class="btn-add-row-pill sale-pill" onclick="addFullSaleRow()">
+                                        <i class="fa-solid fa-plus-circle"></i> + Add Sale Row
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="full-sale-rows-container" style="display: flex; flex-direction: column; gap: 12px; min-height: 120px;"></div>
+                        </div>
+
+                        <!-- SECTION 4: ALL AMOUNT LISTING & SUMMARY ACTIONS -->
+                        <div class="panel-card section-block-card">
+                            <div class="section-block-title" style="background: #fffbe3; color: #b45309; border-color: #fef3c7;">
+                                <i class="fa-solid fa-sack-dollar"></i> <span>SECTION 4: FINANCIAL SUMMARY & MARGIN CALCULATION</span>
+                            </div>
+                            <div class="grid-12" style="margin-bottom: 20px;">
+                                <div class="col-4">
+                                    <div class="summary-box-card" style="border-left: 4px solid var(--primary);">
+                                        <span class="summary-box-label">ALL PURCHASE FINAL AMOUNT</span>
+                                        <div class="summary-box-value" id="full-calc-purchase-total">₹0.00</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="summary-box-card" style="border-left: 4px solid #10B981;">
+                                        <span class="summary-box-label">ALL SALE FINAL AMOUNT</span>
+                                        <div class="summary-box-value" id="full-calc-sale-total">₹0.00</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="summary-box-card" style="border-left: 4px solid #F59E0B; background: linear-gradient(135deg, #fffbe3, #fef3c7);">
+                                        <span class="summary-box-label">FINAL MARGIN</span>
+                                        <div style="display: flex; align-items: baseline; justify-content: space-between;">
+                                            <div class="summary-box-value" id="full-calc-profit" style="color: #d97706;">₹0.00</div>
+                                            <span id="full-calc-margin" class="status-pill status-completed" style="font-size: 11px;">0.0% Margin</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                                <button class="btn-action" style="width: auto; padding: 12px 24px;" onclick="navigateRoute('/shipment-entry')">Cancel</button>
+                                <button class="quick-add-btn" style="padding: 12px 28px; font-size: 15px;" onclick="saveFullShipmentData()"><i class="fa-solid fa-save"></i> Save Shipment Entry</button>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- ==========================================================================
+                         VIEW 3: PAYMENT RECEIVED (AUTOMATIC LISTING & SEARCH FILTERS)
+                         ========================================================================== -->
+                    <div id="view-payment-received" class="view-section" style="display: none;">
+                        <div class="page-header">
+                            <div>
+                                <h2 class="page-title">Payment Received Register</h2>
+                                <p class="page-subtitle">Automatic listing of customer billing & received payments</p>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn-action" style="width: auto; padding: 0 16px; background: #ffffff;" onclick="exportTableToCSV('table-payment-received-body', 'Payment_Received_Report')"><i class="fa-solid fa-file-excel" style="color: #10B981;"></i> Export Excel</button>
+                                <button class="quick-add-btn" onclick="navigateRoute('/shipment-entry/new')">+ Add Shipment</button>
+                            </div>
+                        </div>
+
+                        <!-- PAYMENT RECEIVED TOP SUMMARY CARDS -->
+                        <div class="grid-12" style="margin-bottom: 20px;">
+                            <div class="kpi-card col-4">
+                                <div class="kpi-title">TOTAL RECEIVED AMOUNT</div>
+                                <div class="kpi-value" id="kpi-received-total" style="color: var(--success);">₹0.00</div>
+                            </div>
+                            <div class="kpi-card col-4">
+                                <div class="kpi-title">PENDING RECEIVABLE AMOUNT</div>
+                                <div class="kpi-value" id="kpi-received-pending" style="color: var(--warning);">₹0.00</div>
+                            </div>
+                            <div class="kpi-card col-4">
+                                <div class="kpi-title">TOTAL CUSTOMER INVOICES</div>
+                                <div class="kpi-value" id="kpi-received-count">0</div>
+                            </div>
+                        </div>
+
+                        <!-- FILTERS BAR -->
+                        <div class="panel-card" style="margin-bottom: 20px;">
+                            <div class="panel-body" style="padding: 16px;">
+                                <div class="grid-12" style="align-items: center; gap: 14px;">
+                                    <div class="col-6">
+                                        <div class="input-with-icon">
+                                            <i class="fa-solid fa-magnifying-glass"></i>
+                                            <input type="text" id="payments-search-input" class="form-control light-input" placeholder="Search Shipment ID, Client, Company..." onkeyup="filterPaymentsTable()">
+                                        </div>
+                                    </div>
+                                    <div class="col-6" style="text-align: right;">
+                                        <button class="btn-action" style="width: auto; padding: 10px 18px;" onclick="resetPaymentsFilters()"><i class="fa-solid fa-rotate-left"></i> Reset Filters</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel-card">
+                            <div class="panel-body" style="padding: 0;">
+                                <div class="table-container">
+                                    <table class="erp-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Shipment ID</th>
+                                                <th>Company Name & Client ID</th>
+                                                <th>Invoice Total (₹)</th>
+                                                <th>Received Amount (₹)</th>
+                                                <th>Balance Pending (₹)</th>
+                                                <th>Receive Date</th>
+                                                <th>Payment Status</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="table-payment-received-body"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- ==========================================================================
+                         VIEW 4: PURCHASE ENTRY (AUTOMATIC LISTING & SEARCH FILTERS)
+                         ========================================================================== -->
+                    <div id="view-purchase-entry" class="view-section" style="display: none;">
+                        <div class="page-header">
+                            <div>
+                                <h2 class="page-title">Purchase Entry Register</h2>
+                                <p class="page-subtitle">Automatic listing of carrier ocean/air freight purchase bills</p>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn-action" style="width: auto; padding: 0 16px; background: #ffffff;" onclick="exportTableToCSV('table-purchase-entry-body', 'Purchase_Entry_Report')"><i class="fa-solid fa-file-excel" style="color: #10B981;"></i> Export Excel</button>
+                                <button class="quick-add-btn" onclick="navigateRoute('/shipment-entry/new')">+ Add Shipment</button>
+                            </div>
+                        </div>
+
+                        <!-- PURCHASE ENTRY TOP SUMMARY CARDS -->
+                        <div class="grid-12" style="margin-bottom: 20px;">
+                            <div class="kpi-card col-4">
+                                <div class="kpi-title">TOTAL PURCHASE EXPENSES</div>
+                                <div class="kpi-value" id="kpi-purchase-total" style="color: var(--primary);">₹0.00</div>
+                            </div>
+                            <div class="kpi-card col-4">
+                                <div class="kpi-title">PAID VENDOR EXPENSES</div>
+                                <div class="kpi-value" id="kpi-purchase-paid" style="color: var(--success);">₹0.00</div>
+                            </div>
+                            <div class="kpi-card col-4">
+                                <div class="kpi-title">PENDING VENDOR EXPENSES</div>
+                                <div class="kpi-value" id="kpi-purchase-pending" style="color: var(--warning);">₹0.00</div>
+                            </div>
+                        </div>
+
+                        <!-- FILTERS BAR -->
+                        <div class="panel-card" style="margin-bottom: 20px;">
+                            <div class="panel-body" style="padding: 16px;">
+                                <div class="grid-12" style="align-items: center; gap: 14px;">
+                                    <div class="col-6">
+                                        <div class="input-with-icon">
+                                            <i class="fa-solid fa-magnifying-glass"></i>
+                                            <input type="text" id="purchases-search-input" class="form-control light-input" placeholder="Search Shipment ID, Vendor, Company..." onkeyup="filterPurchasesTable()">
+                                        </div>
+                                    </div>
+                                    <div class="col-6" style="text-align: right;">
+                                        <button class="btn-action" style="width: auto; padding: 10px 18px;" onclick="resetPurchasesFilters()"><i class="fa-solid fa-rotate-left"></i> Reset Filters</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel-card">
+                            <div class="panel-body" style="padding: 0;">
+                                <div class="table-container">
+                                    <table class="erp-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Shipment ID</th>
+                                                <th>Company Name with Client ID</th>
+                                                <th>Purchase Bill Date</th>
+                                                <th>Purchase Amount</th>
+                                                <th>Status</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="table-purchase-entry-body"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- ==========================================================================
+                         VIEW 5: PROFIT LEDGER (NET PROFIT & MARGIN & SEARCH FILTERS)
+                         ========================================================================== -->
+                    <div id="view-profit-ledger" class="view-section" style="display: none;">
+                        <div class="page-header">
+                            <div>
+                                <h2 class="page-title">Net Profit Ledger & Margin Register</h2>
+                                <p class="page-subtitle">Job-wise profit breakdown with total sale vs total purchase comparison</p>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn-action" style="width: auto; padding: 0 16px; background: #ffffff;" onclick="exportTableToCSV('table-profit-ledger-body', 'Profit_Ledger_Report')"><i class="fa-solid fa-file-excel" style="color: #10B981;"></i> Export Excel</button>
+                                <button class="quick-add-btn" onclick="navigateRoute('/shipment-entry/new')">+ Add Shipment</button>
+                            </div>
+                        </div>
+
+                        <!-- PROFIT LEDGER TOP SUMMARY CARDS -->
+                        <div class="grid-12" style="margin-bottom: 20px;">
+                            <div class="kpi-card col-4">
+                                <div class="kpi-title">TOTAL SALES REVENUE</div>
+                                <div class="kpi-value" id="kpi-ledger-sales">₹0.00</div>
+                            </div>
+                            <div class="kpi-card col-4">
+                                <div class="kpi-title">TOTAL PURCHASE COST</div>
+                                <div class="kpi-value" id="kpi-ledger-purchases">₹0.00</div>
+                            </div>
+                            <div class="kpi-card col-4">
+                                <div class="kpi-title">TOTAL NET PROFIT</div>
+                                <div class="kpi-value" id="kpi-ledger-profit" style="color: var(--success);">₹0.00</div>
+                            </div>
+                        </div>
+
+                        <!-- FILTERS BAR -->
+                        <div class="panel-card" style="margin-bottom: 20px;">
+                            <div class="panel-body" style="padding: 16px;">
+                                <div class="grid-12" style="align-items: center; gap: 14px;">
+                                    <div class="col-6">
+                                        <div class="input-with-icon">
+                                            <i class="fa-solid fa-magnifying-glass"></i>
+                                            <input type="text" id="profit-search-input" class="form-control light-input" placeholder="Search Shipment ID, Company..." onkeyup="filterProfitLedgerTable()">
+                                        </div>
+                                    </div>
+                                    <div class="col-6" style="text-align: right;">
+                                        <button class="btn-action" style="width: auto; padding: 10px 18px;" onclick="resetProfitFilters()"><i class="fa-solid fa-rotate-left"></i> Reset Filters</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel-card">
+                            <div class="panel-body" style="padding: 0;">
+                                <div class="table-container">
+                                    <table class="erp-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Shipment ID</th>
+                                                <th>Company Name with ID</th>
+                                                <th>Total Purchase</th>
+                                                <th>Total Sale</th>
+                                                <th>Net Profit</th>
+                                                <th>Gross Margin %</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="table-profit-ledger-body"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- ==========================================================================
+                         VIEW 6: CLIENT MASTER DIRECTORY
+                         ========================================================================== -->
+                    <div id="view-clients" class="view-section" style="display: none;">
+                        <div class="page-header">
+                            <div>
+                                <h2 class="page-title">Client Master Directory</h2>
+                                <p class="page-subtitle">Manage company profiles, client codes, and owner contact names</p>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="quick-add-btn" onclick="navigateRoute('/shipment-entry/new')">+ Add Shipment</button>
+                                <button class="quick-add-btn" onclick="navigateRoute('/client-master/new')" style="background: var(--secondary);">+ Add New Client</button>
+                            </div>
+                        </div>
+
+                        <div class="panel-card">
+                            <div class="panel-body" style="padding: 0;">
+                                <div class="table-container">
+                                    <table class="erp-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Client ID</th>
+                                                <th>Company Name</th>
+                                                <th>Owner Name</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="table-clients-body"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- ==========================================================================
+                         NEW VIEW 6B: DEDICATED FULL-PAGE CLIENT FORM (/client-master/new & /edit/:id)
+                         ========================================================================== -->
+                    <div id="view-client-form" class="view-section" style="display: none;">
+                        <div class="page-header">
+                            <div>
+                                <div style="font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 4px;">
+                                    <a href="/client-master" onclick="event.preventDefault(); navigateRoute('/client-master');" style="color: var(--primary); text-decoration: none;"><i class="fa-solid fa-arrow-left"></i> Back to Client Directory</a>
+                                </div>
+                                <h2 class="page-title" id="page-client-form-title">Add New Company / Client</h2>
+                                <p class="page-subtitle">Full-page dedicated client master setup form</p>
+                            </div>
+                            <button class="btn-action" style="width: auto; padding: 10px 18px;" onclick="navigateRoute('/client-master')">Cancel</button>
+                        </div>
+
+                        <div class="panel-card" style="padding: 28px; max-width: 700px;">
+                            <input type="hidden" id="full-client-edit-id">
+                            <div class="grid-12">
+                                <div class="col-4 form-group">
+                                    <label>Client ID (Auto Generated)</label>
+                                    <input type="text" id="full-client-id" class="form-control light-input" readonly value="AUTO" style="font-weight: 800; color: var(--primary);">
+                                </div>
+                                <div class="col-8 form-group">
+                                    <label>Company Name *</label>
+                                    <input type="text" id="full-client-name" class="form-control light-input" required style="font-weight: 700;">
+                                </div>
+                                <div class="col-12 form-group" style="margin-top: 14px;">
+                                    <label>Owner Name *</label>
+                                    <input type="text" id="full-client-owner" class="form-control light-input" required>
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                                <button class="btn-action" style="width: auto; padding: 10px 20px;" onclick="navigateRoute('/client-master')">Cancel</button>
+                                <button class="quick-add-btn" style="padding: 10px 24px;" onclick="saveFullClientData()">Save Client Details</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         VOUCHER PREVIEW POPUP MODAL (WITH SCREENSHOT IMAGE EXPORT ENGINE)
+         ========================================================================== -->
+    <div class="modal-overlay" id="modal-voucher-preview">
+        <div class="modal-box" style="max-width: 850px; padding: 0; border-radius: 16px;">
+            <div class="modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <h3 class="modal-title" style="margin: 0; font-size: 16px; font-weight: 800; color: var(--secondary);">
+                    <i class="fa-solid fa-file-invoice-dollar" style="color: var(--primary);"></i> Job Cost & Profit Voucher Preview
+                </h3>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" class="quick-add-btn" style="background: #3B82F6; font-size: 13.5px; padding: 8px 20px;" onclick="downloadVoucherImage('jpg')"><i class="fa-solid fa-download"></i> Download JPG</button>
+                    <button type="button" class="modal-close" onclick="closeModal('modal-voucher-preview')"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            <div class="modal-body" style="padding: 20px; max-height: 80vh; overflow-y: auto;">
+                <div id="voucher-render-area" class="voucher-card-printable">
+                    <!-- Dynamic Voucher HTML Content Populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         QUICK RECEIVE PAYMENT ENTRY POPUP MODAL (MULTI-INSTALLMENT INCREMENTAL PAYMENTS)
+         ========================================================================== -->
+    <div class="modal-overlay" id="modal-quick-payment">
+        <div class="modal-box" style="max-width: 540px; padding: 0; border-radius: 16px;">
+            <div class="modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <h3 class="modal-title" style="margin: 0; font-size: 16px; font-weight: 800; color: var(--secondary);">
+                    <i class="fa-solid fa-money-check-dollar" style="color: var(--success);"></i> Quick Receive Payment Entry
+                </h3>
+                <button type="button" class="modal-close" onclick="closeModal('modal-quick-payment')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleQuickPaymentSubmit(event)">
+                <div class="modal-body" style="padding: 20px;">
+                    <input type="hidden" id="quick-pay-shipment-id">
+                    
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 12px; margin-bottom: 18px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px;">
+                            <span style="color: #64748b; font-weight: 600;">Shipment ID:</span>
+                            <strong id="quick-pay-display-id" style="color: var(--primary);">SHP-101</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px;">
+                            <span style="color: #64748b; font-weight: 600;">Customer / Company:</span>
+                            <strong id="quick-pay-display-company">Company Name</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px;">
+                            <span style="color: #64748b; font-weight: 600;">Total Sale Bill Invoice:</span>
+                            <strong id="quick-pay-display-total" style="font-size: 14px;">₹0.00</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px;">
+                            <span style="color: #64748b; font-weight: 600;">Previously Received So Far:</span>
+                            <strong id="quick-pay-display-prev" style="color: var(--success); font-size: 14px;">₹0.00</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                            <span style="color: #64748b; font-weight: 600;">Current Balance Pending:</span>
+                            <strong id="quick-pay-display-balance" style="color: var(--warning); font-size: 14px;">₹0.00</strong>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label style="font-weight: 700; margin-bottom: 0;">+ New Installment Received Today (₹) *</label>
+                            <button type="button" class="btn-add-row-pill" style="background: #10B981; font-size: 11px; padding: 4px 10px; cursor: pointer;" onclick="payFullBalanceQuickly()">
+                                <i class="fa-solid fa-bolt"></i> Receive All Remaining Balance
+                            </button>
+                        </div>
+                        <input type="number" step="any" id="quick-pay-today-input" class="form-control light-input" required placeholder="Enter amount customer paid today (e.g. 3000)" style="font-size: 16px; font-weight: 800; color: var(--success);" oninput="updateQuickPayCalcNotice()">
+                    </div>
+
+                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px 14px; border-radius: 10px; margin-bottom: 16px;">
+                        <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">LIVE BALANCE CALCULATOR</div>
+                        <div id="quick-pay-calc-notice" style="font-size: 13px; font-weight: 700; color: #1e3a8a;">Enter today's installment amount above...</div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 700;">Payment Receive Date *</label>
+                        <input type="date" id="quick-pay-date-input" class="form-control light-input" required>
+                    </div>
+                </div>
+                <div class="modal-footer" style="padding: 14px 20px;">
+                    <button type="button" class="btn-action" style="width: auto; padding: 10px 18px;" onclick="closeModal('modal-quick-payment')">Cancel</button>
+                    <button type="submit" class="quick-add-btn" style="background: var(--success); padding: 10px 22px;"><i class="fa-solid fa-save"></i> Save Payment Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- JS ENGINE -->
+    <script src="/app.js?v=7.0.0"></script>
+</body>
+
+</html>
