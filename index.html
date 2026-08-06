@@ -374,11 +374,10 @@
                             <div class="section-block-title" style="justify-content: space-between; background: #ecfdf5; color: #065f46; border-color: #a7f3d0;">
                                 <div><i class="fa-solid fa-file-invoice-dollar"></i> <span>SECTION 3: SALE BILL ENTRY (CUSTOMER BILLING)</span></div>
                                 <div style="display: flex; align-items: center; gap: 12px;">
-                                    <select id="full-sale-payment-status" class="form-control light-input" style="width: auto; font-weight: 700; background: #ffffff;">
-                                        <option value="Pending">Payment Status: Pending</option>
-                                        <option value="Completed">Payment Status: Completed</option>
-                                        <option value="Partially Paid">Payment Status: Partially Paid</option>
-                                    </select>
+                                    <span class="status-pill status-pending" style="font-weight: 800; padding: 6px 14px; font-size: 12.5px; background: #fef3c7; color: #b45309; border: 1px solid #fde68a;">
+                                        <i class="fa-solid fa-clock"></i> Payment Status: Pending
+                                    </span>
+                                    <input type="hidden" id="full-sale-payment-status" value="Pending">
                                     <button type="button" class="btn-add-row-pill sale-pill" onclick="addFullSaleRow()">
                                         <i class="fa-solid fa-plus-circle"></i> + Add Sale Row
                                     </button>
@@ -777,8 +776,8 @@
 
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <label style="font-weight: 700; margin-bottom: 0;">+ New Installment Received Today (₹) *</label>
-                            <button type="button" class="btn-add-row-pill" style="background: #10B981; font-size: 11px; padding: 4px 10px; cursor: pointer;" onclick="payFullBalanceQuickly()">
+                            <label id="quick-pay-input-label" style="font-weight: 700; margin-bottom: 0;">+ New Installment Received Today (₹) *</label>
+                            <button type="button" id="quick-pay-action-btn" class="btn-add-row-pill" style="background: #10B981; font-size: 11px; padding: 4px 10px; cursor: pointer;" onclick="payFullBalanceQuickly()">
                                 <i class="fa-solid fa-bolt"></i> Receive All Remaining Balance
                             </button>
                         </div>

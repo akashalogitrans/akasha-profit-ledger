@@ -14,7 +14,8 @@ async function getKPIs(req, res) {
                 COALESCE(SUM(
                     CASE 
                         WHEN sale_status = 'Completed' THEN 0 
-                        WHEN COALESCE(received_amount, 0) > 0 THEN (sale_amount - received_amount)
+                        WHEN COALESCE(received_amount, 0) >= sale_amount THEN 0
+                        WHEN COALESCE(received_amount, 0) > 0 THEN (sale_amount - LEAST(sale_amount, received_amount))
                         ELSE sale_amount 
                     END
                 ), 0) AS pending_payment
