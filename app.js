@@ -1874,6 +1874,7 @@ function updateQuickPayCalcNotice() {
     const currBal = Math.max(0, saleAmt - prevRec);
     const inputVal = parseFloat(document.getElementById('quick-pay-today-input')?.value) || 0;
     const noticeEl = document.getElementById('quick-pay-calc-notice');
+    const submitBtn = document.getElementById('quick-pay-submit-btn');
 
     if (!noticeEl) return;
 
@@ -1882,17 +1883,26 @@ function updateQuickPayCalcNotice() {
         const newBal = Math.max(0, saleAmt - editedRec);
 
         if (inputVal > saleAmt) {
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.5'; submitBtn.style.cursor = 'not-allowed'; }
+            noticeEl.parentNode.style.background = '#fef2f2';
+            noticeEl.parentNode.style.borderColor = '#fca5a5';
             noticeEl.style.color = '#dc2626';
-            noticeEl.innerHTML = `⚠️ <strong>EXCEEDS TOTAL SALE INVOICE!</strong><br>Max allowed total: <strong>₹${saleAmt.toLocaleString('en-IN')}</strong> (Sale Invoice: ₹${saleAmt.toLocaleString('en-IN')})`;
-        } else if (editedRec >= saleAmt && inputVal > 0) {
-            noticeEl.style.color = '#10B981';
-            noticeEl.innerHTML = `Updated Received Amount: <strong>₹${editedRec.toLocaleString('en-IN')}</strong> / ₹${saleAmt.toLocaleString('en-IN')}<br><span style="color: #10B981; font-weight: 800;">✅ FULL PAYMENT COMPLETED! Remaining Balance: ₹0.00</span>`;
-        } else if (editedRec > 0) {
-            noticeEl.style.color = '#1e40af';
-            noticeEl.innerHTML = `Updated Received Amount: <strong>₹${editedRec.toLocaleString('en-IN')}</strong> / ₹${saleAmt.toLocaleString('en-IN')}<br><span style="color: #b45309; font-weight: 800;">Remaining Balance Left to Collect: ₹${newBal.toLocaleString('en-IN')}</span>`;
+            noticeEl.innerHTML = `❌ <strong>EXCEEDS TOTAL SALE INVOICE!</strong><br>Total Invoice: <strong>₹${saleAmt.toLocaleString('en-IN')}</strong> | You entered: <strong>₹${inputVal.toLocaleString('en-IN')}</strong> (Exceeds by ₹${(inputVal - saleAmt).toLocaleString('en-IN')})<br><button type="button" onclick="capQuickPayToMax()" style="margin-top: 6px; padding: 4px 10px; background: #dc2626; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">Fix & Cap to ₹${saleAmt.toLocaleString('en-IN')}</button>`;
         } else {
-            noticeEl.style.color = '#64748b';
-            noticeEl.innerText = `Enter updated total received amount... (Max: ₹${saleAmt.toLocaleString('en-IN')})`;
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; submitBtn.style.cursor = 'pointer'; }
+            noticeEl.parentNode.style.background = '#eff6ff';
+            noticeEl.parentNode.style.borderColor = '#bfdbfe';
+
+            if (editedRec >= saleAmt && inputVal > 0) {
+                noticeEl.style.color = '#10B981';
+                noticeEl.innerHTML = `Updated Received Amount: <strong>₹${editedRec.toLocaleString('en-IN')}</strong> / ₹${saleAmt.toLocaleString('en-IN')}<br><span style="color: #10B981; font-weight: 800;">✅ FULL PAYMENT COMPLETED! Remaining Balance: ₹0.00</span>`;
+            } else if (editedRec > 0) {
+                noticeEl.style.color = '#1e40af';
+                noticeEl.innerHTML = `Updated Received Amount: <strong>₹${editedRec.toLocaleString('en-IN')}</strong> / ₹${saleAmt.toLocaleString('en-IN')}<br><span style="color: #b45309; font-weight: 800;">Remaining Balance Left to Collect: ₹${newBal.toLocaleString('en-IN')}</span>`;
+            } else {
+                noticeEl.style.color = '#64748b';
+                noticeEl.innerText = `Enter updated total received amount... (Max: ₹${saleAmt.toLocaleString('en-IN')})`;
+            }
         }
     } else {
         const todayPay = inputVal;
@@ -1900,19 +1910,46 @@ function updateQuickPayCalcNotice() {
         const newBalance = Math.max(0, saleAmt - newTotalRec);
 
         if (todayPay > currBal || newTotalRec > saleAmt) {
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.5'; submitBtn.style.cursor = 'not-allowed'; }
+            noticeEl.parentNode.style.background = '#fef2f2';
+            noticeEl.parentNode.style.borderColor = '#fca5a5';
             noticeEl.style.color = '#dc2626';
-            noticeEl.innerHTML = `⚠️ <strong>EXCEEDS PENDING BALANCE!</strong><br>Max allowed today: <strong>₹${currBal.toLocaleString('en-IN')}</strong> (Total Invoice: ₹${saleAmt.toLocaleString('en-IN')}, Previously Received: ₹${prevRec.toLocaleString('en-IN')})`;
-        } else if (newTotalRec >= saleAmt && todayPay > 0) {
-            noticeEl.style.color = '#10B981';
-            noticeEl.innerHTML = `Today Payment: <strong>₹${todayPay.toLocaleString('en-IN')}</strong> → Total Received: <strong>₹${saleAmt.toLocaleString('en-IN')}</strong><br><span style="color: #10B981; font-weight: 800;">✅ FULL PAYMENT COMPLETED! Remaining Balance Left: ₹0.00</span>`;
-        } else if (todayPay > 0) {
-            noticeEl.style.color = '#1e40af';
-            noticeEl.innerHTML = `Today Payment: <strong>₹${todayPay.toLocaleString('en-IN')}</strong> → Total Received So Far: <strong>₹${newTotalRec.toLocaleString('en-IN')}</strong> / ₹${saleAmt.toLocaleString('en-IN')}<br><span style="color: #b45309; font-weight: 800;">Remaining Balance Left to Collect: ₹${newBalance.toLocaleString('en-IN')}</span>`;
+            noticeEl.innerHTML = `❌ <strong>PAYMENT OVERFLOW ERROR!</strong><br>Total Invoice: <strong>₹${saleAmt.toLocaleString('en-IN')}</strong> | Already Received: <strong>₹${prevRec.toLocaleString('en-IN')}</strong><br>Max allowed today: <strong>₹${currBal.toLocaleString('en-IN')}</strong> (You entered: ₹${todayPay.toLocaleString('en-IN')})<br><button type="button" onclick="capQuickPayToMax()" style="margin-top: 6px; padding: 4px 10px; background: #dc2626; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">Fix & Cap to ₹${currBal.toLocaleString('en-IN')}</button>`;
         } else {
-            noticeEl.style.color = '#64748b';
-            noticeEl.innerText = `Enter today's payment amount above... (Pending Balance: ₹${currBal.toLocaleString('en-IN')})`;
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; submitBtn.style.cursor = 'pointer'; }
+            noticeEl.parentNode.style.background = '#eff6ff';
+            noticeEl.parentNode.style.borderColor = '#bfdbfe';
+
+            if (newTotalRec >= saleAmt && todayPay > 0) {
+                noticeEl.style.color = '#10B981';
+                noticeEl.innerHTML = `Today Payment: <strong>₹${todayPay.toLocaleString('en-IN')}</strong> → Total Received: <strong>₹${saleAmt.toLocaleString('en-IN')}</strong><br><span style="color: #10B981; font-weight: 800;">✅ FULL PAYMENT COMPLETED! Remaining Balance Left: ₹0.00</span>`;
+            } else if (todayPay > 0) {
+                noticeEl.style.color = '#1e40af';
+                noticeEl.innerHTML = `Today Payment: <strong>₹${todayPay.toLocaleString('en-IN')}</strong> → Total Received So Far: <strong>₹${newTotalRec.toLocaleString('en-IN')}</strong> / ₹${saleAmt.toLocaleString('en-IN')}<br><span style="color: #b45309; font-weight: 800;">Remaining Balance Left to Collect: ₹${newBalance.toLocaleString('en-IN')}</span>`;
+            } else {
+                noticeEl.style.color = '#64748b';
+                noticeEl.innerText = `Enter today's payment amount above... (Pending Balance: ₹${currBal.toLocaleString('en-IN')})`;
+            }
         }
     }
+}
+
+function capQuickPayToMax() {
+    const shpId = document.getElementById('quick-pay-shipment-id') ? document.getElementById('quick-pay-shipment-id').value : '';
+    const s = STATE.shipments.find(item => item.id === shpId);
+    if (!s) return;
+
+    const saleAmt = parseFloat(s.sale_amount) || 0;
+    const rawRec = s.received_amount !== undefined ? parseFloat(s.received_amount) : (s.sale_status === 'Completed' ? saleAmt : 0);
+    const prevRec = Math.min(saleAmt, Math.max(0, rawRec));
+    const currBal = Math.max(0, saleAmt - prevRec);
+
+    if (currentPaymentModalMode === 'edit') {
+        if (document.getElementById('quick-pay-today-input')) document.getElementById('quick-pay-today-input').value = saleAmt;
+    } else {
+        if (document.getElementById('quick-pay-today-input')) document.getElementById('quick-pay-today-input').value = currBal;
+    }
+    updateQuickPayCalcNotice();
 }
 
 async function handleQuickPaymentSubmit(e) {
