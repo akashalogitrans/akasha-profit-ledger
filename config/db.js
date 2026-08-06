@@ -30,25 +30,13 @@ console.log(`[MySQL Config] Connecting to Hostinger Database: ${dbConfig.databas
 
 let pool = mysql.createPool(dbConfig);
 
-// Auto Verify Connection & Fallback to Full phpMyAdmin DB Name if Short Name Fails
+// Auto Verify Connection & Ensure Tables Exist
 (async () => {
     try {
         await pool.query('SELECT 1');
-        console.log(`✅ [Hostinger MySQL Pool Connected] DB: ${dbConfig.database} @ 127.0.0.1`);
+        console.log(`✅ [Hostinger MySQL Pool Connected] DB: ${dbConfig.database} @ ${host}:${port}`);
     } catch (err) {
-        console.warn(`[MySQL Initial Connection Failed]: ${err.message}. Retrying with primary phpMyAdmin DB: ${primaryDb}...`);
-        
-        // Fallback to exact phpMyAdmin credentials
-        dbConfig.database = primaryDb;
-        dbConfig.user = primaryUser;
-        pool = mysql.createPool(dbConfig);
-
-        try {
-            await pool.query('SELECT 1');
-            console.log(`✅ [Hostinger MySQL Pool Fallback Connected] DB: ${primaryDb} @ 127.0.0.1`);
-        } catch (e) {
-            console.error('❌ [Hostinger MySQL Connection Failed]:', e.message);
-        }
+        console.error('❌ [Hostinger MySQL Initial Connection Warning]:', err.message);
     }
 
     // Ensure Tables Exist

@@ -56,13 +56,19 @@ app.get('*', (req, res) => {
     return res.sendFile(fallbackPath);
 });
 
-// Export app instance required by Hostinger Phusion Passenger Node.js Engine
+// Global Process Safety Guards
+process.on('uncaughtException', (err) => {
+    console.error('[Process Error] Uncaught Exception:', err.message);
+});
+process.on('unhandledRejection', (reason) => {
+    console.error('[Process Error] Unhandled Rejection:', reason);
+});
+
+// Export app instance required by Hostinger Phusion Passenger Engine
 module.exports = app;
 
-// Direct CLI Execution Listener
-if (require.main === module) {
-    app.listen(PORT, '0.0.0.0', () => {
-        console.log(`Akasha LogiTrans Freight ERP Server running on port ${PORT}`);
-        console.log(`Live Environment: http://localhost:${PORT}`);
-    });
-}
+// Listen on Port (for Standalone Node.js Container & Direct Execution)
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Akasha LogiTrans Freight ERP Server active on port ${PORT}`);
+});
+
