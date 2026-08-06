@@ -653,9 +653,21 @@ function renderPaymentReceivedTable(list) {
             badgeStyle = 'background: #fffbe3; color: #b45309; border: 1px solid #fde68a;';
         }
 
-        const actionButtonsHTML = (status !== 'Completed' && balAmt > 0)
-            ? `<button class="btn-action" onclick="openQuickPaymentModal('${p.shipment_id}', 'add')" title="Quick Receive Payment" style="color: var(--success); width: auto; padding: 4px 10px; font-weight: 700;"><i class="fa-solid fa-hand-holding-dollar"></i> + Pay</button>`
-            : `<button class="btn-action" onclick="openQuickPaymentModal('${p.shipment_id}', 'edit')" title="Edit Received Payment" style="color: #2563eb; width: auto; padding: 4px 10px; font-weight: 700; background: #eff6ff; border: 1px solid #bfdbfe;"><i class="fa-solid fa-pen-to-square"></i> Edit Payment</button>`;
+        let actionButtonsHTML = '';
+        if (status === 'Completed' || balAmt <= 0) {
+            actionButtonsHTML = `
+                <button class="btn-action" onclick="openQuickPaymentModal('${p.shipment_id}', 'edit')" title="Edit Received Payment" style="color: #2563eb; width: auto; padding: 4px 10px; font-weight: 700; background: #eff6ff; border: 1px solid #bfdbfe;"><i class="fa-solid fa-pen-to-square"></i> Edit Payment</button>
+            `;
+        } else if (status === 'Partially Paid' || recAmt > 0) {
+            actionButtonsHTML = `
+                <button class="btn-action" onclick="openQuickPaymentModal('${p.shipment_id}', 'add')" title="Receive Payment Installment" style="color: var(--success); width: auto; padding: 4px 10px; font-weight: 700;"><i class="fa-solid fa-hand-holding-dollar"></i> + Pay</button>
+                <button class="btn-action" onclick="openQuickPaymentModal('${p.shipment_id}', 'edit')" title="Edit Total Received Payment" style="color: #2563eb; width: auto; padding: 4px 10px; font-weight: 700; background: #eff6ff; border: 1px solid #bfdbfe;"><i class="fa-solid fa-pen-to-square"></i> Edit Payment</button>
+            `;
+        } else {
+            actionButtonsHTML = `
+                <button class="btn-action" onclick="openQuickPaymentModal('${p.shipment_id}', 'add')" title="Receive First Payment" style="color: var(--success); width: auto; padding: 4px 10px; font-weight: 700;"><i class="fa-solid fa-hand-holding-dollar"></i> + Pay</button>
+            `;
+        }
 
         return `
             <tr>
@@ -1973,75 +1985,109 @@ function updateQuickPayCalcNotice() {
 
     const todayInput = document.getElementById('quick-pay-today-input');
     const noticeEl = document.getElementById('quick-pay-calc-notice');
+    const badgeEl = document.getElementById('quick-pay-calc-status-badge');
     const submitBtn = document.getElementById('quick-pay-submit-btn');
     
-    let inputVal = parseFloat(todayInput?.value) || 0;
+    const inputVal = parseFloat(todayInput?.value) || 0;
+    const maxAllowed = currentPaymentModalMode === 'edit' ? saleAmt : currBal;
 
-    // Live Instant Auto-Clamping: Instantly clamp typed value so it CANNOT exceed limits!
-    if (todayInput && todayInput.value !== '') {
-        if (currentPaymentModalMode === 'edit') {
-            if (inputVal > saleAmt) {
-                inputVal = saleAmt;
-                todayInput.value = saleAmt;
-                showToast(`Auto-capped at maximum sale bill invoice amount ₹${saleAmt.toLocaleString('en-IN')}`, 'warning');
-            }
-        } else {
-            if (inputVal > currBal) {
-                inputVal = currBal;
-                todayInput.value = currBal;
-                showToast(`Auto-capped at remaining pending balance ₹${currBal.toLocaleString('en-IN')}`, 'warning');
-            }
+    if (!todayInput || !noticeEl) return;
+
+    // STEP 5: OVERPAYMENT STRICT VALIDATION
+    if (todayInput.value !== '' && inputVal > maxAllowed) {
+        todayInput.style.border = '2px solid #ef4444';
+        todayInput.style.background = '#fff1f2';
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.4';
+            submitBtn.style.cursor = 'not-allowed';
         }
+
+        if (badgeEl) {
+            badgeEl.className = 'status-pill status-danger';
+            badgeEl.innerHTML = '❌ Overpayment Error';
+        }
+
+        noticeEl.parentNode.style.background = '#fef2f2';
+        noticeEl.parentNode.style.borderColor = '#fecaca';
+        noticeEl.style.color = '#dc2626';
+
+        const labelText = currentPaymentModalMode === 'edit' ? 'Total Sale Bill Invoice' : 'Remaining Balance Allowed';
+        noticeEl.innerHTML = `
+            <div style="font-weight: 800; font-size: 13.5px; margin-bottom: 4px;">
+                ❌ PAYMENT EXCEEDS ${currentPaymentModalMode === 'edit' ? 'INVOICE AMOUNT' : 'REMAINING BALANCE'}!
+            </div>
+            <div style="font-size: 12px; color: #b91c1c; margin-bottom: 8px;">
+                Maximum Allowed: <strong>₹${maxAllowed.toLocaleString('en-IN')}</strong> (You entered: ₹${inputVal.toLocaleString('en-IN')}).
+            </div>
+            <button type="button" class="btn-add-row-pill" style="background: #dc2626; color: #ffffff; padding: 4px 10px; font-size: 11px; cursor: pointer;" onclick="capQuickPayToMax()">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Cap to ₹${maxAllowed.toLocaleString('en-IN')}
+            </button>
+        `;
+        return;
     }
 
-    if (!noticeEl) return;
+    // RESET INPUT STYLES WHEN VALID
+    todayInput.style.border = '1px solid #bfdbfe';
+    todayInput.style.background = '#ffffff';
 
     if (currentPaymentModalMode === 'edit') {
         const editedRec = Math.min(saleAmt, Math.max(0, inputVal));
         const newBal = Math.max(0, saleAmt - editedRec);
+        const isCompleted = editedRec >= saleAmt && saleAmt > 0;
 
-        if (editedRec >= saleAmt && inputVal > 0) {
-            if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; submitBtn.style.cursor = 'pointer'; }
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; submitBtn.style.cursor = 'pointer'; }
+
+        if (badgeEl) {
+            badgeEl.className = `status-pill ${isCompleted ? 'status-completed' : (editedRec > 0 ? 'status-in-transit' : 'status-pending')}`;
+            badgeEl.innerHTML = isCompleted ? '🟢 Completed' : (editedRec > 0 ? '🟠 Partially Paid' : '🟡 Pending');
+        }
+
+        if (isCompleted) {
             noticeEl.parentNode.style.background = '#ecfdf5';
             noticeEl.parentNode.style.borderColor = '#a7f3d0';
             noticeEl.style.color = '#10B981';
-            noticeEl.innerHTML = `Updated Received Amount: <strong>₹${editedRec.toLocaleString('en-IN')}</strong> / ₹${saleAmt.toLocaleString('en-IN')}<br><span style="color: #10B981; font-weight: 800;">✅ FULL PAYMENT COMPLETED! Remaining Balance: ₹0.00</span>`;
+            noticeEl.innerHTML = `Invoice: <strong>₹${saleAmt.toLocaleString('en-IN')}</strong> | Updated Received: <strong>₹${editedRec.toLocaleString('en-IN')}</strong><br><span style="color: #10B981; font-weight: 800;">🟢 FULL PAYMENT COMPLETED! Remaining Balance: ₹0.00</span>`;
         } else if (editedRec > 0) {
-            if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; submitBtn.style.cursor = 'pointer'; }
             noticeEl.parentNode.style.background = '#eff6ff';
             noticeEl.parentNode.style.borderColor = '#bfdbfe';
             noticeEl.style.color = '#1e40af';
-            noticeEl.innerHTML = `Updated Received Amount: <strong>₹${editedRec.toLocaleString('en-IN')}</strong> / ₹${saleAmt.toLocaleString('en-IN')}<br><span style="color: #b45309; font-weight: 800;">Remaining Balance Left to Collect: ₹${newBal.toLocaleString('en-IN')}</span>`;
+            noticeEl.innerHTML = `Invoice: <strong>₹${saleAmt.toLocaleString('en-IN')}</strong> | Updated Received: <strong>₹${editedRec.toLocaleString('en-IN')}</strong><br><span style="color: #b45309; font-weight: 800;">🟠 Remaining Balance Left to Collect: ₹${newBal.toLocaleString('en-IN')}</span>`;
         } else {
-            if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; submitBtn.style.cursor = 'pointer'; }
             noticeEl.parentNode.style.background = '#f8fafc';
             noticeEl.parentNode.style.borderColor = '#e2e8f0';
             noticeEl.style.color = '#64748b';
-            noticeEl.innerText = `Enter updated total received amount... (Max: ₹${saleAmt.toLocaleString('en-IN')})`;
+            noticeEl.innerText = `Enter updated total received amount... (Max Allowed: ₹${saleAmt.toLocaleString('en-IN')})`;
         }
     } else {
         const todayPay = inputVal;
         const newTotalRec = prevRec + todayPay;
         const newBalance = Math.max(0, saleAmt - newTotalRec);
+        const isCompleted = newTotalRec >= saleAmt && saleAmt > 0;
 
-        if (newTotalRec >= saleAmt && todayPay > 0) {
-            if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; submitBtn.style.cursor = 'pointer'; }
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; submitBtn.style.cursor = 'pointer'; }
+
+        if (badgeEl) {
+            badgeEl.className = `status-pill ${isCompleted ? 'status-completed' : (todayPay > 0 || prevRec > 0 ? 'status-in-transit' : 'status-pending')}`;
+            badgeEl.innerHTML = isCompleted ? '🟢 Completed' : (todayPay > 0 || prevRec > 0 ? '🟠 Partially Paid' : '🟡 Pending');
+        }
+
+        if (isCompleted && todayPay > 0) {
             noticeEl.parentNode.style.background = '#ecfdf5';
             noticeEl.parentNode.style.borderColor = '#a7f3d0';
             noticeEl.style.color = '#10B981';
-            noticeEl.innerHTML = `Today Payment: <strong>₹${todayPay.toLocaleString('en-IN')}</strong> → Total Received: <strong>₹${saleAmt.toLocaleString('en-IN')}</strong><br><span style="color: #10B981; font-weight: 800;">✅ FULL PAYMENT COMPLETED! Remaining Balance Left: ₹0.00</span>`;
-        } else if (todayPay > 0) {
-            if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; submitBtn.style.cursor = 'pointer'; }
+            noticeEl.innerHTML = `Invoice: <strong>₹${saleAmt.toLocaleString('en-IN')}</strong> | Previously: ₹${prevRec.toLocaleString('en-IN')} + Today: ₹${todayPay.toLocaleString('en-IN')} = Total: <strong>₹${newTotalRec.toLocaleString('en-IN')}</strong><br><span style="color: #10B981; font-weight: 800;">🟢 FULL PAYMENT COMPLETED! Remaining Balance: ₹0.00</span>`;
+        } else if (todayPay > 0 || prevRec > 0) {
             noticeEl.parentNode.style.background = '#eff6ff';
             noticeEl.parentNode.style.borderColor = '#bfdbfe';
             noticeEl.style.color = '#1e40af';
-            noticeEl.innerHTML = `Today Payment: <strong>₹${todayPay.toLocaleString('en-IN')}</strong> → Total Received So Far: <strong>₹${newTotalRec.toLocaleString('en-IN')}</strong> / ₹${saleAmt.toLocaleString('en-IN')}<br><span style="color: #b45309; font-weight: 800;">Remaining Balance Left to Collect: ₹${newBalance.toLocaleString('en-IN')}</span>`;
+            noticeEl.innerHTML = `Invoice: <strong>₹${saleAmt.toLocaleString('en-IN')}</strong> | Previously: ₹${prevRec.toLocaleString('en-IN')} + Today: ₹${todayPay.toLocaleString('en-IN')} = New Total: <strong>₹${newTotalRec.toLocaleString('en-IN')}</strong><br><span style="color: #b45309; font-weight: 800;">🟠 Remaining Balance Left to Collect: ₹${newBalance.toLocaleString('en-IN')}</span>`;
         } else {
-            if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; submitBtn.style.cursor = 'pointer'; }
             noticeEl.parentNode.style.background = '#f8fafc';
             noticeEl.parentNode.style.borderColor = '#e2e8f0';
             noticeEl.style.color = '#64748b';
-            noticeEl.innerText = `Enter today's payment amount above... (Pending Balance: ₹${currBal.toLocaleString('en-IN')})`;
+            noticeEl.innerText = `Enter today's payment amount above... (Remaining Balance Left: ₹${currBal.toLocaleString('en-IN')})`;
         }
     }
 }

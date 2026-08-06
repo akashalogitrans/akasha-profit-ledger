@@ -1571,3 +1571,31 @@ input, select, textarea, button {
         min-height: 42px;
     }
 }
+
+/* STEP 13: Mobile Responsive Payment Modal Layout */
+@media (max-width: 600px) {
+    .modal-overlay {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+    .modal-box {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 20px 20px 0 0 !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        animation: slideUpMobile 0.3s ease-out !important;
+    }
+    .modal-footer {
+        flex-direction: column-reverse !important;
+        gap: 8px !important;
+    }
+    .modal-footer button {
+        width: 100% !important;
+    }
+}
+
+@keyframes slideUpMobile {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
