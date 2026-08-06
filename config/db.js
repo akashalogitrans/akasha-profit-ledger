@@ -58,6 +58,10 @@ let pool = mysql.createPool(dbConfig);
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
 
+        try {
+            await pool.query(`ALTER TABLE clients ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+        } catch (e) {}
+
         await pool.query(`CREATE TABLE IF NOT EXISTS shipments (
             id VARCHAR(100) PRIMARY KEY,
             date DATE NOT NULL,

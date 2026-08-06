@@ -9,6 +9,13 @@ function cleanId(param) {
     return decodeURIComponent(param).replace(/^\//, '');
 }
 
+function formatDate(d) {
+    if (!d || typeof d !== 'string' || !d.trim() || d === 'null' || d === 'undefined') {
+        return new Date().toISOString().split('T')[0];
+    }
+    return d.trim();
+}
+
 async function getShipments(req, res) {
     try {
         const { month, search } = req.query;
@@ -56,21 +63,24 @@ async function createShipment(req, res) {
         const cleanClientStr = client_id ? client_id.toUpperCase() : 'JOB';
         const generatedId = `AKASHA/${cleanClientStr}/${paddedNum}`;
         const shpId = (id && id !== 'AUTO') ? id : generatedId;
-        const currentDate = date || new Date().toISOString().split('T')[0];
+
+        const currentDate = formatDate(date);
+        const purDate = formatDate(purchase_date || currentDate);
+        const payDate = formatDate(payment_receive_date || currentDate);
 
         const pItemsStr = typeof purchase_items === 'string' ? purchase_items : JSON.stringify(purchase_items || []);
         const sItemsStr = typeof sale_items === 'string' ? sale_items : JSON.stringify(sale_items || []);
 
-        await pool.execute(`DELETE FROM shipments WHERE id = ?`, [shpId]);
-
         const sql = `INSERT INTO shipments 
             (id, date, client_id, company_name, line_name, transport_name, sb_be_no, shipment_type, purchase_date, purchase_amount, purchase_status, purchase_items, payment_receive_date, sale_amount, received_amount, sale_status, sale_items, net_profit)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+            date = VALUES(date), client_id = VALUES(client_id), company_name = VALUES(company_name), line_name = VALUES(line_name), transport_name = VALUES(transport_name), sb_be_no = VALUES(sb_be_no), shipment_type = VALUES(shipment_type), purchase_date = VALUES(purchase_date), purchase_amount = VALUES(purchase_amount), purchase_status = VALUES(purchase_status), purchase_items = VALUES(purchase_items), payment_receive_date = VALUES(payment_receive_date), sale_amount = VALUES(sale_amount), received_amount = VALUES(received_amount), sale_status = VALUES(sale_status), sale_items = VALUES(sale_items), net_profit = VALUES(net_profit)`;
 
         await pool.execute(sql, [
             shpId, currentDate, client_id || '', company_name || '', line_name || '', transport_name || '', 
-            sb_be_no || '', shipment_type || '', purchase_date || currentDate, pAmt, purchase_status || 'Pending', 
-            pItemsStr, payment_receive_date || currentDate, sAmt, recAmt, sale_status || 'Pending', sItemsStr, profit
+            sb_be_no || '', shipment_type || '', purDate, pAmt, purchase_status || 'Pending', 
+            pItemsStr, payDate, sAmt, recAmt, sale_status || 'Pending', sItemsStr, profit
         ]);
 
         return res.json({ success: true, id: shpId, message: 'Shipment entry saved successfully' });
@@ -100,6 +110,10 @@ async function updateShipment(req, res) {
         const recAmt = received_amount !== undefined ? parseFloat(received_amount) : (sale_status === 'Completed' ? sAmt : 0);
         const profit = sAmt - pAmt;
 
+        const currentDate = formatDate(date);
+        const purDate = formatDate(purchase_date || currentDate);
+        const payDate = formatDate(payment_receive_date || currentDate);
+
         const pItemsStr = typeof purchase_items === 'string' ? purchase_items : JSON.stringify(purchase_items || []);
         const sItemsStr = typeof sale_items === 'string' ? sale_items : JSON.stringify(sale_items || []);
 
@@ -110,8 +124,8 @@ async function updateShipment(req, res) {
             WHERE id = ?`;
 
         await pool.execute(sql, [
-            date, client_id || '', company_name || '', line_name || '', transport_name || '', sb_be_no || '', shipment_type || '', 
-            purchase_date, pAmt, purchase_status || 'Pending', pItemsStr, payment_receive_date, sAmt, recAmt, 
+            currentDate, client_id || '', company_name || '', line_name || '', transport_name || '', sb_be_no || '', shipment_type || '', 
+            purDate, pAmt, purchase_status || 'Pending', pItemsStr, payDate, sAmt, recAmt, 
             sale_status || 'Pending', sItemsStr, profit, shpId
         ]);
 

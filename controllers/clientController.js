@@ -38,11 +38,11 @@ async function createClient(req, res) {
         const prefix = name.replace(/[^a-zA-Z0-9]/g, '').trim().substring(0, 3).toUpperCase() || 'CLI';
         const clientId = id || (`${prefix}-${nextNum}`);
 
-        await pool.execute(`DELETE FROM clients WHERE id = ?`, [clientId]);
-        const sql = `INSERT INTO clients (id, name, owner) VALUES (?, ?, ?)`;
+        const sql = `INSERT INTO clients (id, name, owner) VALUES (?, ?, ?)
+                     ON DUPLICATE KEY UPDATE name = VALUES(name), owner = VALUES(owner)`;
         await pool.execute(sql, [clientId, name, owner || 'N/A']);
 
-        return res.json({ success: true, id: clientId, message: 'Client created successfully' });
+        return res.json({ success: true, id: clientId, message: 'Client saved successfully in phpMyAdmin' });
     } catch (err) {
         console.error('Create Client Error:', err);
         return res.status(500).json({ success: false, message: err.message });
