@@ -58,7 +58,8 @@ function recalculateKPIsFromState() {
     (STATE.shipments || []).forEach(s => {
         const sAmt = parseFloat(s.sale_amount) || 0;
         const pAmt = parseFloat(s.purchase_amount) || 0;
-        const recAmt = s.received_amount !== undefined ? parseFloat(s.received_amount) : (s.sale_status === 'Completed' ? sAmt : 0);
+        const rawRec = s.received_amount !== undefined ? parseFloat(s.received_amount) : (s.sale_status === 'Completed' ? sAmt : 0);
+        const recAmt = Math.min(sAmt, Math.max(0, rawRec));
         const balAmt = Math.max(0, sAmt - recAmt);
 
         rev += sAmt;
@@ -365,8 +366,18 @@ async function fetchShipmentsData() {
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data)) {
-                STATE.shipments = data;
-                STATE.filteredShipments = [...data];
+                STATE.shipments = data.map(s => {
+                    const saleAmt = parseFloat(s.sale_amount) || 0;
+                    const rawRec = s.received_amount !== undefined ? parseFloat(s.received_amount) : (s.sale_status === 'Completed' ? saleAmt : 0);
+                    const cappedRec = Math.min(saleAmt, Math.max(0, rawRec));
+                    const status = cappedRec >= saleAmt ? 'Completed' : (cappedRec > 0 ? 'Partially Paid' : (s.sale_status || 'Pending'));
+                    return {
+                        ...s,
+                        received_amount: cappedRec,
+                        sale_status: status
+                    };
+                });
+                STATE.filteredShipments = [...STATE.shipments];
                 renderShipmentsTable();
                 renderPaymentReceivedTable(null);
                 renderPurchaseEntryTable(null);
@@ -1755,7 +1766,8 @@ function openQuickPaymentModal(shipmentId) {
     if (!s) return;
 
     const saleAmt = parseFloat(s.sale_amount) || 0;
-    const prevRec = s.received_amount !== undefined ? parseFloat(s.received_amount) : (s.sale_status === 'Completed' ? saleAmt : 0);
+    const rawRec = s.received_amount !== undefined ? parseFloat(s.received_amount) : (s.sale_status === 'Completed' ? saleAmt : 0);
+    const prevRec = Math.min(saleAmt, Math.max(0, rawRec));
     const currBal = Math.max(0, saleAmt - prevRec);
 
     if (document.getElementById('quick-pay-shipment-id')) document.getElementById('quick-pay-shipment-id').value = s.id;

@@ -36,7 +36,13 @@ async function getShipments(req, res) {
         sql += ` ORDER BY created_at DESC`;
 
         const [rows] = await pool.execute(sql, params);
-        return res.json(rows || []);
+        const sanitizedRows = (rows || []).map(r => {
+            const saleAmt = parseFloat(r.sale_amount) || 0;
+            const rawRec = r.received_amount !== undefined ? parseFloat(r.received_amount) : (r.sale_status === 'Completed' ? saleAmt : 0);
+            const recAmt = Math.min(saleAmt, Math.max(0, rawRec));
+            return { ...r, received_amount: recAmt };
+        });
+        return res.json(sanitizedRows);
     } catch (err) {
         console.error('Get Shipments Error:', err);
         return res.status(500).json({ success: false, message: err.message });
