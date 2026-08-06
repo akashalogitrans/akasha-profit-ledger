@@ -27,16 +27,20 @@ const API_BASE_URL = `${window.location.origin}/api`;
 let revenueChart = null;
 
 // --- DOM INITIALIZATION ---
+// --- DOM INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
     // Purge old offline localStorage caches
     localStorage.removeItem('AKASHA_ERP_CLIENTS');
     localStorage.removeItem('AKASHA_ERP_SHIPMENTS');
 
-    restoreUserSession();
+    const isAuthenticated = restoreUserSession();
     initNavigation();
-    initCompanyAutoID();
-    initCharts();
-    fetchBackendAPIData();
+
+    if (isAuthenticated) {
+        initCompanyAutoID();
+        initCharts();
+        fetchBackendAPIData();
+    }
 });
 
 function loadLocalState() {
@@ -97,11 +101,18 @@ function restoreUserSession() {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('erp-shell').style.display = 'flex';
                 updateCurrentUserInfo();
+                return true;
             }
         } catch (e) {
             console.log("Session restore error");
         }
     }
+
+    // Force strict Auth Guard: Hide app shell and show login screen
+    STATE.currentUser = null;
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('erp-shell').style.display = 'none';
+    return false;
 }
 
 function autoTabLoginPin(currentEl, nextElId) {
@@ -149,16 +160,28 @@ function handleLogin(event) {
     }
 
     updateCurrentUserInfo();
+    initCompanyAutoID();
+    initCharts();
+    fetchBackendAPIData();
+
+    // Navigate to pending direct URL route or default dashboard after successful login
+    const targetRoute = STATE.pendingRedirectRoute || window.location.pathname || '/dashboard';
+    STATE.pendingRedirectRoute = null;
+    navigateRoute(targetRoute, true);
+
     showToast(`Welcome back, ${matchedUser.name}! (${matchedUser.role})`, "success");
 }
 
 function handleLogout() {
     localStorage.removeItem('akasha_erp_session');
     sessionStorage.removeItem('akasha_erp_session');
+    STATE.currentUser = null;
+    STATE.pendingRedirectRoute = null;
     document.getElementById('erp-shell').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
     if (document.getElementById('login-code-pin')) document.getElementById('login-code-pin').value = '';
     if (document.getElementById('login-code-name')) document.getElementById('login-code-name').value = '';
+    window.history.pushState({}, '', '/');
     showToast("Logged out safely.", "info");
 }
 
@@ -219,6 +242,13 @@ function navigateRoute(path, pushState = true) {
 }
 
 function handleRouteMatch(pathname) {
+    if (!STATE.currentUser) {
+        STATE.pendingRedirectRoute = pathname;
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('erp-shell').style.display = 'none';
+        return;
+    }
+
     const cleanPath = pathname.replace(/\/$/, '') || '/';
     
     if (cleanPath === '/client-master/new') {
