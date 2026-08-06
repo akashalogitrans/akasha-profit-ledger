@@ -953,7 +953,32 @@ function calcFullShipmentTotals() {
     if (mEl) mEl.innerText = marginPct + '% Margin';
 }
 
+function updateSection3PaymentStatusBadge(status = 'Pending') {
+    const badgeEl = document.getElementById('full-sale-payment-status-badge');
+    const inputEl = document.getElementById('full-sale-payment-status');
+    if (inputEl) inputEl.value = status;
+    if (!badgeEl) return;
+
+    if (status === 'Completed') {
+        badgeEl.className = 'status-pill status-completed';
+        badgeEl.style = 'font-weight: 800; padding: 6px 14px; font-size: 12.5px;';
+        badgeEl.innerHTML = `<i class="fa-solid fa-check-circle"></i> Payment Status: Completed`;
+    } else if (status === 'Partially Paid') {
+        badgeEl.className = 'status-pill status-in-transit';
+        badgeEl.style = 'font-weight: 800; padding: 6px 14px; font-size: 12.5px; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;';
+        badgeEl.innerHTML = `<i class="fa-solid fa-hourglass-half"></i> Payment Status: Partially Paid`;
+    } else {
+        badgeEl.className = 'status-pill status-pending';
+        badgeEl.style = 'font-weight: 800; padding: 6px 14px; font-size: 12.5px; background: #fef3c7; color: #b45309; border: 1px solid #fde68a;';
+        badgeEl.innerHTML = `<i class="fa-solid fa-clock"></i> Payment Status: Pending`;
+    }
+}
+
 function openFullAddShipmentPage() {
+    STATE.currentView = 'shipment-form';
+    document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
+    if (document.getElementById('view-shipment-form')) document.getElementById('view-shipment-form').style.display = 'block';
+    
     if (document.getElementById('full-shipment-edit-id')) document.getElementById('full-shipment-edit-id').value = '';
     if (document.getElementById('page-shipment-form-title')) document.getElementById('page-shipment-form-title').innerText = 'New Shipment Entry Workspace';
     
@@ -973,6 +998,9 @@ function openFullAddShipmentPage() {
     
     if (document.getElementById('full-purchase-rows-container')) document.getElementById('full-purchase-rows-container').innerHTML = '';
     if (document.getElementById('full-sale-rows-container')) document.getElementById('full-sale-rows-container').innerHTML = '';
+    
+    updateSection3PaymentStatusBadge('Pending');
+
     addFullPurchaseRow();
     addFullSaleRow();
 }
@@ -1006,9 +1034,7 @@ function openFullEditShipmentPage(id) {
         sItems = typeof s.sale_items === 'string' ? JSON.parse(s.sale_items) : (s.sale_items || []);
     } catch(e) {}
 
-    if (document.getElementById('full-sale-payment-status')) {
-        document.getElementById('full-sale-payment-status').value = s.sale_status || 'Pending';
-    }
+    updateSection3PaymentStatusBadge(s.sale_status || 'Pending');
 
     if (pItems.length > 0) {
         pItems.forEach(item => addFullPurchaseRow(item));
