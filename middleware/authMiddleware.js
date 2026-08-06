@@ -1,28 +1,36 @@
 /* ==========================================================================
-   AKASHA LOGITRANS LLP - AUTHENTICATION MIDDLEWARE (JWT)
+   AKASHA LOGITRANS LLP - JWT AUTHENTICATION MIDDLEWARE
+   Strict Protection Guard for all Protected API Routes
    ========================================================================== */
 
 const jwt = require('jsonwebtoken');
-try { require('dotenv').config(); } catch (e) {}
 
-const JWT_SECRET = process.env.JWT_SECRET || 'akasha_erp_super_secret_jwt_key_2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'AKASHA_LOGITRANS_ERP_JWT_SECRET_7776';
 
-function verifyToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+function authenticateJWT(req, res, next) {
+    // Allow public routes
+    const authHeader = req.headers.authorization;
 
-    if (!token) {
-        // Fallback for public API endpoints or session-based admin access
-        return next();
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+            success: false,
+            message: 'Unauthorized Access. Valid JWT Token Required.'
+        });
     }
 
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) {
-            return res.status(403).json({ success: false, message: 'Invalid or expired access token' });
-        }
-        req.user = user;
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
         next();
-    });
+    } catch (err) {
+        return res.status(401).json({
+            success: false,
+            message: 'Session Expired or Invalid Token. Please Login Again.',
+            expired: true
+        });
+    }
 }
 
-module.exports = { verifyToken, JWT_SECRET };
+module.exports = { authenticateJWT, JWT_SECRET };

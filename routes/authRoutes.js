@@ -4,10 +4,17 @@
 
 const express = require('express');
 const router = express.Router();
-const { login, getMe } = require('../controllers/authController');
-const { verifyToken } = require('../middleware/authMiddleware');
+const { login, verifySession, getDirectors } = require('../controllers/authController');
+const { authenticateJWT } = require('../middleware/authMiddleware');
+const { loginRateLimiter } = require('../middleware/rateLimiter');
 
-router.post('/login', login);
-router.get('/me', verifyToken, getMe);
+// Public Login Endpoint (Rate Limited)
+router.post('/login', loginRateLimiter, login);
+
+// Public List of Directors Endpoint (For Login Dropdown)
+router.get('/directors', getDirectors);
+
+// Protected Verify Session Endpoint
+router.get('/me', authenticateJWT, verifySession);
 
 module.exports = router;

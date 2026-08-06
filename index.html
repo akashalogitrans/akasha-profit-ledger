@@ -802,6 +802,36 @@
         </div>
     </div>
 
+    <!-- ==========================================================================
+         PAYMENT TRANSACTIONS HISTORY TIMELINE MODAL
+         ========================================================================== -->
+    <div class="modal-overlay" id="modal-payment-history">
+        <div class="modal-box" style="max-width: 650px; padding: 0; border-radius: 16px;">
+            <div class="modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <h3 class="modal-title" style="margin: 0; font-size: 16px; font-weight: 800; color: var(--secondary);">
+                    <i class="fa-solid fa-clock-rotate-left" style="color: var(--primary);"></i> Payment Transactions History Timeline
+                </h3>
+                <button type="button" class="modal-close" onclick="closeModal('modal-payment-history')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 12px; color: #64748b;">Shipment Job ID</div>
+                        <strong id="history-display-shipment-id" style="color: var(--primary); font-size: 15px;">-</strong>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 12px; color: #64748b;">Customer Company</div>
+                        <strong id="history-display-company-name" style="font-size: 14px;">-</strong>
+                    </div>
+                </div>
+                <div id="payment-history-timeline-container" style="display: flex; flex-direction: column; gap: 12px; max-height: 340px; overflow-y: auto;"></div>
+            </div>
+            <div class="modal-footer" style="padding: 14px 20px;">
+                <button type="button" class="btn-action" style="width: auto; padding: 10px 20px;" onclick="closeModal('modal-payment-history')">Close Timeline</button>
+            </div>
+        </div>
+    </div>
+
     <!-- TOAST CONTAINER -->
     <div class="toast-container" id="toast-container"></div>
 

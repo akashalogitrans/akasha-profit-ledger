@@ -1,97 +1,136 @@
 /* ==========================================================================
    AKASHA LOGITRANS LLP - AUTHENTICATION CONTROLLER
+   Enterprise Director Authentication, JWT Token Issuer, & Login Audit Logs
    ========================================================================== */
 
 const pool = require('../config/db');
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../middleware/authMiddleware');
+const { recordFailedAttempt, resetFailedAttempts } = require('../middleware/rateLimiter');
 
-const ADMIN_DIRECTORS = [
-    { id: "usr_1", name: "Khushal Patel", role: "CEO & Founder", email: "khushal@akashalogitrans.com", pin: "7776", keyName: "KHUSHAL", avatar: "https://akashalogitrans.com/khushal.png" },
-    { id: "usr_2", name: "Dhruv Patel", role: "Director - Rates & Procurement", email: "dhruv@akashalogitrans.com", pin: "7717", keyName: "DHRUV", avatar: "https://akashalogitrans.com/dhruv_patel.png" },
-    { id: "usr_3", name: "Yagnik Patel", role: "Director - Finance & Audit", email: "info@akashalogitrans.com", pin: "8866", keyName: "YAGNIK", avatar: "https://akashalogitrans.com/yagnik.jpeg" }
-];
-
+// 1. DIRECTOR LOGIN (Strictly Requires BOTH Director Name AND PIN)
 async function login(req, res) {
+    const ip = req.clientIp || req.ip || '127.0.0.1';
+    const browser = req.headers['user-agent'] || 'Unknown Browser';
+
     try {
-        const { pin, keyName, email, password } = req.body;
+        const { director_name, pin } = req.body;
 
-        if (pin || keyName) {
-            const matched = ADMIN_DIRECTORS.find(u => 
-                u.pin === String(pin).trim() && 
-                (u.keyName === String(keyName).trim().toUpperCase() || u.name.toUpperCase().includes(String(keyName).trim().toUpperCase()))
-            );
-
-            if (!matched) {
-                return res.status(401).json({ success: false, message: 'Invalid Director PIN or Name! Access restricted to authorized directors.' });
-            }
-
-            const token = jwt.sign(
-                { id: matched.id, name: matched.name, email: matched.email, role: matched.role },
-                JWT_SECRET,
-                { expiresIn: '30d' }
-            );
-
-            return res.json({
-                success: true,
-                message: `Authentication Successful for ${matched.name}`,
-                token,
-                user: matched
+        if (!director_name || !pin) {
+            recordFailedAttempt(ip);
+            await logLoginAttempt(director_name || 'UNKNOWN', ip, browser, 'FAILED_MISSING_CREDENTIALS');
+            return res.status(400).json({
+                success: false,
+                message: 'Both Director Name AND Director Security PIN are required.'
             });
         }
 
-        if (email) {
-            const [rows] = await pool.execute('SELECT * FROM users WHERE email = ?', [email]);
-            const user = rows[0];
+        // Fetch Director Record from DB
+        const [rows] = await pool.execute(
+            `SELECT * FROM directors WHERE name = ? AND status = 'Active'`,
+            [director_name.trim()]
+        );
 
-            if (!user) {
-                return res.status(401).json({ success: false, message: 'Invalid Admin Credentials' });
-            }
-
-            if (password && user.password_hash && user.password_hash !== 'hash') {
-                const isValid = await bcrypt.compare(password, user.password_hash);
-                if (!isValid) {
-                    return res.status(401).json({ success: false, message: 'Invalid Password' });
-                }
-            }
-
-            const token = jwt.sign(
-                { id: user.id, name: user.name, email: user.email, role: user.role },
-                JWT_SECRET,
-                { expiresIn: '30d' }
-            );
-
-            return res.json({
-                success: true,
-                message: 'Login successful',
-                token,
-                user: {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    role: user.role,
-                    avatar: user.avatar
-                }
+        if (!rows || rows.length === 0) {
+            recordFailedAttempt(ip);
+            await logLoginAttempt(director_name, ip, browser, 'FAILED_INVALID_DIRECTOR');
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid Director Name or Security PIN.'
             });
         }
 
-        return res.status(400).json({ success: false, message: 'PIN & Director Name or Email is required' });
+        const director = rows[0];
+
+        // Verify PIN against stored bcrypt hash or legacy fallback
+        let isMatch = await bcrypt.compare(String(pin).trim(), director.pin_hash);
+        
+        // Fallback check for initial unhashed PINs
+        if (!isMatch && (
+            (director_name.includes('Dhruv') && String(pin).trim() === '7717') ||
+            (director_name.includes('Khushal') && String(pin).trim() === '7776') ||
+            (director_name.includes('Yagnik') && String(pin).trim() === '8866')
+        )) {
+            isMatch = true;
+            // Upgrade hash in background
+            const newHash = await bcrypt.hash(String(pin).trim(), 10);
+            await pool.execute(`UPDATE directors SET pin_hash = ? WHERE id = ?`, [newHash, director.id]);
+        }
+
+        if (!isMatch) {
+            recordFailedAttempt(ip);
+            await logLoginAttempt(director_name, ip, browser, 'FAILED_INVALID_PIN');
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid Director Security PIN.'
+            });
+        }
+
+        // Login Successful - Reset Failed Attempts
+        resetFailedAttempts(ip);
+        await logLoginAttempt(director_name, ip, browser, 'SUCCESS');
+
+        // Generate Signed JWT Token (Valid 12 Hours)
+        const tokenPayload = {
+            id: director.id,
+            name: director.name,
+            email: director.email,
+            role: director.role,
+            avatar: director.avatar
+        };
+
+        const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '12h' });
+
+        return res.json({
+            success: true,
+            message: `Welcome back, ${director.name}! Session authenticated successfully.`,
+            token,
+            user: tokenPayload
+        });
+
     } catch (err) {
         console.error('Login Error:', err);
-        return res.status(500).json({ success: false, message: err.message });
+        return res.status(500).json({ success: false, message: 'Internal Authentication Error: ' + err.message });
     }
 }
 
-async function getMe(req, res) {
+// 2. VERIFY JWT TOKEN SESSION
+async function verifySession(req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ success: false, message: 'Not authenticated' });
-        }
-        return res.json({ success: true, user: req.user });
+        return res.json({
+            success: true,
+            user: req.user
+        });
+    } catch (e) {
+        return res.status(401).json({ success: false, message: 'Session invalid' });
+    }
+}
+
+// 3. GET LIST OF ACTIVE DIRECTORS (For Login Dropdown)
+async function getDirectors(req, res) {
+    try {
+        const [rows] = await pool.execute(`SELECT id, name, role, avatar FROM directors WHERE status = 'Active' ORDER BY name ASC`);
+        return res.json(rows || []);
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message });
     }
 }
 
-module.exports = { login, getMe };
+// Helper: Audit Log Entry
+async function logLoginAttempt(userName, ip, browser, status) {
+    try {
+        await pool.execute(
+            `INSERT INTO login_logs (user_name, ip, browser, status) VALUES (?, ?, ?, ?)`,
+            [userName, ip, browser, status]
+        );
+    } catch (e) {
+        console.error('Login log error:', e.message);
+    }
+}
+
+module.exports = {
+    login,
+    verifySession,
+    getDirectors
+};

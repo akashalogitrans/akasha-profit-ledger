@@ -88,15 +88,45 @@ function recalculateKPIsFromState() {
     updateChartData(STATE.kpis);
 }
 
-// --- SESSION MANAGEMENT ---
-function restoreUserSession() {
-    const savedLocal = localStorage.getItem('akasha_erp_session');
-    const savedSession = sessionStorage.getItem('akasha_erp_session');
-    const saved = savedLocal || savedSession;
+// --- JWT & SESSION AUTHENTICATION ENGINE ---
+async function fetchWithAuth(url, options = {}) {
+    const token = localStorage.getItem('akasha_erp_jwt_token') || sessionStorage.getItem('akasha_erp_jwt_token');
+    const headers = options.headers || {};
 
-    if (saved) {
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (options.body && typeof options.body === 'string' && !headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    try {
+        const response = await fetch(url, { ...options, headers });
+
+        if (response.status === 401) {
+            handleLogout();
+            showToast('Session expired. Please log in again.', 'danger');
+        }
+
+        return response;
+    } catch (err) {
+        console.error('Fetch Auth Error:', err);
+        throw err;
+    }
+}
+
+function restoreUserSession() {
+    const savedLocalToken = localStorage.getItem('akasha_erp_jwt_token');
+    const savedSessionToken = sessionStorage.getItem('akasha_erp_jwt_token');
+    const savedToken = savedLocalToken || savedSessionToken;
+
+    const savedLocalUser = localStorage.getItem('akasha_erp_session');
+    const savedSessionUser = sessionStorage.getItem('akasha_erp_session');
+    const savedUser = savedLocalUser || savedSessionUser;
+
+    if (savedToken && savedUser) {
         try {
-            const user = JSON.parse(saved);
+            const user = JSON.parse(savedUser);
             if (user && user.name) {
                 STATE.currentUser = user;
                 document.getElementById('login-screen').style.display = 'none';
@@ -123,61 +153,100 @@ function autoTabLoginPin(currentEl, nextElId) {
     }
 }
 
-function handleLogin(event) {
+async function handleLogin(event) {
     if (event) event.preventDefault();
     const pin = (document.getElementById('login-code-pin').value || '').trim();
-    const keyName = (document.getElementById('login-code-name').value || '').trim().toUpperCase();
+    const directorName = (document.getElementById('login-code-name').value || '').trim();
     const rememberMe = document.getElementById('login-remember-me') ? document.getElementById('login-remember-me').checked : true;
     const errBox = document.getElementById('login-error-message');
 
-    let matchedUser = STATE.adminUsers.find(u => u.pin === pin && (u.keyName === keyName || u.name.toUpperCase().includes(keyName)));
-
-    if (!matchedUser) {
+    if (!pin || !directorName) {
         if (errBox) {
             errBox.style.display = 'block';
-            errBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Invalid PIN or Name (${pin || '••••'} - ${keyName || 'EMPTY'})! Access restricted to authorized directors.`;
+            errBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Both Director PIN AND Director Name are required!`;
         }
         Swal.fire({
-            icon: 'error',
-            title: 'Authentication Failed',
-            text: 'Invalid Director PIN or Name!\n\nPlease enter authorized 2-part Director Credentials:\n\n• Dhruv Patel: 7717 - DHRUV\n• Khushal Patel: 7776 - KHUSHAL\n• Yagnik Patel: 8866 - YAGNIK',
+            icon: 'warning',
+            title: 'Incomplete Credentials',
+            text: 'Please enter BOTH Security PIN AND Director Name (e.g. 7717 and DHRUV PATEL).',
             confirmButtonColor: '#e11d48'
         });
         return;
     }
 
-    if (errBox) errBox.style.display = 'none';
+    try {
+        const res = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ director_name: directorName, pin })
+        });
 
-    STATE.currentUser = matchedUser;
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('erp-shell').style.display = 'flex';
+        const data = await res.json();
 
-    if (rememberMe) {
-        localStorage.setItem('akasha_erp_session', JSON.stringify(matchedUser));
-        sessionStorage.removeItem('akasha_erp_session');
-    } else {
-        sessionStorage.setItem('akasha_erp_session', JSON.stringify(matchedUser));
-        localStorage.removeItem('akasha_erp_session');
+        if (!res.ok || !data.success) {
+            if (errBox) {
+                errBox.style.display = 'block';
+                errBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${data.message || 'Authentication Failed!'}`;
+            }
+            Swal.fire({
+                icon: 'error',
+                title: 'Authentication Failed',
+                text: data.message || 'Invalid Director Security Credentials.',
+                confirmButtonColor: '#e11d48'
+            });
+            return;
+        }
+
+        if (errBox) errBox.style.display = 'none';
+
+        STATE.currentUser = data.user;
+        const jwtToken = data.token;
+
+        if (rememberMe) {
+            localStorage.setItem('akasha_erp_jwt_token', jwtToken);
+            localStorage.setItem('akasha_erp_session', JSON.stringify(data.user));
+            sessionStorage.removeItem('akasha_erp_jwt_token');
+            sessionStorage.removeItem('akasha_erp_session');
+        } else {
+            sessionStorage.setItem('akasha_erp_jwt_token', jwtToken);
+            sessionStorage.setItem('akasha_erp_session', JSON.stringify(data.user));
+            localStorage.removeItem('akasha_erp_jwt_token');
+            localStorage.removeItem('akasha_erp_session');
+        }
+
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('erp-shell').style.display = 'flex';
+
+        updateCurrentUserInfo();
+        initCompanyAutoID();
+        initCharts();
+        fetchBackendAPIData();
+
+        const targetRoute = STATE.pendingRedirectRoute || window.location.pathname || '/dashboard';
+        STATE.pendingRedirectRoute = null;
+        navigateRoute(targetRoute, true);
+
+        showToast(`Welcome back, ${data.user.name}! (${data.user.role})`, "success");
+    } catch (err) {
+        console.error('Login error:', err);
+        if (errBox) {
+            errBox.style.display = 'block';
+            errBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Server connection failed. Check network or server status.`;
+        }
     }
-
-    updateCurrentUserInfo();
-    initCompanyAutoID();
-    initCharts();
-    fetchBackendAPIData();
-
-    // Navigate to pending direct URL route or default dashboard after successful login
-    const targetRoute = STATE.pendingRedirectRoute || window.location.pathname || '/dashboard';
-    STATE.pendingRedirectRoute = null;
-    navigateRoute(targetRoute, true);
-
-    showToast(`Welcome back, ${matchedUser.name}! (${matchedUser.role})`, "success");
 }
 
 function handleLogout() {
+    localStorage.removeItem('akasha_erp_jwt_token');
     localStorage.removeItem('akasha_erp_session');
+    sessionStorage.removeItem('akasha_erp_jwt_token');
     sessionStorage.removeItem('akasha_erp_session');
     STATE.currentUser = null;
     STATE.pendingRedirectRoute = null;
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('erp-shell').style.display = 'none';
+    showToast('Logged out successfully.', 'info');
+}
     document.getElementById('erp-shell').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
     if (document.getElementById('login-code-pin')) document.getElementById('login-code-pin').value = '';
@@ -327,7 +396,7 @@ async function fetchBackendAPIData() {
 
 async function fetchDashboardKPIs() {
     try {
-        const res = await fetch(`${API_BASE_URL}/dashboard/kpis`);
+        const res = await fetchWithAuth(`${API_BASE_URL}/dashboard/kpis`);
         if (res.ok) {
             const data = await res.json();
             if (data && data.monthly_revenue !== undefined) {
@@ -346,7 +415,7 @@ async function fetchDashboardKPIs() {
 
 async function fetchClientsData() {
     try {
-        const res = await fetch(`${API_BASE_URL}/clients`);
+        const res = await fetchWithAuth(`${API_BASE_URL}/clients`);
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data)) {
@@ -362,7 +431,7 @@ async function fetchClientsData() {
 
 async function fetchShipmentsData() {
     try {
-        const res = await fetch(`${API_BASE_URL}/shipments`);
+        const res = await fetchWithAuth(`${API_BASE_URL}/shipments`);
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data)) {
@@ -370,7 +439,7 @@ async function fetchShipmentsData() {
                     const saleAmt = parseFloat(s.sale_amount) || 0;
                     const rawRec = s.received_amount !== undefined ? parseFloat(s.received_amount) : (s.sale_status === 'Completed' ? saleAmt : 0);
                     const cappedRec = Math.min(saleAmt, Math.max(0, rawRec));
-                    const status = cappedRec >= saleAmt ? 'Completed' : (cappedRec > 0 ? 'Partially Paid' : (s.sale_status || 'Pending'));
+                    const status = cappedRec >= saleAmt && saleAmt > 0 ? 'Completed' : (cappedRec > 0 ? 'Partially Paid' : (s.sale_status || 'Pending'));
                     return {
                         ...s,
                         received_amount: cappedRec,
@@ -601,6 +670,7 @@ function renderPaymentReceivedTable(list) {
                 <td><span class="status-pill ${badgeClass}" style="${badgeStyle}">${status}</span></td>
                 <td>
                     ${actionButtonsHTML}
+                    <button class="btn-action" onclick="viewPaymentHistory('${p.shipment_id}')" title="View Transaction History Timeline" style="color: #64748b;"><i class="fa-solid fa-clock-rotate-left"></i> History</button>
                     <button class="btn-action" onclick="viewShipmentVoucher('${p.shipment_id}', 'payment')" title="View Payment Voucher" style="color: var(--primary);"><i class="fa-solid fa-eye"></i></button>
                     <button class="btn-action" onclick="navigateRoute('/shipment-entry/edit/${encodeURIComponent(p.shipment_id)}')" title="Edit Entry"><i class="fa-solid fa-pen"></i></button>
                 </td>
@@ -1049,6 +1119,29 @@ function openFullEditShipmentPage(id) {
     }
 }
 
+async function deleteShipment(id) {
+    const result = await Swal.fire({
+        title: `Delete Shipment ${id}?`,
+        text: "This shipment entry will be permanently deleted from database!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, Delete Shipment'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            await fetchWithAuth(`${API_BASE_URL}/shipments/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            Swal.fire('Deleted!', `Shipment ${id} deleted successfully.`, 'success');
+            await fetchShipmentsData();
+            await fetchDashboardKPIs();
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Delete Failed', text: 'Could not delete shipment entry.' });
+        }
+    }
+}
+
 async function saveFullShipmentData() {
     const editId = document.getElementById('full-shipment-edit-id') ? document.getElementById('full-shipment-edit-id').value : '';
     
@@ -1156,15 +1249,13 @@ async function saveFullShipmentData() {
     try {
         let res;
         if (editId) {
-            res = await fetch(`${API_BASE_URL}/shipments/${encodeURIComponent(editId)}`, {
+            res = await fetchWithAuth(`${API_BASE_URL}/shipments/${encodeURIComponent(editId)}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(shpObj)
             });
         } else {
-            res = await fetch(`${API_BASE_URL}/shipments`, {
+            res = await fetchWithAuth(`${API_BASE_URL}/shipments`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(shpObj)
             });
         }
@@ -1279,15 +1370,13 @@ async function saveFullClientData() {
     try {
         let res;
         if (editId) {
-            res = await fetch(`${API_BASE_URL}/clients/${encodeURIComponent(editId)}`, {
+            res = await fetchWithAuth(`${API_BASE_URL}/clients/${encodeURIComponent(editId)}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(clientObj)
             });
         } else {
-            res = await fetch(`${API_BASE_URL}/clients`, {
+            res = await fetchWithAuth(`${API_BASE_URL}/clients`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(clientObj)
             });
         }
@@ -1318,15 +1407,13 @@ async function deleteClient(id) {
     });
 
     if (result.isConfirmed) {
-        STATE.clients = STATE.clients.filter(c => c.id !== id);
-        localStorage.setItem('AKASHA_ERP_CLIENTS', JSON.stringify(STATE.clients));
-        renderClientsTable();
-        populateFullClientDropdown();
-
         try {
-            await fetch(`${API_BASE_URL}/clients/${encodeURIComponent(id)}`, { method: 'DELETE' });
-        } catch (e) {}
-        Swal.fire('Deleted!', `Client ${id} has been deleted.`, 'success');
+            await fetchWithAuth(`${API_BASE_URL}/clients/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            Swal.fire('Deleted!', `Client ${id} has been deleted.`, 'success');
+            await fetchClientsData();
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Delete Failed', text: 'Could not delete client.' });
+        }
     }
 }
 
@@ -2026,34 +2113,114 @@ async function handleQuickPaymentSubmit(e) {
         newTotalRec = Math.min(saleAmt, prevRec + inputVal);
     }
 
-    const newStatus = newTotalRec >= saleAmt ? 'Completed' : (newTotalRec > 0 ? 'Partially Paid' : 'Pending');
+    const newStatus = newTotalRec >= saleAmt && saleAmt > 0 ? 'Completed' : (newTotalRec > 0 ? 'Partially Paid' : 'Pending');
 
     s.received_amount = newTotalRec;
     s.payment_receive_date = payDate;
     s.sale_status = newStatus;
 
-    localStorage.setItem('AKASHA_ERP_SHIPMENTS', JSON.stringify(STATE.shipments));
-
-    renderShipmentsTable();
-    renderPaymentReceivedTable(null);
-    renderPurchaseEntryTable(null);
-    renderProfitLedgerTable(null);
-    recalculateKPIsFromState();
-
     closeModal('modal-quick-payment');
-    showToast(`Payment updated for ${shpId}! Total Received: ₹${newTotalRec.toLocaleString('en-IN')} / ₹${saleAmt.toLocaleString('en-IN')}`, 'success');
 
     try {
-        await fetch(`${API_BASE_URL}/payments-received/${encodeURIComponent(shpId)}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                received_amount: newTotalRec,
-                payment_receive_date: payDate
-            })
-        });
+        if (currentPaymentModalMode === 'edit') {
+            await fetchWithAuth(`${API_BASE_URL}/payments-received/${encodeURIComponent(shpId)}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    received_amount: newTotalRec,
+                    payment_receive_date: payDate
+                })
+            });
+        } else {
+            await fetchWithAuth(`${API_BASE_URL}/payment-transactions`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    shipment_id: shpId,
+                    payment_date: payDate,
+                    amount: inputVal,
+                    payment_mode: 'Bank Transfer',
+                    bank: 'HDFC Bank',
+                    remarks: `Installment payment received`,
+                    created_by: STATE.currentUser ? STATE.currentUser.name : 'Director'
+                })
+            });
+        }
+
+        showToast(`Payment updated for ${shpId}! Total Received: ₹${newTotalRec.toLocaleString('en-IN')} / ₹${saleAmt.toLocaleString('en-IN')}`, 'success');
+        await fetchBackendAPIData();
     } catch(err) {
-        console.log("Payment update API error");
+        showToast('Payment update API error', 'danger');
+    }
+}
+
+// --- PAYMENT TRANSACTIONS HISTORY TIMELINE ---
+async function viewPaymentHistory(shipmentId) {
+    const s = STATE.shipments.find(item => item.id === shipmentId);
+    if (document.getElementById('history-display-shipment-id')) {
+        document.getElementById('history-display-shipment-id').innerText = shipmentId;
+    }
+    if (document.getElementById('history-display-company-name')) {
+        document.getElementById('history-display-company-name').innerText = s ? s.company_name : 'Customer';
+    }
+
+    const container = document.getElementById('payment-history-timeline-container');
+    if (container) container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading transaction history...</div>';
+
+    openModal('modal-payment-history');
+
+    try {
+        const res = await fetchWithAuth(`${API_BASE_URL}/payment-transactions/${encodeURIComponent(shipmentId)}`);
+        if (res.ok) {
+            const txs = await res.json();
+            if (Array.isArray(txs) && txs.length > 0) {
+                container.innerHTML = txs.map(tx => `
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; padding: 12px 14px; border-radius: 10px; border-left: 4px solid #10B981; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 800; font-size: 15px; color: #10B981;">₹${(parseFloat(tx.amount) || 0).toLocaleString('en-IN')}</div>
+                            <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                                Mode: <strong>${tx.payment_mode || 'Bank Transfer'}</strong> | Bank: <strong>${tx.bank || 'HDFC Bank'}</strong> ${tx.utr ? `| UTR: <strong>${tx.utr}</strong>` : ''}
+                            </div>
+                            <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
+                                <i class="fa-solid fa-user-check"></i> ${tx.created_by || 'Director'} (${tx.remarks || 'Received'})
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span class="status-pill status-completed" style="font-size: 11px;"><i class="fa-solid fa-calendar"></i> ${tx.payment_date}</span>
+                            <div style="margin-top: 6px;">
+                                <button class="btn-action" onclick="deletePaymentTx('${tx.id}', '${shipmentId}')" title="Delete Payment Log" style="color: #ef4444; font-size: 11px;"><i class="fa-solid fa-trash"></i> Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 30px;"><i class="fa-solid fa-receipt" style="font-size: 24px; margin-bottom: 8px;"></i><br>No payment transaction history records found for this shipment.</div>';
+            }
+        }
+    } catch(err) {
+        if (container) container.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px;">Failed to load transaction timeline history.</div>';
+    }
+}
+
+async function deletePaymentTx(txId, shipmentId) {
+    const confirm = await Swal.fire({
+        title: 'Delete Payment Log?',
+        text: 'This will revert the received amount and recalculate shipment totals.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Yes, Delete Log'
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+        const res = await fetchWithAuth(`${API_BASE_URL}/payment-transactions/${txId}`, { method: 'DELETE' });
+        if (res.ok) {
+            showToast('Payment log deleted successfully!', 'success');
+            await fetchBackendAPIData();
+            viewPaymentHistory(shipmentId);
+        }
+    } catch(e) {
+        showToast('Failed to delete payment log', 'danger');
     }
 }
 

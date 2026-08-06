@@ -4,13 +4,16 @@
 
 const express = require('express');
 const router = express.Router();
-const { getShipments, createShipment, updateShipment, deleteShipment } = require('../controllers/shipmentController');
+const { getShipments, getShipmentById, createShipment, updateShipment, deleteShipment } = require('../controllers/shipmentController');
+const { authenticateJWT } = require('../middleware/authMiddleware');
+
+// All Shipment endpoints are protected by JWT Auth Middleware
+router.use(authenticateJWT);
 
 router.get('/', getShipments);
+router.get('/:id', getShipmentById);
 router.post('/', createShipment);
 router.put('/:id', updateShipment);
-router.put('/*', updateShipment);
 router.delete('/:id', deleteShipment);
-router.delete('/*', deleteShipment);
 
 module.exports = router;
