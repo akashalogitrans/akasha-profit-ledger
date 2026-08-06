@@ -1762,7 +1762,11 @@ function openQuickPaymentModal(shipmentId) {
     if (document.getElementById('quick-pay-display-prev')) document.getElementById('quick-pay-display-prev').innerText = '₹' + prevRec.toLocaleString('en-IN');
     if (document.getElementById('quick-pay-display-balance')) document.getElementById('quick-pay-display-balance').innerText = '₹' + currBal.toLocaleString('en-IN');
     
-    if (document.getElementById('quick-pay-today-input')) document.getElementById('quick-pay-today-input').value = '';
+    const todayInput = document.getElementById('quick-pay-today-input');
+    if (todayInput) {
+        todayInput.value = '';
+        todayInput.max = currBal;
+    }
     if (document.getElementById('quick-pay-date-input')) document.getElementById('quick-pay-date-input').value = new Date().toISOString().split('T')[0];
 
     updateQuickPayCalcNotice();
@@ -1793,6 +1797,7 @@ function updateQuickPayCalcNotice() {
     const saleAmt = parseFloat(s.sale_amount) || 0;
     const prevRec = s.received_amount !== undefined ? parseFloat(s.received_amount) : (s.sale_status === 'Completed' ? saleAmt : 0);
     const todayPay = parseFloat(document.getElementById('quick-pay-today-input')?.value) || 0;
+    const currBal = Math.max(0, saleAmt - prevRec);
     
     const newTotalRec = prevRec + todayPay;
     const newBalance = Math.max(0, saleAmt - newTotalRec);
@@ -1800,7 +1805,10 @@ function updateQuickPayCalcNotice() {
 
     if (!noticeEl) return;
 
-    if (newTotalRec >= saleAmt) {
+    if (todayPay > currBal || newTotalRec > saleAmt) {
+        noticeEl.style.color = '#dc2626';
+        noticeEl.innerHTML = `⚠️ <strong>EXCEEDS TOTAL SALE INVOICE!</strong><br>Max allowed today: <strong>₹${currBal.toLocaleString('en-IN')}</strong> (Total Invoice: ₹${saleAmt.toLocaleString('en-IN')}, Prev Received: ₹${prevRec.toLocaleString('en-IN')})`;
+    } else if (newTotalRec >= saleAmt) {
         noticeEl.style.color = '#10B981';
         noticeEl.innerHTML = `Previous ₹${prevRec.toLocaleString('en-IN')} + Today ₹${todayPay.toLocaleString('en-IN')} = <strong>New Total ₹${newTotalRec.toLocaleString('en-IN')}</strong><br><span style="color: #10B981;">FULL PAYMENT COMPLETED! Remaining Balance: ₹0.00</span>`;
     } else if (newTotalRec > 0) {
@@ -1808,7 +1816,7 @@ function updateQuickPayCalcNotice() {
         noticeEl.innerHTML = `Previous ₹${prevRec.toLocaleString('en-IN')} + Today ₹${todayPay.toLocaleString('en-IN')} = <strong>New Total Received: ₹${newTotalRec.toLocaleString('en-IN')}</strong><br><span style="color: #b45309;">Remaining Pending Balance: ₹${newBalance.toLocaleString('en-IN')} (Status: PARTIALLY PAID)</span>`;
     } else {
         noticeEl.style.color = '#64748b';
-        noticeEl.innerText = `Enter today's installment payment amount above... (Current Balance: ₹${(saleAmt - prevRec).toLocaleString('en-IN')})`;
+        noticeEl.innerText = `Enter today's installment payment amount above... (Current Balance: ₹${currBal.toLocaleString('en-IN')})`;
     }
 }
 
@@ -1821,7 +1829,30 @@ async function handleQuickPaymentSubmit(e) {
     const saleAmt = parseFloat(s.sale_amount) || 0;
     const prevRec = s.received_amount !== undefined ? parseFloat(s.received_amount) : (s.sale_status === 'Completed' ? saleAmt : 0);
     const todayPay = parseFloat(document.getElementById('quick-pay-today-input')?.value) || 0;
-    const newTotalRec = prevRec + todayPay;
+    const currBal = Math.max(0, saleAmt - prevRec);
+
+    if (todayPay <= 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Invalid Payment Amount',
+            text: 'Please enter a valid payment amount greater than ₹0.',
+            confirmButtonColor: '#e11d48'
+        });
+        return;
+    }
+
+    if (todayPay > currBal) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Payment Exceeds Total Sale Bill Invoice!',
+            text: `Total Sale Bill Invoice is ₹${saleAmt.toLocaleString('en-IN')}.\n\nPreviously Received: ₹${prevRec.toLocaleString('en-IN')}\nMaximum Payable Remaining Today: ₹${currBal.toLocaleString('en-IN')}\n\nYou entered: ₹${todayPay.toLocaleString('en-IN')} (which exceeds by ₹${(todayPay - currBal).toLocaleString('en-IN')}).`,
+            confirmButtonColor: '#e11d48'
+        });
+        return;
+    }
+
+    // Hard-cap at Total Sale Invoice Amount
+    const newTotalRec = Math.min(saleAmt, prevRec + todayPay);
     const payDate = document.getElementById('quick-pay-date-input')?.value || new Date().toISOString().split('T')[0];
     const newStatus = newTotalRec >= saleAmt ? 'Completed' : (newTotalRec > 0 ? 'Partially Paid' : 'Pending');
 
@@ -1838,7 +1869,7 @@ async function handleQuickPaymentSubmit(e) {
     recalculateKPIsFromState();
 
     closeModal('modal-quick-payment');
-    showToast(`Installment payment ₹${todayPay.toLocaleString('en-IN')} received for ${shpId}!`, 'success');
+    showToast(`Installment payment ₹${todayPay.toLocaleString('en-IN')} received for ${shpId}! Total Received: ₹${newTotalRec.toLocaleString('en-IN')} / ₹${saleAmt.toLocaleString('en-IN')}`, 'success');
 
     try {
         await fetch(`${API_BASE_URL}/payments-received/${encodeURIComponent(shpId)}`, {

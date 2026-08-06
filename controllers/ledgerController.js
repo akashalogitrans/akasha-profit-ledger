@@ -47,7 +47,8 @@ async function updatePaymentReceived(req, res) {
         }
 
         const saleAmt = parseFloat(row.sale_amount) || 0;
-        const recAmt = parseFloat(received_amount) || 0;
+        const requestedRecAmt = parseFloat(received_amount) || 0;
+        const recAmt = Math.min(saleAmt, Math.max(0, requestedRecAmt));
         const status = recAmt >= saleAmt ? 'Completed' : (recAmt > 0 ? 'Partially Paid' : 'Pending');
         const currentDate = payment_receive_date || new Date().toISOString().split('T')[0];
 
