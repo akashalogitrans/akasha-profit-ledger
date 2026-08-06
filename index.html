@@ -781,7 +781,7 @@
                                 <i class="fa-solid fa-bolt"></i> Receive All Remaining Balance
                             </button>
                         </div>
-                        <input type="number" step="any" id="quick-pay-today-input" class="form-control light-input" required placeholder="Enter amount customer paid today (e.g. 3000)" style="font-size: 16px; font-weight: 800; color: var(--success);" oninput="updateQuickPayCalcNotice()">
+                        <input type="number" step="any" id="quick-pay-today-input" class="form-control light-input" required placeholder="Enter amount customer paid today (e.g. 3000)" style="font-size: 16px; font-weight: 800; color: var(--success);" oninput="updateQuickPayCalcNotice()" onkeyup="updateQuickPayCalcNotice()" onchange="updateQuickPayCalcNotice()">
                     </div>
 
                     <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px 14px; border-radius: 10px; margin-bottom: 16px;">
