@@ -585,7 +585,10 @@ function renderPaymentReceivedTable(list) {
                 <td>${p.payment_receive_date || '-'}</td>
                 <td><span class="status-pill ${badgeClass}" style="${badgeStyle}">${status}</span></td>
                 <td>
-                    <button class="btn-action" onclick="openQuickPaymentModal('${p.shipment_id}')" title="Quick Receive Payment" style="color: var(--success); width: auto; padding: 4px 10px; font-weight: 700;"><i class="fa-solid fa-hand-holding-dollar"></i> Pay</button>
+                    ${status !== 'Completed' && balAmt > 0 
+                        ? `<button class="btn-action" onclick="openQuickPaymentModal('${p.shipment_id}')" title="Quick Receive Payment" style="color: var(--success); width: auto; padding: 4px 10px; font-weight: 700;"><i class="fa-solid fa-hand-holding-dollar"></i> Pay</button>`
+                        : `<span style="color: #10B981; font-weight: 700; font-size: 12px; padding: 4px 8px; background: #ecfdf5; border-radius: 6px; border: 1px solid #a7f3d0;"><i class="fa-solid fa-circle-check"></i> Paid</span>`
+                    }
                     <button class="btn-action" onclick="viewShipmentVoucher('${p.shipment_id}', 'payment')" title="View Payment Voucher" style="color: var(--primary);"><i class="fa-solid fa-eye"></i></button>
                     <button class="btn-action" onclick="navigateRoute('/shipment-entry/edit/${encodeURIComponent(p.shipment_id)}')" title="Edit Entry"><i class="fa-solid fa-pen"></i></button>
                 </td>
@@ -1807,16 +1810,16 @@ function updateQuickPayCalcNotice() {
 
     if (todayPay > currBal || newTotalRec > saleAmt) {
         noticeEl.style.color = '#dc2626';
-        noticeEl.innerHTML = `⚠️ <strong>EXCEEDS TOTAL SALE INVOICE!</strong><br>Max allowed today: <strong>₹${currBal.toLocaleString('en-IN')}</strong> (Total Invoice: ₹${saleAmt.toLocaleString('en-IN')}, Prev Received: ₹${prevRec.toLocaleString('en-IN')})`;
-    } else if (newTotalRec >= saleAmt) {
+        noticeEl.innerHTML = `⚠️ <strong>EXCEEDS PENDING BALANCE!</strong><br>Max allowed today: <strong>₹${currBal.toLocaleString('en-IN')}</strong> (Total Invoice: ₹${saleAmt.toLocaleString('en-IN')}, Already Received: ₹${prevRec.toLocaleString('en-IN')})`;
+    } else if (newTotalRec >= saleAmt && todayPay > 0) {
         noticeEl.style.color = '#10B981';
-        noticeEl.innerHTML = `Previous ₹${prevRec.toLocaleString('en-IN')} + Today ₹${todayPay.toLocaleString('en-IN')} = <strong>New Total ₹${newTotalRec.toLocaleString('en-IN')}</strong><br><span style="color: #10B981;">FULL PAYMENT COMPLETED! Remaining Balance: ₹0.00</span>`;
-    } else if (newTotalRec > 0) {
+        noticeEl.innerHTML = `Today Payment: <strong>₹${todayPay.toLocaleString('en-IN')}</strong> → Total Received: <strong>₹${saleAmt.toLocaleString('en-IN')}</strong><br><span style="color: #10B981; font-weight: 800;">✅ FULL PAYMENT COMPLETED! Remaining Balance Left: ₹0.00</span>`;
+    } else if (todayPay > 0) {
         noticeEl.style.color = '#1e40af';
-        noticeEl.innerHTML = `Previous ₹${prevRec.toLocaleString('en-IN')} + Today ₹${todayPay.toLocaleString('en-IN')} = <strong>New Total Received: ₹${newTotalRec.toLocaleString('en-IN')}</strong><br><span style="color: #b45309;">Remaining Pending Balance: ₹${newBalance.toLocaleString('en-IN')} (Status: PARTIALLY PAID)</span>`;
+        noticeEl.innerHTML = `Today Payment: <strong>₹${todayPay.toLocaleString('en-IN')}</strong> → Total Received So Far: <strong>₹${newTotalRec.toLocaleString('en-IN')}</strong> / ₹${saleAmt.toLocaleString('en-IN')}<br><span style="color: #b45309; font-weight: 800;">Remaining Balance Left to Collect: ₹${newBalance.toLocaleString('en-IN')}</span>`;
     } else {
         noticeEl.style.color = '#64748b';
-        noticeEl.innerText = `Enter today's installment payment amount above... (Current Balance: ₹${currBal.toLocaleString('en-IN')})`;
+        noticeEl.innerText = `Enter today's payment amount above... (Pending Balance: ₹${currBal.toLocaleString('en-IN')})`;
     }
 }
 
