@@ -1,27 +1,25 @@
 /* ==========================================================================
    AKASHA LOGITRANS LLP - MYSQL DATABASE CONNECTION POOL CONFIG
-   Smart Dual-Name Hostinger Database Resolver (u614117022_u614117022_erp)
+   Hostinger Database Resolver
    ========================================================================== */
 
 const mysql = require('mysql2/promise');
 const path = require('path');
 try { require('dotenv').config({ path: path.join(__dirname, '..', '.env') }); } catch (e) {}
 
-// Always connect to 127.0.0.1 locally on Hostinger
-const host = '127.0.0.1';
+// Connection Config Options
+const host = process.env.DB_HOST || process.env.HOST || '127.0.0.1';
 const port = parseInt(process.env.DB_PORT || '3306');
-const password = process.env.PASSWORD || process.env.DB_PASSWORD || 'Alt@7776';
-
-// Prioritize full phpMyAdmin Database Name: u614117022_u614117022_erp
-const primaryDb = 'u614117022_u614117022_erp';
-const primaryUser = 'u614117022_u614117022_erp';
+const password = process.env.DB_PASSWORD || process.env.PASSWORD || 'Alt@7776';
+const database = process.env.DB_NAME || process.env.DATABASE || 'u614117022_u614117022_erp';
+const user = process.env.DB_USER || process.env.USERNAME || 'u614117022_u614117022_erp';
 
 const dbConfig = {
     host,
     port,
-    user: process.env.USERNAME || process.env.DB_USER || primaryUser,
+    user,
     password,
-    database: process.env.DATABASE || process.env.DB_NAME || primaryDb,
+    database,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
