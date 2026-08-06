@@ -160,16 +160,24 @@ async function runAutoMigration() {
 function handleLocalFallbackQuery(sql, params) {
     const s = sql.toLowerCase();
 
+    if (s.includes('select id from clients where id = ?') || s.includes('select * from clients where id = ?')) {
+        const found = localStore.clients.filter(c => c.id === params[0]);
+        return [found, []];
+    }
+    if (s.includes('select id from shipments where id = ?') || s.includes('select * from shipments where id = ?')) {
+        const found = localStore.shipments.filter(shp => shp.id === params[0]);
+        return [found, []];
+    }
     if (s.includes('select * from directors') || s.includes('select id, name, role')) {
         return [localStore.directors, []];
     }
-    if (s.includes('select * from clients') || s.includes('from clients')) {
+    if (s.includes('from clients')) {
         return [localStore.clients, []];
     }
-    if (s.includes('select * from shipments') || s.includes('from shipments')) {
+    if (s.includes('from shipments')) {
         return [localStore.shipments, []];
     }
-    if (s.includes('select * from payment_transactions') || s.includes('from payment_transactions')) {
+    if (s.includes('from payment_transactions')) {
         return [localStore.payment_transactions, []];
     }
     if (s.includes('insert into clients')) {
