@@ -28,14 +28,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname)));
 
-// API Route Mounts
-app.use('/api/auth', authRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/clients', clientRoutes);
-app.use('/api/shipments', shipmentRoutes);
-app.use('/api', ledgerRoutes);
-
-// Health Check API Endpoint
+// Health Check API Endpoint (Public)
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'UP',
@@ -44,6 +37,13 @@ app.get('/api/health', (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
+
+// API Route Mounts
+app.use('/api/auth', authRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/clients', clientRoutes);
+app.use('/api/shipments', shipmentRoutes);
+app.use('/api', ledgerRoutes);
 
 // Single Page Application Wildcard Route (Rewrites all non-file requests to index.html)
 app.get('*', (req, res) => {
