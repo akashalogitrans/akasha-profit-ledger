@@ -104,14 +104,15 @@ const pool = {
         return this.execute(sql, params);
     },
     async execute(sql, params = []) {
+        const safeParams = (params || []).map(p => (p === undefined ? null : p));
         try {
-            return await mysqlPool.execute(sql, params);
+            return await mysqlPool.execute(sql, safeParams);
         } catch (err) {
             console.error('[MySQL Query Error]:', err.message, '| Query:', sql);
             if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'PROTOCOL_CONNECTION_LOST') {
                 isDbConnected = false;
                 if (process.env.NODE_ENV !== 'production') {
-                    return handleLocalFallbackQuery(sql, params);
+                    return handleLocalFallbackQuery(sql, safeParams);
                 }
             }
             throw err;

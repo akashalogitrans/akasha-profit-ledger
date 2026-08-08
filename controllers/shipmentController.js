@@ -221,9 +221,9 @@ async function createShipment(req, res) {
                 payment_receive_date, sale_amount, received_amount, remaining_balance, sale_status, sale_items, net_profit
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'UNPAID', ?, NULL, ?, 0, ?, 'UNPAID', ?, ?)`,
             [
-                shpId, shpDate, client_id, company_name, line_name || '', transport_name || '', sb_be_no || '', shipment_type || 'Export FCL',
-                purDate, calcPurTotal, purItemsStr,
-                calcSaleTotal, calcSaleTotal, saleItemsStr, netProfit
+                shpId || '', shpDate, client_id || '', company_name || '', line_name || '', transport_name || '', sb_be_no || '', shipment_type || 'EXPORT FCL',
+                purDate, parseFloat(calcPurTotal) || 0, purItemsStr || '[]',
+                parseFloat(calcSaleTotal) || 0, parseFloat(calcSaleTotal) || 0, saleItemsStr || '[]', parseFloat(netProfit) || 0
             ]
         );
 
@@ -289,10 +289,10 @@ async function updateShipment(req, res) {
                 sale_amount = ?, remaining_balance = ?, sale_status = ?, sale_items = ?, net_profit = ?
             WHERE id = ?`,
             [
-                formatDate(date), line_name, transport_name, sb_be_no, shipment_type,
-                formatDate(purchase_date || date), calcPurTotal, JSON.stringify(parsedPurItems),
-                calcSaleTotal, remBal, statusStr, JSON.stringify(parsedSaleItems), netProfit,
-                shpId
+                formatDate(date), line_name || '', transport_name || '', sb_be_no || '', shipment_type || 'EXPORT FCL',
+                formatDate(purchase_date || date), parseFloat(calcPurTotal) || 0, JSON.stringify(parsedPurItems || []),
+                parseFloat(calcSaleTotal) || 0, parseFloat(remBal) || 0, statusStr || 'UNPAID', JSON.stringify(parsedSaleItems || []), parseFloat(netProfit) || 0,
+                shpId || ''
             ]
         );
 
