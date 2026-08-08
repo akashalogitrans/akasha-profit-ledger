@@ -1523,17 +1523,23 @@ async function handleSaveCustomerPayment(e) {
     }
 }
 
-function openVendorPaymentModal() {
+async function openVendorPaymentModal() {
+    if (!STATE.shipments || STATE.shipments.length === 0) {
+        await fetchShipmentsData();
+    }
     const shpSelect = document.getElementById('modal-vp-shipment-select');
     if (shpSelect) {
         shpSelect.innerHTML = '<option value="">-- Select Shipment --</option>' + 
-            STATE.shipments.map(s => `<option value="${s.id}">${s.id} (${s.company_name})</option>`).join('');
+            (STATE.shipments || []).map(s => `<option value="${s.id}">${s.id} (${s.company_name})</option>`).join('');
     }
     populateVendorDropdowns();
     if (shpSelect && shpSelect.options.length > 1) {
         shpSelect.selectedIndex = 1;
         onVendorPaymentShipmentChange();
     }
+    const txtInput = document.getElementById('modal-vp-vendor-text');
+    if (txtInput) txtInput.style.display = 'none';
+
     document.getElementById('modal-vp-date').value = new Date().toISOString().split('T')[0];
     document.getElementById('modal-vendor-payment').style.display = 'flex';
 }
@@ -1541,6 +1547,7 @@ function openVendorPaymentModal() {
 function onVendorPaymentShipmentChange() {
     const shpId = document.getElementById('modal-vp-shipment-select')?.value;
     const vendorSelect = document.getElementById('modal-vp-vendor-select');
+    const txtInput = document.getElementById('modal-vp-vendor-text');
     const amtInput = document.getElementById('modal-vp-amount');
     if (!vendorSelect) return;
 
@@ -1586,6 +1593,12 @@ function onVendorPaymentShipmentChange() {
     vendorSelect.innerHTML = vendorOptionsHtml;
     if (vendorSelect.options.length > 1) {
         vendorSelect.selectedIndex = 1;
+        if (txtInput) txtInput.style.display = 'none';
+    } else {
+        if (txtInput) {
+            txtInput.style.display = 'block';
+            if (s && s.line_name) txtInput.value = s.line_name;
+        }
     }
 
     if (amtInput && purTotal > 0) {
@@ -1597,14 +1610,15 @@ async function handleSaveVendorPayment(e) {
     e.preventDefault();
 
     const shpId = document.getElementById('modal-vp-shipment-select').value;
-    const vendorVal = document.getElementById('modal-vp-vendor-select').value;
+    const txtVal = document.getElementById('modal-vp-vendor-text')?.value;
+    const vendorVal = document.getElementById('modal-vp-vendor-select')?.value;
     const vendorSelectEl = document.getElementById('modal-vp-vendor-select');
-    const selectedText = vendorSelectEl ? vendorSelectEl.options[vendorSelectEl.selectedIndex]?.text : '';
-    const vendorName = (vendorVal || selectedText || 'Vendor').split('(')[0].trim();
+    const selectedText = vendorSelectEl && vendorSelectEl.selectedIndex >= 0 ? vendorSelectEl.options[vendorSelectEl.selectedIndex]?.text : '';
+    const vendorName = (txtVal || vendorVal || selectedText || 'Vendor').split('(')[0].trim();
 
     const payload = {
         shipment_id: shpId,
-        vendor_id: vendorVal,
+        vendor_id: vendorVal || vendorName,
         vendor_name: vendorName,
         amount: parseFloat(document.getElementById('modal-vp-amount').value) || 0,
         payment_date: document.getElementById('modal-vp-date').value,
