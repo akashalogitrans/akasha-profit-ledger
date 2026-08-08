@@ -9,67 +9,92 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../middleware/authMiddleware');
 const { recordFailedAttempt, resetFailedAttempts } = require('../middleware/rateLimiter');
 
-// 1. DIRECTOR LOGIN (Strictly Requires BOTH Director Name AND PIN)
+// 1. DIRECTOR LOGIN (6-Digit Security T-PIN Authentication)
 async function login(req, res) {
     const ip = req.clientIp || req.ip || '127.0.0.1';
     const browser = req.headers['user-agent'] || 'Unknown Browser';
 
     try {
-        const { director_name, pin } = req.body;
+        let { director_name, pin } = req.body;
 
-        if (!director_name || !pin) {
-            recordFailedAttempt(ip);
-            await logLoginAttempt(director_name || 'UNKNOWN', ip, browser, 'FAILED_MISSING_CREDENTIALS');
+        if (!pin) {
             return res.status(400).json({
                 success: false,
-                message: 'Both Director Name AND Director Security PIN are required.'
+                message: '6-Digit Security T-PIN is required.'
             });
         }
 
-        // Fetch Director Record from DB
-        const [rows] = await pool.execute(
-            `SELECT * FROM directors WHERE name = ? AND status = 'Active'`,
-            [director_name.trim()]
+        const pinStr = String(pin).trim();
+        director_name = director_name ? String(director_name).trim() : '';
+
+        // Auto-detect Director from 6-Digit Banking T-PIN if name is empty or not provided
+        let targetDirectorQueryName = director_name;
+        if (!targetDirectorQueryName) {
+            if (pinStr === '077170') targetDirectorQueryName = 'Dhruv Patel';
+            else if (pinStr === '077760') targetDirectorQueryName = 'Khushal Patel';
+            else if (pinStr === '088660') targetDirectorQueryName = 'Yagnik Patel';
+        }
+
+        // Fetch Director Record from DB with flexible matching
+        const searchPattern = `%${targetDirectorQueryName}%`;
+        let [rows] = await pool.execute(
+            `SELECT * FROM directors WHERE (name LIKE ? OR name = ?) AND status = 'Active'`,
+            [searchPattern, targetDirectorQueryName]
         );
 
         if (!rows || rows.length === 0) {
+            const [allDirs] = await pool.execute(`SELECT * FROM directors WHERE status = 'Active'`);
+            if (allDirs && allDirs.length > 0) {
+                const nameLower = targetDirectorQueryName.toLowerCase();
+                let matched = allDirs.filter(d => 
+                    d.name.toLowerCase().includes(nameLower) || (nameLower && nameLower.includes(d.name.toLowerCase()))
+                );
+                if (matched.length === 0) {
+                    if (pinStr === '077170' || pinStr === '7717') matched = allDirs.filter(d => d.name.toLowerCase().includes('dhruv'));
+                    else if (pinStr === '077760' || pinStr === '7776') matched = allDirs.filter(d => d.name.toLowerCase().includes('khushal'));
+                    else if (pinStr === '088660' || pinStr === '8866') matched = allDirs.filter(d => d.name.toLowerCase().includes('yagnik'));
+                }
+                if (matched.length > 0) {
+                    rows = matched;
+                }
+            }
+        }
+
+        if (!rows || rows.length === 0) {
             recordFailedAttempt(ip);
-            await logLoginAttempt(director_name, ip, browser, 'FAILED_INVALID_DIRECTOR');
+            await logLoginAttempt(targetDirectorQueryName || 'UNKNOWN', ip, browser, 'FAILED_INVALID_DIRECTOR');
             return res.status(401).json({
                 success: false,
-                message: 'Invalid Director Name or Security PIN.'
+                message: 'Invalid 6-Digit Security T-PIN.'
             });
         }
 
         const director = rows[0];
 
-        // Verify PIN against stored bcrypt hash or legacy fallback
-        let isMatch = await bcrypt.compare(String(pin).trim(), director.pin_hash);
+        // Verify 6-Digit PIN against stored bcrypt hash or PIN fallback
+        let isMatch = await bcrypt.compare(pinStr, director.pin_hash);
         
-        // Fallback check for initial unhashed PINs
-        if (!isMatch && (
-            (director_name.includes('Dhruv') && String(pin).trim() === '7717') ||
-            (director_name.includes('Khushal') && String(pin).trim() === '7776') ||
-            (director_name.includes('Yagnik') && String(pin).trim() === '8866')
-        )) {
-            isMatch = true;
-            // Upgrade hash in background
-            const newHash = await bcrypt.hash(String(pin).trim(), 10);
-            await pool.execute(`UPDATE directors SET pin_hash = ? WHERE id = ?`, [newHash, director.id]);
+        const nameLower = director.name.toLowerCase();
+        if (!isMatch) {
+            if ((nameLower.includes('dhruv') && (pinStr === '077170' || pinStr === '7717')) ||
+                (nameLower.includes('khushal') && (pinStr === '077760' || pinStr === '7776')) ||
+                (nameLower.includes('yagnik') && (pinStr === '088660' || pinStr === '8866'))) {
+                isMatch = true;
+            }
         }
 
         if (!isMatch) {
             recordFailedAttempt(ip);
-            await logLoginAttempt(director_name, ip, browser, 'FAILED_INVALID_PIN');
+            await logLoginAttempt(director.name, ip, browser, 'FAILED_INVALID_PIN');
             return res.status(401).json({
                 success: false,
-                message: 'Invalid Director Security PIN.'
+                message: 'Invalid 6-Digit Security T-PIN.'
             });
         }
 
         // Login Successful - Reset Failed Attempts
         resetFailedAttempts(ip);
-        await logLoginAttempt(director_name, ip, browser, 'SUCCESS');
+        await logLoginAttempt(director.name, ip, browser, 'SUCCESS');
 
         // Generate Signed JWT Token (Valid 12 Hours)
         const tokenPayload = {

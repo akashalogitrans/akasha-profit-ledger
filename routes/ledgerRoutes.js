@@ -7,26 +7,17 @@ const router = express.Router();
 const { 
     getPaymentsReceived, 
     getPaymentTransactions,
-    addPaymentTransaction,
-    updatePaymentReceived, 
-    deletePaymentTransaction,
-    getPurchases, 
-    getProfitLedger 
+    recordPayment,
+    deletePaymentTransaction
 } = require('../controllers/ledgerController');
 const { authenticateJWT } = require('../middleware/authMiddleware');
 
-// All Ledger & Payment endpoints are protected by JWT Auth Middleware
 router.use(authenticateJWT);
 
 router.get('/payments-received', getPaymentsReceived);
-router.put('/payments-received/:id', updatePaymentReceived);
-
-// Payment Transactions History Timeline APIs
+router.get('/payments', getPaymentsReceived);
+router.post('/payments', recordPayment);
 router.get('/payment-transactions/:id', getPaymentTransactions);
-router.post('/payment-transactions', addPaymentTransaction);
-router.delete('/payment-transactions/:txId', deletePaymentTransaction);
-
-router.get('/purchases', getPurchases);
-router.get('/profit-ledger', getProfitLedger);
+router.delete('/payment-transactions/:id', deletePaymentTransaction);
 
 module.exports = router;

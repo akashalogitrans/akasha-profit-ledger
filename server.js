@@ -13,8 +13,12 @@ const path = require('path');
 const authRoutes = require('./routes/authRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const clientRoutes = require('./routes/clientRoutes');
+const vendorRoutes = require('./routes/vendorRoutes');
+const serviceRoutes = require('./routes/serviceRoutes');
 const shipmentRoutes = require('./routes/shipmentRoutes');
 const ledgerRoutes = require('./routes/ledgerRoutes');
+const vendorPaymentRoutes = require('./routes/vendorPaymentRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -42,7 +46,11 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/clients', clientRoutes);
+app.use('/api/vendors', vendorRoutes);
+app.use('/api/services', serviceRoutes);
 app.use('/api/shipments', shipmentRoutes);
+app.use('/api/vendor-payments', vendorPaymentRoutes);
+app.use('/api/reports', reportRoutes);
 app.use('/api', ledgerRoutes);
 
 // Single Page Application Wildcard Route (Rewrites all non-file requests to index.html)
@@ -71,4 +79,3 @@ module.exports = app;
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Akasha LogiTrans Freight ERP Server active on port ${PORT}`);
 });
-

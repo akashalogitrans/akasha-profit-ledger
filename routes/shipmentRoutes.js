@@ -1,19 +1,17 @@
-/* ==========================================================================
-   AKASHA LOGITRANS LLP - SHIPMENT MASTER ROUTES
-   ========================================================================== */
-
 const express = require('express');
 const router = express.Router();
-const { getShipments, getShipmentById, createShipment, updateShipment, deleteShipment } = require('../controllers/shipmentController');
+const { getShipments, getShipmentById, getNextShipmentId, createShipment, updateShipment, deleteShipment } = require('../controllers/shipmentController');
 const { authenticateJWT } = require('../middleware/authMiddleware');
 
-// All Shipment endpoints are protected by JWT Auth Middleware
 router.use(authenticateJWT);
 
+router.get('/next-id', getNextShipmentId);
 router.get('/', getShipments);
-router.get('/:id', getShipmentById);
 router.post('/', createShipment);
-router.put('/:id', updateShipment);
-router.delete('/:id', deleteShipment);
+
+// Use wildcard routes for IDs containing slashes (e.g. AKASHA/CLI-101/001)
+router.get('/*', getShipmentById);
+router.put('/*', updateShipment);
+router.delete('/*', deleteShipment);
 
 module.exports = router;

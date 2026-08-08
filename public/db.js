@@ -10,7 +10,7 @@ const bcrypt = require('bcryptjs');
 try { require('dotenv').config({ path: path.join(__dirname, '..', '.env') }); } catch (e) {}
 
 // Connection Config Options
-const host = process.env.DB_HOST || process.env.HOST || '127.0.0.1';
+const host = process.env.DB_HOST || process.env.HOST || 'auth-db2203.hstgr.io';
 const port = parseInt(process.env.DB_PORT || '3306');
 const password = process.env.DB_PASSWORD || process.env.PASSWORD || 'Alt@7776';
 const database = process.env.DB_NAME || process.env.DATABASE || 'u614117022_erp_database';
