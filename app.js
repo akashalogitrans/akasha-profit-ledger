@@ -1530,18 +1530,83 @@ function openVendorPaymentModal() {
             STATE.shipments.map(s => `<option value="${s.id}">${s.id} (${s.company_name})</option>`).join('');
     }
     populateVendorDropdowns();
+    if (shpSelect && shpSelect.options.length > 1) {
+        shpSelect.selectedIndex = 1;
+        onVendorPaymentShipmentChange();
+    }
     document.getElementById('modal-vp-date').value = new Date().toISOString().split('T')[0];
     document.getElementById('modal-vendor-payment').style.display = 'flex';
+}
+
+function onVendorPaymentShipmentChange() {
+    const shpId = document.getElementById('modal-vp-shipment-select')?.value;
+    const vendorSelect = document.getElementById('modal-vp-vendor-select');
+    const amtInput = document.getElementById('modal-vp-amount');
+    if (!vendorSelect) return;
+
+    if (!shpId) {
+        populateVendorDropdowns();
+        return;
+    }
+
+    const s = STATE.shipments.find(item => item.id === shpId);
+    let vendorOptionsHtml = '<option value="">-- Select Vendor --</option>';
+    let purTotal = 0;
+
+    if (s) {
+        purTotal = parseFloat(s.purchase_amount) || 0;
+        let purItems = [];
+        try {
+            purItems = typeof s.purchase_items === 'string' ? JSON.parse(s.purchase_items) : s.purchase_items;
+        } catch (e) {}
+
+        const vendorSet = new Set();
+        if (Array.isArray(purItems) && purItems.length > 0) {
+            purItems.forEach(item => {
+                const vName = (item.vendor_name || item.name || '').trim();
+                if (vName) vendorSet.add(vName);
+            });
+        }
+        if (s.line_name) vendorSet.add(s.line_name.trim());
+        if (s.transport_name) vendorSet.add(s.transport_name.trim());
+
+        (STATE.vendors || []).forEach(v => {
+            if (v.name) vendorSet.add(v.name.trim());
+        });
+
+        vendorSet.forEach(vName => {
+            vendorOptionsHtml += `<option value="${vName}">${vName}</option>`;
+        });
+    } else {
+        (STATE.vendors || []).forEach(v => {
+            vendorOptionsHtml += `<option value="${v.id}">${v.name}</option>`;
+        });
+    }
+
+    vendorSelect.innerHTML = vendorOptionsHtml;
+    if (vendorSelect.options.length > 1) {
+        vendorSelect.selectedIndex = 1;
+    }
+
+    if (amtInput && purTotal > 0) {
+        amtInput.value = purTotal.toFixed(2);
+    }
 }
 
 async function handleSaveVendorPayment(e) {
     e.preventDefault();
 
+    const shpId = document.getElementById('modal-vp-shipment-select').value;
+    const vendorVal = document.getElementById('modal-vp-vendor-select').value;
+    const vendorSelectEl = document.getElementById('modal-vp-vendor-select');
+    const selectedText = vendorSelectEl ? vendorSelectEl.options[vendorSelectEl.selectedIndex]?.text : '';
+    const vendorName = (vendorVal || selectedText || 'Vendor').split('(')[0].trim();
+
     const payload = {
-        shipment_id: document.getElementById('modal-vp-shipment-select').value,
-        vendor_id: document.getElementById('modal-vp-vendor-select').value,
-        vendor_name: document.getElementById('modal-vp-vendor-select').options[document.getElementById('modal-vp-vendor-select').selectedIndex]?.text.split('(')[0].trim(),
-        amount: parseFloat(document.getElementById('modal-vp-amount').value),
+        shipment_id: shpId,
+        vendor_id: vendorVal,
+        vendor_name: vendorName,
+        amount: parseFloat(document.getElementById('modal-vp-amount').value) || 0,
         payment_date: document.getElementById('modal-vp-date').value,
         payment_mode: document.getElementById('modal-vp-mode').value,
         reference_no: document.getElementById('modal-vp-ref').value
@@ -1563,6 +1628,7 @@ async function handleSaveVendorPayment(e) {
         closeModal('modal-vendor-payment');
         fetchVendorPaymentsData();
         fetchShipmentsData();
+        fetchDashboardKPIs();
     } catch (err) {
         showToast('Vendor payment connection error', 'error');
     }

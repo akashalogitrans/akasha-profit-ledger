@@ -85,7 +85,7 @@ async function recordVendorPayment(req, res) {
         const currentPaid = vpRows ? parseFloat(vpRows[0].total_paid) || 0 : 0;
         const remainingBal = Math.max(0, purAmt - currentPaid);
 
-        if (pAmt > remainingBal && remainingBal > 0) {
+        if (pAmt > (remainingBal + 5.0) && remainingBal > 0) {
             return res.status(400).json({
                 success: false,
                 message: `Payment amount (₹${pAmt.toLocaleString('en-IN')}) exceeds remaining vendor payable balance (₹${remainingBal.toLocaleString('en-IN')}).`
