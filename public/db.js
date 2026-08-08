@@ -10,7 +10,7 @@ const bcrypt = require('bcryptjs');
 try { require('dotenv').config({ path: path.join(__dirname, '..', '.env') }); } catch (e) {}
 
 // Connection Config Options
-const host = process.env.DB_HOST || process.env.HOST || 'auth-db2203.hstgr.io';
+const host = process.env.DB_HOST || process.env.HOST || '127.0.0.1';
 const port = parseInt(process.env.DB_PORT || '3306');
 const password = process.env.DB_PASSWORD || process.env.PASSWORD || 'Alt@7776';
 const database = process.env.DB_NAME || process.env.DATABASE || 'u614117022_erp_database';
@@ -104,16 +104,18 @@ const pool = {
         return this.execute(sql, params);
     },
     async execute(sql, params = []) {
-        if (isDbConnected) {
-            try {
-                return await mysqlPool.execute(sql, params);
-            } catch (err) {
+        try {
+            return await mysqlPool.execute(sql, params);
+        } catch (err) {
+            console.error('[MySQL Query Error]:', err.message, '| Query:', sql);
+            if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'PROTOCOL_CONNECTION_LOST') {
                 isDbConnected = false;
-                console.error('[MySQL Offline - Switching to Local Bridge]:', err.message);
+                if (process.env.NODE_ENV !== 'production') {
+                    return handleLocalFallbackQuery(sql, params);
+                }
             }
+            throw err;
         }
-        // Fallback to local memory store if MySQL is offline locally
-        return handleLocalFallbackQuery(sql, params);
     }
 };
 
@@ -126,7 +128,7 @@ const pool = {
         await runAutoMigration();
     } catch (err) {
         isDbConnected = false;
-        console.log(`ℹ️ [Hostinger Local Bridge Active] Running in local high-performance mode with pre-seeded data.`);
+        console.error(`❌ [Hostinger MySQL Connection Failed]: ${err.message}`);
     }
 })();
 
