@@ -597,7 +597,7 @@ select.form-control option {
 .item-entry-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 950px;
+    min-width: 1150px;
 }
 
 .item-entry-table th {
@@ -619,14 +619,26 @@ select.form-control option {
 
 .item-entry-table input.form-control {
     width: 100% !important;
-    min-width: 75px !important;
+    min-width: 95px !important;
     height: 38px !important;
-    padding: 6px 10px !important;
+    padding: 6px 8px !important;
     font-size: 13px !important;
     font-weight: 600 !important;
     border: 1px solid #cbd5e1 !important;
     background: #ffffff !important;
     border-radius: 4px !important;
+    box-sizing: border-box !important;
+}
+
+.item-entry-table input.pur-amount,
+.item-entry-table input.pur-taxable,
+.item-entry-table input.pur-gst-amt,
+.item-entry-table input.pur-total,
+.item-entry-table input.sale-rate,
+.item-entry-table input.sale-taxable,
+.item-entry-table input.sale-gst-amt,
+.item-entry-table input.sale-total {
+    min-width: 120px !important;
 }
 
 .item-entry-table select.form-control {

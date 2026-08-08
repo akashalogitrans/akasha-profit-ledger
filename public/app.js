@@ -336,6 +336,17 @@ async function fetchBackendAPIData() {
     }
 }
 
+function formatCurrencyINR(amount) {
+    const val = parseFloat(amount) || 0;
+    const isNegative = val < 0;
+    const absVal = Math.abs(val);
+    const formatted = absVal.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    return isNegative ? `-₹${formatted}` : `₹${formatted}`;
+}
+
 async function fetchDashboardKPIs() {
     try {
         const res = await fetchWithAuth(`${API_BASE_URL}/dashboard/kpis`);
@@ -343,12 +354,12 @@ async function fetchDashboardKPIs() {
             const data = await res.json();
             if (data) {
                 STATE.kpis = data;
-                document.getElementById('kpi-monthly-revenue').innerText = '₹' + (data.monthly_revenue || 0).toLocaleString('en-IN');
-                document.getElementById('kpi-total-purchase').innerText = '₹' + (data.total_purchase || 0).toLocaleString('en-IN');
-                document.getElementById('kpi-net-profit').innerText = '₹' + (data.net_profit || 0).toLocaleString('en-IN');
-                document.getElementById('kpi-pending-payment').innerText = '₹' + (data.pending_payment || 0).toLocaleString('en-IN');
+                document.getElementById('kpi-monthly-revenue').innerText = formatCurrencyINR(data.monthly_revenue);
+                document.getElementById('kpi-total-purchase').innerText = formatCurrencyINR(data.total_purchase);
+                document.getElementById('kpi-net-profit').innerText = formatCurrencyINR(data.net_profit);
+                document.getElementById('kpi-pending-payment').innerText = formatCurrencyINR(data.pending_payment);
                 if (document.getElementById('kpi-vendor-payable')) {
-                    document.getElementById('kpi-vendor-payable').innerText = '₹' + (data.vendor_payable || 0).toLocaleString('en-IN');
+                    document.getElementById('kpi-vendor-payable').innerText = formatCurrencyINR(data.vendor_payable);
                 }
                 const margin = data.monthly_revenue > 0 ? ((data.net_profit / data.monthly_revenue) * 100).toFixed(1) : 0;
                 if (document.getElementById('kpi-margin-pct')) {
@@ -379,11 +390,11 @@ function recalculateKPIsFromState() {
 
     STATE.kpis = { monthly_revenue: rev, total_purchase: pur, net_profit: pft, pending_payment: pend, vendor_payable: vPay };
 
-    if (document.getElementById('kpi-monthly-revenue')) document.getElementById('kpi-monthly-revenue').innerText = '₹' + rev.toLocaleString('en-IN');
-    if (document.getElementById('kpi-total-purchase')) document.getElementById('kpi-total-purchase').innerText = '₹' + pur.toLocaleString('en-IN');
-    if (document.getElementById('kpi-net-profit')) document.getElementById('kpi-net-profit').innerText = '₹' + pft.toLocaleString('en-IN');
-    if (document.getElementById('kpi-pending-payment')) document.getElementById('kpi-pending-payment').innerText = '₹' + pend.toLocaleString('en-IN');
-    if (document.getElementById('kpi-vendor-payable')) document.getElementById('kpi-vendor-payable').innerText = '₹' + vPay.toLocaleString('en-IN');
+    if (document.getElementById('kpi-monthly-revenue')) document.getElementById('kpi-monthly-revenue').innerText = formatCurrencyINR(rev);
+    if (document.getElementById('kpi-total-purchase')) document.getElementById('kpi-total-purchase').innerText = formatCurrencyINR(pur);
+    if (document.getElementById('kpi-net-profit')) document.getElementById('kpi-net-profit').innerText = formatCurrencyINR(pft);
+    if (document.getElementById('kpi-pending-payment')) document.getElementById('kpi-pending-payment').innerText = formatCurrencyINR(pend);
+    if (document.getElementById('kpi-vendor-payable')) document.getElementById('kpi-vendor-payable').innerText = formatCurrencyINR(vPay);
 }
 
 async function fetchClientsData() {
@@ -602,23 +613,17 @@ function renderShipmentsTable() {
                 </td>
                 <td><strong style="color: var(--primary); font-size: 13.5px;">${s.id}</strong></td>
                 <td>${s.date}</td>
-                <td>
-                    <strong>${s.company_name}</strong>
-                    <div style="font-size: 11.5px; color: #64748b;">Client ID: <strong>${s.client_id || 'N/A'}</strong></div>
-                </td>
-                <td><strong>${s.sb_be_no || '-'}</strong></td>
-                <td><span class="status-pill status-partial" style="font-size: 11.5px;">${s.shipment_type || 'Export'}</span></td>
-                <td><strong style="font-size: 14px;">₹${saleAmt.toLocaleString('en-IN')}</strong></td>
-                <td><span class="status-pill ${badgeClass}">${custStatus}</span></td>
-                <td><strong style="color: var(--success); font-size: 14px;">₹${netProfit.toLocaleString('en-IN')}</strong></td>
-                <td style="text-align: right;">
+                <td><strong style="color: #0f172a; font-size: 13.5px;">${s.company_name}</strong></td>
+                <td><strong style="font-size: 13.5px; color: var(--danger);">${formatCurrencyINR(purAmt)}</strong></td>
+                <td><strong style="font-size: 13.5px; color: var(--primary);">${formatCurrencyINR(saleAmt)}</strong></td>
+                <td style="text-align: right; white-space: nowrap;">
                     <button class="btn-action" onclick="navigateRoute('/shipment-entry/edit/${encodeURIComponent(s.id)}')" title="Edit Shipment"><i class="fa-solid fa-pen"></i> Edit</button>
-                    <button class="btn-action" onclick="deleteShipment('${s.id}')" title="Delete Shipment" style="color: var(--danger);"><i class="fa-solid fa-trash"></i></button>
+                    <button class="btn-action" onclick="deleteShipment('${s.id}')" title="Delete Shipment" style="color: var(--danger);"><i class="fa-solid fa-trash"></i> Delete</button>
                 </td>
             </tr>
 
             <tr id="sub-row-${safeId}" class="shipment-detail-subrow" style="display: none; background: #f8fafc;">
-                <td colspan="10" style="padding: 12px 16px; border-bottom: 2px solid #cbd5e1;">
+                <td colspan="7" style="padding: 12px 16px; border-bottom: 2px solid #cbd5e1;">
                     <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 14px 18px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0;">
                             <strong style="font-size: 15px; color: #0f172a;"><i class="fa-solid fa-boxes-packing"></i> Shipment Overview (${s.id})</strong>
@@ -626,17 +631,17 @@ function renderShipmentsTable() {
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; font-size: 13px;">
                             <div><strong>Booking Date:</strong> ${s.date}</div>
-                            <div><strong>Client Account:</strong> ${s.client_id} (${s.company_name})</div>
+                            <div><strong>Client Account:</strong> ${s.client_id || 'N/A'} (${s.company_name})</div>
                             <div><strong>Shipping Line:</strong> ${s.line_name || 'N/A'}</div>
                             <div><strong>Transporter:</strong> ${s.transport_name || 'N/A'}</div>
                             <div><strong>SB/BE Number:</strong> ${s.sb_be_no || 'N/A'}</div>
                             <div><strong>Shipment Type:</strong> ${s.shipment_type || 'Export'}</div>
-                            <div><strong>Taxable Purchase:</strong> ₹${purAmt.toLocaleString('en-IN')}</div>
-                            <div><strong>Taxable Sales:</strong> ₹${saleAmt.toLocaleString('en-IN')}</div>
-                            <div><strong>Customer Received:</strong> ₹${recAmt.toLocaleString('en-IN')}</div>
-                            <div><strong>Customer Outstanding:</strong> ₹${remBal.toLocaleString('en-IN')}</div>
+                            <div><strong>Taxable Purchase:</strong> ${formatCurrencyINR(purAmt)}</div>
+                            <div><strong>Taxable Sales:</strong> ${formatCurrencyINR(saleAmt)}</div>
+                            <div><strong>Customer Received:</strong> ${formatCurrencyINR(recAmt)}</div>
+                            <div><strong>Customer Outstanding:</strong> ${formatCurrencyINR(remBal)}</div>
                             <div style="grid-column: span 2; background: #ecfdf5; padding: 8px 12px; border-radius: 4px; border: 1px solid #a7f3d0;">
-                                <strong style="color: #065f46;">Net Operating Profit: ₹${netProfit.toLocaleString('en-IN')} (Margin: ${marginPct}%)</strong>
+                                <strong style="color: #065f46;">Net Operating Profit: ${formatCurrencyINR(netProfit)} (Margin: ${marginPct}%)</strong>
                             </div>
                         </div>
                     </div>
