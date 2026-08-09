@@ -1160,9 +1160,13 @@ function addPurchaseFormRow(data = {}) {
     const exRate = data.ex_rate !== undefined ? data.ex_rate : (curr === 'USD' ? 83.5 : (curr === 'EUR' ? 90.5 : 1.0));
     
     let baseAmt = 0;
-    if (data.foreign_amount !== undefined) baseAmt = data.foreign_amount;
-    else if (data.taxable !== undefined) baseAmt = data.taxable;
-    else if (data.amount !== undefined) baseAmt = data.amount;
+    if (data.foreign_amount !== undefined && parseFloat(data.foreign_amount) > 0) {
+        baseAmt = parseFloat(data.foreign_amount);
+    } else if (data.taxable !== undefined && parseFloat(data.taxable) > 0 && exRate > 0) {
+        baseAmt = curr === 'INR' ? parseFloat(data.taxable) : (parseFloat(data.taxable) / exRate);
+    } else if (data.amount !== undefined && parseFloat(data.amount) > 0 && exRate > 0) {
+        baseAmt = curr === 'INR' ? parseFloat(data.amount) : (parseFloat(data.amount) / exRate);
+    }
 
     const initGst = data.gst_pct !== undefined ? data.gst_pct : 18;
 

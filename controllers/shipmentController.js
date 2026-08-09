@@ -192,7 +192,13 @@ async function createShipment(req, res) {
         if (purchase_items) {
             parsedPurItems = typeof purchase_items === 'string' ? JSON.parse(purchase_items) : purchase_items;
             parsedPurItems.forEach(item => {
-                calcPurTotal += (parseFloat(item.amount) || parseFloat(item.total_amount) || 0);
+                const exRate = parseFloat(item.ex_rate) || 1;
+                const baseAmt = parseFloat(item.foreign_amount) || parseFloat(item.amount) || 0;
+                const gstPct = parseFloat(item.gst_pct) || 0;
+                const taxable = item.taxable !== undefined && parseFloat(item.taxable) > 0 ? parseFloat(item.taxable) : (baseAmt * exRate);
+                const gstAmt = item.gst_amt !== undefined ? parseFloat(item.gst_amt) : ((taxable * gstPct) / 100);
+                const lineTot = item.amount && parseFloat(item.amount) > 0 ? parseFloat(item.amount) : (taxable + gstAmt);
+                calcPurTotal += lineTot;
             });
         }
 
@@ -201,9 +207,13 @@ async function createShipment(req, res) {
         if (sale_items) {
             parsedSaleItems = typeof sale_items === 'string' ? JSON.parse(sale_items) : sale_items;
             parsedSaleItems.forEach(item => {
+                const exRate = parseFloat(item.ex_rate) || 1;
                 const q = parseFloat(item.qty) || 1;
-                const r = parseFloat(item.rate) || parseFloat(item.amount) || 0;
-                const lineTot = item.amount ? parseFloat(item.amount) : (q * r);
+                const r = parseFloat(item.rate) || 0;
+                const gstPct = parseFloat(item.gst_pct) || 0;
+                const taxable = item.taxable !== undefined && parseFloat(item.taxable) > 0 ? parseFloat(item.taxable) : (q * r * exRate);
+                const gstAmt = item.gst_amt !== undefined ? parseFloat(item.gst_amt) : ((taxable * gstPct) / 100);
+                const lineTot = item.amount && parseFloat(item.amount) > 0 ? parseFloat(item.amount) : (taxable + gstAmt);
                 calcSaleTotal += lineTot;
             });
         }
@@ -261,7 +271,13 @@ async function updateShipment(req, res) {
         if (purchase_items) {
             parsedPurItems = typeof purchase_items === 'string' ? JSON.parse(purchase_items) : purchase_items;
             parsedPurItems.forEach(item => {
-                calcPurTotal += (parseFloat(item.amount) || parseFloat(item.total_amount) || 0);
+                const exRate = parseFloat(item.ex_rate) || 1;
+                const baseAmt = parseFloat(item.foreign_amount) || parseFloat(item.amount) || 0;
+                const gstPct = parseFloat(item.gst_pct) || 0;
+                const taxable = item.taxable !== undefined && parseFloat(item.taxable) > 0 ? parseFloat(item.taxable) : (baseAmt * exRate);
+                const gstAmt = item.gst_amt !== undefined ? parseFloat(item.gst_amt) : ((taxable * gstPct) / 100);
+                const lineTot = item.amount && parseFloat(item.amount) > 0 ? parseFloat(item.amount) : (taxable + gstAmt);
+                calcPurTotal += lineTot;
             });
         }
 
@@ -270,9 +286,13 @@ async function updateShipment(req, res) {
         if (sale_items) {
             parsedSaleItems = typeof sale_items === 'string' ? JSON.parse(sale_items) : sale_items;
             parsedSaleItems.forEach(item => {
+                const exRate = parseFloat(item.ex_rate) || 1;
                 const q = parseFloat(item.qty) || 1;
-                const r = parseFloat(item.rate) || parseFloat(item.amount) || 0;
-                const lineTot = item.amount ? parseFloat(item.amount) : (q * r);
+                const r = parseFloat(item.rate) || 0;
+                const gstPct = parseFloat(item.gst_pct) || 0;
+                const taxable = item.taxable !== undefined && parseFloat(item.taxable) > 0 ? parseFloat(item.taxable) : (q * r * exRate);
+                const gstAmt = item.gst_amt !== undefined ? parseFloat(item.gst_amt) : ((taxable * gstPct) / 100);
+                const lineTot = item.amount && parseFloat(item.amount) > 0 ? parseFloat(item.amount) : (taxable + gstAmt);
                 calcSaleTotal += lineTot;
             });
         }
