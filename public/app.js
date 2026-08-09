@@ -1430,7 +1430,11 @@ async function loadAllStateData() {
 // --- MODAL & PAYMENT HANDLERS ---
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.style.display = 'none';
+        const form = modal.querySelector('form');
+        if (form) form.reset();
+    }
 }
 
 function openReceivePaymentModal(shipmentId = '') {
@@ -1669,7 +1673,12 @@ async function deleteVendorPayment(vpId) {
 }
 
 function openClientModal() {
-    document.getElementById('modal-client').style.display = 'flex';
+    const modal = document.getElementById('modal-client');
+    if (modal) {
+        const form = modal.querySelector('form');
+        if (form) form.reset();
+        modal.style.display = 'flex';
+    }
 }
 
 async function handleSaveClient(e) {
@@ -1696,6 +1705,8 @@ async function handleSaveClient(e) {
         }
 
         showToast(data.message || 'Client created successfully!', 'success');
+        const form = document.querySelector('#modal-client form');
+        if (form) form.reset();
         closeModal('modal-client');
         fetchClientsData();
     } catch (e) {}
@@ -1715,7 +1726,12 @@ async function toggleClientStatus(clientId, status) {
 }
 
 function openVendorModal() {
-    document.getElementById('modal-vendor').style.display = 'flex';
+    const modal = document.getElementById('modal-vendor');
+    if (modal) {
+        const form = modal.querySelector('form');
+        if (form) form.reset();
+        modal.style.display = 'flex';
+    }
 }
 
 async function handleSaveVendor(e) {
@@ -1743,6 +1759,8 @@ async function handleSaveVendor(e) {
         }
 
         showToast(data.message || 'Vendor created successfully!', 'success');
+        const form = document.querySelector('#modal-vendor form');
+        if (form) form.reset();
         closeModal('modal-vendor');
         fetchVendorsData();
     } catch (e) {}
