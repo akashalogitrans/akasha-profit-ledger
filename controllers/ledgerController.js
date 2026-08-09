@@ -59,7 +59,7 @@ async function getPaymentsReceived(req, res) {
                 s.sale_status,
                 COUNT(pt.id) AS transaction_count
             FROM shipments s
-            LEFT JOIN payment_transactions pt ON s.id = pt.shipment_id
+            LEFT JOIN payment_transactions pt ON (s.id COLLATE utf8mb4_general_ci) = (pt.shipment_id COLLATE utf8mb4_general_ci)
             GROUP BY s.id, s.client_id, s.company_name, s.payment_receive_date, s.sale_amount, s.received_amount, s.remaining_balance, s.sale_status, s.created_at
             ORDER BY s.created_at DESC
         `;

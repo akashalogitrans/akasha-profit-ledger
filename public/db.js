@@ -191,6 +191,12 @@ async function runAutoMigration() {
             id INT AUTO_INCREMENT PRIMARY KEY, user_name VARCHAR(100), action VARCHAR(100), target_type VARCHAR(50), target_id VARCHAR(100), details TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
 
+        try {
+            await mysqlPool.query(`ALTER TABLE shipments CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci`);
+            await mysqlPool.query(`ALTER TABLE payment_transactions CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci`);
+            await mysqlPool.query(`ALTER TABLE vendor_payments CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci`);
+        } catch (cErr) {}
+
         console.log('✅ [Hostinger MySQL Tables Auto-Migrated & Verified Active]');
     } catch (e) {
         console.error('Migration Warning:', e.message);

@@ -31,8 +31,8 @@ async function getKPIs(req, res) {
         // 2. Collection Metrics (Today & This Month)
         const collectionSql = `
             SELECT 
-                COALESCE(SUM(CASE WHEN payment_date = ? THEN amount ELSE 0 END), 0) AS todays_collection,
-                COALESCE(SUM(CASE WHEN DATE_FORMAT(payment_date, '%Y-%m') = ? THEN amount ELSE 0 END), 0) AS monthly_collection
+                COALESCE(SUM(CASE WHEN CAST(payment_date AS CHAR) = CAST(? AS CHAR) THEN amount ELSE 0 END), 0) AS todays_collection,
+                COALESCE(SUM(CASE WHEN DATE_FORMAT(payment_date, '%Y-%m') = CAST(? AS CHAR) THEN amount ELSE 0 END), 0) AS monthly_collection
             FROM payment_transactions
         `;
         const [collRows] = await pool.execute(collectionSql, [todayStr, monthStr]);
@@ -56,7 +56,7 @@ async function getKPIs(req, res) {
         const recentPaymentsSql = `
             SELECT pt.*, s.company_name 
             FROM payment_transactions pt
-            JOIN shipments s ON pt.shipment_id = s.id
+            JOIN shipments s ON (pt.shipment_id COLLATE utf8mb4_general_ci) = (s.id COLLATE utf8mb4_general_ci)
             ORDER BY pt.created_at DESC 
             LIMIT 6
         `;
