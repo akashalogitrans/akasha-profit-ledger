@@ -19,6 +19,7 @@ const shipmentRoutes = require('./routes/shipmentRoutes');
 const ledgerRoutes = require('./routes/ledgerRoutes');
 const vendorPaymentRoutes = require('./routes/vendorPaymentRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const expenseRoutes = require('./routes/expenseRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -51,6 +52,7 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/shipments', shipmentRoutes);
 app.use('/api/vendor-payments', vendorPaymentRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/expenses', expenseRoutes);
 app.use('/api', ledgerRoutes);
 
 // Single Page Application Wildcard Route (Rewrites all non-file requests to index.html)
@@ -78,4 +80,10 @@ module.exports = app;
 // Listen on Port (for Standalone Node.js Container & Direct Execution)
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Akasha LogiTrans Freight ERP Server active on port ${PORT}`);
+    const { syncAllVendorsFromShipments } = require('./controllers/vendorController');
+    setTimeout(async () => {
+        try {
+            await syncAllVendorsFromShipments();
+        } catch (e) {}
+    }, 1500);
 });

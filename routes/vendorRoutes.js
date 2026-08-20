@@ -6,6 +6,10 @@ const { authenticateJWT } = require('../middleware/authMiddleware');
 router.use(authenticateJWT);
 
 router.get('/', vendorController.getVendors);
+router.post('/sync', async (req, res) => {
+    await vendorController.syncAllVendorsFromShipments();
+    return res.json({ success: true, message: 'Vendors synchronized and deduplicated' });
+});
 router.get('/:id', vendorController.getVendorById);
 router.post('/', vendorController.createVendor);
 router.put('/:id', vendorController.updateVendor);

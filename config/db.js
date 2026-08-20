@@ -137,21 +137,26 @@ async function runAutoMigration() {
     try {
         await mysqlPool.query(`CREATE TABLE IF NOT EXISTS directors (
             id VARCHAR(50) PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE, email VARCHAR(150) NOT NULL UNIQUE,
-            pin_hash VARCHAR(255) NOT NULL, role VARCHAR(100) DEFAULT 'Director', avatar VARCHAR(255), status VARCHAR(20) DEFAULT 'Active', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            phone VARCHAR(50), pin_hash VARCHAR(255) NOT NULL, role VARCHAR(100) DEFAULT 'Director', avatar VARCHAR(255), status VARCHAR(20) DEFAULT 'Active', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
 
-        const [dirRows] = await mysqlPool.query(`SELECT COUNT(*) as count FROM directors`);
-        if (dirRows && dirRows[0].count == 0) {
-            const h077760 = await bcrypt.hash('077760', 10);
-            const h077170 = await bcrypt.hash('077170', 10);
-            const h088660 = await bcrypt.hash('088660', 10);
+        try {
+            await mysqlPool.query(`ALTER TABLE directors ADD COLUMN IF NOT EXISTS phone VARCHAR(50) AFTER email`);
+        } catch (e) {}
 
-            await mysqlPool.query(`INSERT INTO directors (id, name, email, pin_hash, role, avatar) VALUES
-                ('dir_1', 'Khushal Patel', 'khushal@akashalogitrans.com', ?, 'CEO & Founder', 'https://akashalogitrans.com/khushal.png'),
-                ('dir_2', 'Dhruv Patel', 'dhruv@akashalogitrans.com', ?, 'Director - Rates & Procurement', 'https://akashalogitrans.com/dhruv_patel.png'),
-                ('dir_3', 'Yagnik Patel', 'info@akashalogitrans.com', ?, 'Director - Finance & Audit', 'https://akashalogitrans.com/yagnik.jpeg')
-            `, [h077760, h077170, h088660]);
-        }
+        const h8866 = await bcrypt.hash('8866', 10);
+        const h7776 = await bcrypt.hash('7776', 10);
+        const h7717 = await bcrypt.hash('7717', 10);
+
+        // Ensure the exact 3 directors exist and are up to date
+        await mysqlPool.query(`
+            INSERT INTO directors (id, name, email, phone, pin_hash, role, avatar) VALUES
+            ('dir_1', 'KHUSHAL VASOYA', 'khushal@akashalogitrans.com', '9328227962', ?, 'CEO & Founder', 'https://akashalogitrans.com/khushal.png'),
+            ('dir_2', 'DHRUV THESHIYA', 'dhruv@akashalogitrans.com', '8155068853', ?, 'Director - Rates & Procurement', 'https://akashalogitrans.com/dhruv_patel.png'),
+            ('dir_3', 'YAGNIK SORATHIYA', 'info@akashalogitrans.com', '9924929129', ?, 'Director - Finance & Audit', 'https://akashalogitrans.com/yagnik.jpeg')
+            ON DUPLICATE KEY UPDATE
+            name = VALUES(name), phone = VALUES(phone), pin_hash = VALUES(pin_hash), role = VALUES(role), avatar = VALUES(avatar)
+        `, [h7776, h7717, h8866]);
 
         await mysqlPool.query(`CREATE TABLE IF NOT EXISTS clients (
             id VARCHAR(50) PRIMARY KEY, name VARCHAR(200) NOT NULL, contact_person VARCHAR(100), mobile VARCHAR(50), email VARCHAR(150), gstin VARCHAR(50), pan VARCHAR(50), address TEXT, credit_terms VARCHAR(50), opening_balance DECIMAL(14,2) DEFAULT 0, status VARCHAR(20) DEFAULT 'ACTIVE', owner VARCHAR(150) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

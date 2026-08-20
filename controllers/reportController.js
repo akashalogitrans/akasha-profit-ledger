@@ -145,7 +145,14 @@ async function getProfitReport(req, res) {
             const saleAmt = parseFloat(r.sale_amount) || 0;
             const purAmt = parseFloat(r.purchase_amount) || 0;
             const profit = saleAmt - purAmt;
-            const margin = saleAmt > 0 ? ((profit / saleAmt) * 100).toFixed(2) : 0;
+            let margin = 0;
+            if (saleAmt > 0) {
+                margin = parseFloat(((profit / saleAmt) * 100).toFixed(2));
+            } else if (purAmt > 0) {
+                margin = -100.0;
+            } else {
+                margin = 0.0;
+            }
 
             return {
                 shipment_id: r.id,
@@ -155,7 +162,7 @@ async function getProfitReport(req, res) {
                 sales_amount: saleAmt,
                 purchase_amount: purAmt,
                 net_profit: profit,
-                margin_pct: parseFloat(margin)
+                margin_pct: margin
             };
         });
 

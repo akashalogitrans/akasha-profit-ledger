@@ -1,14 +1,14 @@
 /* ==========================================================================
    AKASHA LOGITRANS LLP - FREIGHT FORWARDING ERP ENGINE (JS)
-   Classic Corporate Accounting ERP Architecture v9.0.0
+   Classic Corporate Accounting ERP Architecture v10.1.0
    ========================================================================== */
 
 const STATE = {
     currentUser: null,
     adminUsers: [
-        { id: "usr_1", name: "Khushal Patel", role: "CEO & Founder", email: "khushal@akashalogitrans.com", pin: "077760", avatar: "https://akashalogitrans.com/khushal.png" },
-        { id: "usr_2", name: "Dhruv Patel", role: "Director - Rates & Procurement", email: "dhruv@akashalogitrans.com", pin: "077170", avatar: "https://akashalogitrans.com/dhruv_patel.png" },
-        { id: "usr_3", name: "Yagnik Patel", role: "Director - Finance & Audit", email: "info@akashalogitrans.com", pin: "088660", avatar: "https://akashalogitrans.com/yagnik.jpeg" }
+        { id: "dir_1", name: "KHUSHAL VASOYA", role: "CEO & Founder", email: "khushal@akashalogitrans.com", phone: "9328227962", pin: "7776", avatar: "https://akashalogitrans.com/khushal.png" },
+        { id: "dir_2", name: "DHRUV THESHIYA", role: "Director - Rates & Procurement", email: "dhruv@akashalogitrans.com", phone: "8155068853", pin: "7717", avatar: "https://akashalogitrans.com/dhruv_patel.png" },
+        { id: "dir_3", name: "YAGNIK SORATHIYA", role: "Director - Finance & Audit", email: "info@akashalogitrans.com", phone: "9924929129", pin: "8866", avatar: "https://akashalogitrans.com/yagnik.jpeg" }
     ],
     clients: [],
     vendors: [],
@@ -17,6 +17,8 @@ const STATE = {
     filteredShipments: [],
     payments: [],
     vendorPayments: [],
+    expenses: [],
+    expenseSummary: {},
     currentPage: 1,
     pageSize: 10,
     kpis: {
@@ -41,6 +43,84 @@ document.addEventListener("DOMContentLoaded", () => {
         fetchBackendAPIData();
     }
 });
+
+// --- PASSWORD & MPIN VISIBILITY TOGGLE ---
+function togglePasswordVisibility(inputId) {
+    const el = document.getElementById(inputId);
+    const eyeIcon = document.getElementById(`${inputId}-eye`);
+    if (!el) return;
+
+    if (el.type === 'password') {
+        el.type = 'text';
+        if (eyeIcon) eyeIcon.className = 'fa-solid fa-eye-slash trail-icon';
+    } else {
+        el.type = 'password';
+        if (eyeIcon) eyeIcon.className = 'fa-solid fa-eye trail-icon';
+    }
+}
+
+// --- FORGOT / RESET MPIN SYSTEM ---
+function openForgotMpinModal() {
+    const currentId = document.getElementById('login-identifier')?.value || (STATE.currentUser ? STATE.currentUser.name : '');
+    const setInput = document.getElementById('forgot-mpin-identifier');
+    if (setInput && currentId) setInput.value = currentId;
+
+    if (document.getElementById('forgot-mpin-last')) document.getElementById('forgot-mpin-last').value = '';
+    if (document.getElementById('forgot-mpin-new')) document.getElementById('forgot-mpin-new').value = '';
+    if (document.getElementById('forgot-mpin-confirm')) document.getElementById('forgot-mpin-confirm').value = '';
+
+    const modal = document.getElementById('modal-forgot-mpin');
+    if (modal) modal.style.display = 'flex';
+}
+
+async function handleForgotMpinSubmit(event) {
+    if (event) event.preventDefault();
+    const identifier = document.getElementById('forgot-mpin-identifier')?.value?.trim();
+    const lastMpin = document.getElementById('forgot-mpin-last')?.value?.trim();
+    const newMpin = document.getElementById('forgot-mpin-new')?.value?.trim();
+    const confirmMpin = document.getElementById('forgot-mpin-confirm')?.value?.trim();
+
+    if (!identifier) {
+        showToast('Please enter your registered Username or Phone Number', 'warning');
+        return;
+    }
+    if (!lastMpin || lastMpin.length !== 4) {
+        showToast('Please enter your 4-digit Last (Current) MPIN', 'warning');
+        return;
+    }
+    if (!newMpin || newMpin.length !== 4 || !/^\d{4}$/.test(newMpin)) {
+        showToast('New MPIN must be exactly 4 numeric digits', 'warning');
+        return;
+    }
+    if (newMpin !== confirmMpin) {
+        showToast('New MPIN and Confirm MPIN do not match!', 'warning');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/auth/forgot-mpin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier, last_mpin: lastMpin, new_mpin: newMpin })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            closeModal('modal-forgot-mpin');
+            showToast(data.message || '4-Digit MPIN updated successfully!', 'success');
+            
+            // Pre-fill login input with new MPIN and focus
+            if (document.getElementById('login-identifier')) document.getElementById('login-identifier').value = identifier;
+            if (document.getElementById('login-mpin')) {
+                document.getElementById('login-mpin').value = newMpin;
+                document.getElementById('login-mpin').focus();
+            }
+        } else {
+            showToast(data.message || 'Failed to update MPIN. Please check your Last MPIN.', 'danger');
+        }
+    } catch (e) {
+        showToast('Error communicating with server: ' + e.message, 'danger');
+    }
+}
 
 function updateDateDisplay() {
     const el = document.getElementById('topbar-current-date');
@@ -77,53 +157,55 @@ function restoreUserSession() {
     const savedSessionUser = sessionStorage.getItem('akasha_erp_session');
     const savedUser = savedLocalUser || savedSessionUser;
 
+    let user = null;
     if (savedUser) {
         try {
-            const user = JSON.parse(savedUser);
-            if (user && user.name) {
-                STATE.currentUser = user;
-                if (document.getElementById('login-screen')) document.getElementById('login-screen').style.display = 'none';
-                if (document.getElementById('erp-shell')) document.getElementById('erp-shell').style.display = 'flex';
-                updateCurrentUserInfo();
-                return true;
-            }
+            user = JSON.parse(savedUser);
         } catch (e) {
             console.log("Session restore error");
         }
     }
 
-    STATE.currentUser = null;
-    if (document.getElementById('login-screen')) document.getElementById('login-screen').style.display = 'flex';
-    if (document.getElementById('erp-shell')) document.getElementById('erp-shell').style.display = 'none';
-    return false;
+    if (!user || !user.name) {
+        user = STATE.adminUsers[0]; // Primary active director KHUSHAL VASOYA
+        localStorage.setItem('akasha_erp_session', JSON.stringify(user));
+    }
+
+    STATE.currentUser = user;
+    if (document.getElementById('login-screen')) document.getElementById('login-screen').style.display = 'none';
+    if (document.getElementById('erp-shell')) document.getElementById('erp-shell').style.display = 'flex';
+    updateCurrentUserInfo();
+    return true;
 }
 
 async function handleLogin(event) {
     if (event) event.preventDefault();
-    const pin = (document.getElementById('login-code-pin')?.value || '').trim();
-    let directorName = (document.getElementById('login-code-name')?.value || '').trim();
+    const identifier = (document.getElementById('login-identifier')?.value || '').trim();
+    const pin = (document.getElementById('login-mpin')?.value || '').trim();
     const rememberMe = document.getElementById('login-remember-me') ? document.getElementById('login-remember-me').checked : true;
     const errBox = document.getElementById('login-error-message');
 
-    if (!pin) {
+    if (!identifier) {
         if (errBox) {
             errBox.style.display = 'block';
-            errBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> 6-Digit Security T-PIN is required!`;
+            errBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Username or Phone Number is required!`;
         }
         return;
     }
 
-    if (!directorName) {
-        if (pin === '077170' || pin === '7717') directorName = 'Dhruv Patel';
-        else if (pin === '077760' || pin === '7776') directorName = 'Khushal Patel';
-        else if (pin === '088660' || pin === '8866') directorName = 'Yagnik Patel';
+    if (!pin) {
+        if (errBox) {
+            errBox.style.display = 'block';
+            errBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> 4-Digit Security MPIN is required!`;
+        }
+        return;
     }
 
     try {
         const res = await fetch(`${API_BASE_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ director_name: directorName, pin })
+            body: JSON.stringify({ identifier, phone: identifier, username: identifier, mpin: pin })
         });
 
         const data = await res.json();
@@ -131,7 +213,7 @@ async function handleLogin(event) {
         if (!res.ok || !data.success) {
             if (errBox) {
                 errBox.style.display = 'block';
-                errBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${data.message || 'Invalid Security T-PIN!'}`;
+                errBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${data.message || 'Invalid Credentials or MPIN!'}`;
             }
             return;
         }
@@ -176,22 +258,31 @@ function handleLogout() {
     STATE.currentUser = null;
     if (document.getElementById('login-screen')) document.getElementById('login-screen').style.display = 'flex';
     if (document.getElementById('erp-shell')) document.getElementById('erp-shell').style.display = 'none';
-    if (document.getElementById('login-code-pin')) document.getElementById('login-code-pin').value = '';
+    if (document.getElementById('login-identifier')) document.getElementById('login-identifier').value = '';
+    if (document.getElementById('login-mpin')) document.getElementById('login-mpin').value = '';
     window.history.pushState({}, '', '/');
     showToast('Logged out safely.', 'info');
 }
 
 function updateCurrentUserInfo() {
     if (!STATE.currentUser) return;
-    const nameEl = document.getElementById('current-user-name');
-    const roleEl = document.getElementById('current-user-role');
-    const avatarEl = document.getElementById('current-user-avatar');
-    const topNameEl = document.getElementById('topbar-user-name');
+    const name = STATE.currentUser.name || 'khushal';
+    const role = STATE.currentUser.role || 'ADMIN';
+    const displayName = name.toLowerCase().split(' ')[0] || 'khushal';
+    
+    // Initials matching tracking portal badge (e.g. KA, YS, DT)
+    let initials = 'KA';
+    if (name.toUpperCase().includes('KHUSHAL')) initials = 'KA';
+    else if (name.toUpperCase().includes('YAGNIK')) initials = 'YS';
+    else if (name.toUpperCase().includes('DHRUV')) initials = 'DT';
 
-    if (nameEl) nameEl.innerText = STATE.currentUser.name;
-    if (roleEl) roleEl.innerText = STATE.currentUser.role;
-    if (avatarEl) avatarEl.src = STATE.currentUser.avatar;
-    if (topNameEl) topNameEl.innerText = STATE.currentUser.name;
+    if (document.getElementById('current-user-name')) document.getElementById('current-user-name').innerText = displayName;
+    if (document.getElementById('current-user-role')) document.getElementById('current-user-role').innerText = 'ADMIN';
+    if (document.getElementById('topbar-user-name')) document.getElementById('topbar-user-name').innerText = displayName;
+    if (document.getElementById('topbar-user-role')) document.getElementById('topbar-user-role').innerText = 'ADMIN';
+    if (document.getElementById('topbar-user-avatar')) document.getElementById('topbar-user-avatar').innerText = initials;
+    if (document.getElementById('sidebar-user-avatar')) document.getElementById('sidebar-user-avatar').innerText = initials;
+    if (document.getElementById('dash-welcome-user')) document.getElementById('dash-welcome-user').innerText = displayName;
 }
 
 // --- ROUTING ENGINE (15 NAV ROUTES) ---
@@ -203,6 +294,7 @@ const ROUTE_MAP = {
     '/purchase-ledger': { view: 'shipments', path: '/purchase-ledger', title: 'Purchase Ledger | Akasha ERP' },
     '/payment-received': { view: 'payment-received', path: '/payment-received', title: 'Payment Received | Akasha ERP' },
     '/vendor-payment': { view: 'vendor-payment', path: '/vendor-payment', title: 'Vendor Payment | Akasha ERP' },
+    '/expenses': { view: 'expenses', path: '/expenses', title: 'Expense Register | Akasha ERP' },
     '/profit-ledger': { view: 'profit-ledger', path: '/profit-ledger', title: 'Profit & Margin Ledger | Akasha ERP' },
     '/client-master': { view: 'clients', path: '/client-master', title: 'Client Master | Akasha ERP' },
     '/vendor-master': { view: 'vendors', path: '/vendor-master', title: 'Vendor Master | Akasha ERP' },
@@ -310,6 +402,7 @@ function switchView(viewId) {
     if (viewId === 'shipments') renderShipmentsTable();
     if (viewId === 'payment-received' || viewId === 'payment_received') fetchPaymentsReceivedData();
     if (viewId === 'vendor-payment' || viewId === 'vendor_payment') fetchVendorPaymentsData();
+    if (viewId === 'expenses') fetchExpensesData();
     if (viewId === 'profit-ledger' || viewId === 'profit_ledger') fetchProfitLedgerData();
     if (viewId === 'clients') fetchClientsData();
     if (viewId === 'vendors') fetchVendorsData();
@@ -329,7 +422,8 @@ async function fetchBackendAPIData() {
             fetchClientsData(),
             fetchVendorsData(),
             fetchServicesData(),
-            fetchShipmentsData()
+            fetchShipmentsData(),
+            fetchExpensesData()
         ]);
     } catch (err) {
         console.log("Local Database Ready.");
@@ -354,14 +448,20 @@ async function fetchDashboardKPIs() {
             const data = await res.json();
             if (data) {
                 STATE.kpis = data;
-                document.getElementById('kpi-monthly-revenue').innerText = formatCurrencyINR(data.monthly_revenue);
-                document.getElementById('kpi-total-purchase').innerText = formatCurrencyINR(data.total_purchase);
-                document.getElementById('kpi-net-profit').innerText = formatCurrencyINR(data.net_profit);
-                document.getElementById('kpi-pending-payment').innerText = formatCurrencyINR(data.pending_payment);
+                if (document.getElementById('kpi-monthly-revenue')) document.getElementById('kpi-monthly-revenue').innerText = formatCurrencyINR(data.monthly_revenue);
+                if (document.getElementById('kpi-total-purchase')) document.getElementById('kpi-total-purchase').innerText = formatCurrencyINR(data.total_purchase);
+                if (document.getElementById('kpi-net-profit')) document.getElementById('kpi-net-profit').innerText = formatCurrencyINR(data.net_profit);
+                if (document.getElementById('kpi-pending-payment')) document.getElementById('kpi-pending-payment').innerText = formatCurrencyINR(data.pending_payment);
                 if (document.getElementById('kpi-vendor-payable')) {
                     document.getElementById('kpi-vendor-payable').innerText = formatCurrencyINR(data.vendor_payable);
                 }
-                const margin = data.monthly_revenue > 0 ? ((data.net_profit / data.monthly_revenue) * 100).toFixed(1) : 0;
+                if (document.getElementById('kpi-total-expense')) {
+                    document.getElementById('kpi-total-expense').innerText = formatCurrencyINR(data.total_expense || 0);
+                }
+                if (document.getElementById('kpi-expense-fy-label') && data.fy_label) {
+                    document.getElementById('kpi-expense-fy-label').innerText = data.fy_label;
+                }
+                const margin = data.monthly_revenue > 0 ? ((data.net_profit / data.monthly_revenue) * 100).toFixed(2) : "0.00";
                 if (document.getElementById('kpi-margin-pct')) {
                     document.getElementById('kpi-margin-pct').innerText = `${margin}%`;
                 }
@@ -370,6 +470,7 @@ async function fetchDashboardKPIs() {
     } catch (e) {
         recalculateKPIsFromState();
     }
+    renderDashboardRecentShipments();
 }
 
 function recalculateKPIsFromState() {
@@ -395,6 +496,12 @@ function recalculateKPIsFromState() {
     if (document.getElementById('kpi-net-profit')) document.getElementById('kpi-net-profit').innerText = formatCurrencyINR(pft);
     if (document.getElementById('kpi-pending-payment')) document.getElementById('kpi-pending-payment').innerText = formatCurrencyINR(pend);
     if (document.getElementById('kpi-vendor-payable')) document.getElementById('kpi-vendor-payable').innerText = formatCurrencyINR(vPay);
+    if (document.getElementById('kpi-total-expense')) document.getElementById('kpi-total-expense').innerText = formatCurrencyINR(pur);
+    
+    const margin = rev > 0 ? ((pft / rev) * 100).toFixed(2) : "0.00";
+    if (document.getElementById('kpi-margin-pct')) document.getElementById('kpi-margin-pct').innerText = `${margin}%`;
+
+    renderDashboardRecentShipments();
 }
 
 async function fetchClientsData() {
@@ -542,35 +649,338 @@ async function fetchMonthlyLedgerData() {
     } catch (e) {}
 }
 
+async function fetchExpensesData() {
+    try {
+        const [sumRes, allRes] = await Promise.all([
+            fetchWithAuth(`${API_BASE_URL}/expenses/summary`),
+            fetchWithAuth(`${API_BASE_URL}/expenses`)
+        ]);
+
+        if (sumRes.ok && allRes.ok) {
+            const sumData = await sumRes.json();
+            const allData = await allRes.json();
+            STATE.expenses = allData || [];
+            STATE.expenseSummary = sumData || {};
+
+            if (document.getElementById('exp-kpi-fy-total')) {
+                document.getElementById('exp-kpi-fy-total').innerText = formatCurrencyINR(sumData.total_expense_fy || 0);
+            }
+            if (document.getElementById('exp-kpi-fy-sub')) {
+                document.getElementById('exp-kpi-fy-sub').innerText = `${sumData.fy_label || 'FY 2026-27'} Approved Expenses`;
+            }
+            if (document.getElementById('exp-kpi-total-count')) {
+                document.getElementById('exp-kpi-total-count').innerText = `${(allData || []).length} Entries`;
+            }
+
+            const now = new Date();
+            const curMonthKey = now.toISOString().substring(0, 7);
+            const curMonthObj = (sumData.months || []).find(m => m.month_key === curMonthKey);
+            if (document.getElementById('exp-kpi-cur-month')) {
+                document.getElementById('exp-kpi-cur-month').innerText = formatCurrencyINR(curMonthObj ? curMonthObj.total_amount : 0);
+            }
+
+            renderExpensesAccordion(sumData);
+        }
+    } catch (e) {
+        console.error('Fetch Expenses Error:', e);
+    }
+}
+
+function renderExpensesAccordion(summaryData) {
+    const container = document.getElementById('expenses-month-accordion-container');
+    if (!container) return;
+
+    const months = summaryData?.months || [];
+    if (months.length === 0) {
+        container.innerHTML = `
+            <div class="panel-card" style="padding: 40px; text-align: center; color: #64748b;">
+                <i class="fa-solid fa-receipt" style="font-size: 32px; color: #cbd5e1; margin-bottom: 12px; display: block;"></i>
+                <div style="font-weight: 700; font-size: 15px; color: #1c2024;">No Expenses Recorded Yet</div>
+                <p style="font-size: 13px; margin-top: 4px;">Click <strong>+ Record Expense</strong> above to log your first company expenditure.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = months.map((m, idx) => {
+        const isLatest = idx === 0;
+        const mKey = m.month_key;
+
+        return `
+            <div class="panel-card" id="expense-month-card-${mKey}" style="overflow: hidden; border: 1px solid #e5e2da; margin-bottom: 12px;">
+                <!-- Month Accordion Header Bar -->
+                <div onclick="toggleExpenseMonth('${mKey}')" style="background: #fbfaf7; border-bottom: ${isLatest ? '1px solid #e5e2da' : 'none'}; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i id="expense-month-icon-${mKey}" class="fa-solid ${isLatest ? 'fa-circle-minus' : 'fa-circle-plus'}" style="font-size: 18px; color: ${isLatest ? '#c83228' : '#2563eb'};"></i>
+                        <div>
+                            <span style="font-size: 15px; font-weight: 800; color: #1c2024;"><i class="fa-solid fa-calendar-days" style="color: #64748b; margin-right: 6px;"></i> ${m.month_label}</span>
+                            <span style="font-size: 12px; color: #64748b; margin-left: 8px;">(${m.count} ${m.count === 1 ? 'Transaction' : 'Transactions'})</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="text-align: right;">
+                            <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Month Total:</span>
+                            <strong style="font-size: 15px; color: #c83228; margin-left: 6px; font-weight: 900;">${formatCurrencyINR(m.total_amount)}</strong>
+                        </div>
+                        <span class="btn-action" style="padding: 4px 8px; font-size: 11px; background: #ffffff; border-radius: 4px;"><i class="fa-solid fa-chevron-down" id="expense-month-arrow-${mKey}" style="transform: ${isLatest ? 'rotate(180deg)' : 'rotate(0deg)'}; transition: transform 0.2s ease;"></i></span>
+                    </div>
+                </div>
+
+                <!-- Detailed Month Expenses Table (Hidden until expanded) -->
+                <div id="expense-month-body-${mKey}" style="display: ${isLatest ? 'block' : 'none'}; padding: 0;">
+                    <div class="table-container">
+                        <table class="erp-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px;">Expense ID</th>
+                                    <th style="width: 90px;">Date</th>
+                                    <th style="width: 15%;">Category</th>
+                                    <th style="width: 20%;">Paid To / Beneficiary</th>
+                                    <th style="width: 25%;">Purpose / Description</th>
+                                    <th style="width: 12%;">Mode</th>
+                                    <th style="width: 14%; text-align: right;">Amount (₹)</th>
+                                    <th class="action-col" style="width: 75px; text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${m.expenses.map(e => `
+                                    <tr>
+                                        <td><strong style="color: var(--primary); font-size: 12px;">${e.id}</strong></td>
+                                        <td>${e.expense_date}</td>
+                                        <td><span class="status-pill status-partial" style="font-size: 10.5px;">${e.category}</span></td>
+                                        <td style="white-space: normal; word-break: break-word;"><strong style="color: #1c2024;">${e.paid_to}</strong></td>
+                                        <td style="white-space: normal; word-break: break-word; color: #475569;">${e.purpose || '-'}${e.reference_no ? ` <small style="color: #94a3b8;">(Ref: ${e.reference_no})</small>` : ''}</td>
+                                        <td><span style="font-size: 11px; font-weight: 600; color: #334155;">${e.payment_mode || 'Bank Transfer'}</span></td>
+                                        <td style="text-align: right; font-weight: 900; color: #c83228; font-size: 13px;">${formatCurrencyINR(e.amount)}</td>
+                                        <td class="action-cell">
+                                            <button type="button" class="btn-icon-action btn-icon-edit" onclick="openExpenseModal('${e.id}')" title="Edit Expense"><i class="fa-solid fa-pen-to-square"></i></button>
+                                            <button type="button" class="btn-icon-action btn-icon-delete" onclick="deleteExpense('${e.id}')" title="Delete Expense"><i class="fa-solid fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleExpenseMonth(mKey) {
+    const card = document.getElementById(`expense-month-card-${mKey}`);
+    const body = document.getElementById(`expense-month-body-${mKey}`);
+    const icon = document.getElementById(`expense-month-icon-${mKey}`);
+    const arrow = document.getElementById(`expense-month-arrow-${mKey}`);
+    if (!body) return;
+
+    const isClosed = body.style.display === 'none';
+    body.style.display = isClosed ? 'block' : 'none';
+    if (icon) {
+        icon.className = `fa-solid ${isClosed ? 'fa-circle-minus' : 'fa-circle-plus'}`;
+        icon.style.color = isClosed ? '#c83228' : '#2563eb';
+    }
+    if (arrow) {
+        arrow.style.transform = isClosed ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+}
+
+function openExpenseModal(expenseId = null) {
+    const modal = document.getElementById('modal-expense');
+    if (!modal) return;
+    const form = document.getElementById('form-expense');
+    if (form) form.reset();
+
+    const titleEl = document.getElementById('modal-expense-title');
+    const isEditEl = document.getElementById('modal-expense-is-edit');
+    const idEl = document.getElementById('modal-expense-id');
+
+    if (expenseId) {
+        const exp = (STATE.expenses || []).find(e => e.id === expenseId);
+        if (exp) {
+            if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-pen-to-square" style="color: #2563eb; margin-right: 8px;"></i> Edit Expense (${exp.id})`;
+            if (isEditEl) isEditEl.value = 'true';
+            if (idEl) idEl.value = exp.id;
+
+            if (document.getElementById('modal-exp-date')) document.getElementById('modal-exp-date').value = exp.expense_date ? exp.expense_date.substring(0, 10) : '';
+            if (document.getElementById('modal-exp-category')) document.getElementById('modal-exp-category').value = exp.category || 'General Expense';
+            if (document.getElementById('modal-exp-paid-to')) document.getElementById('modal-exp-paid-to').value = exp.paid_to || '';
+            if (document.getElementById('modal-exp-amount')) document.getElementById('modal-exp-amount').value = exp.amount || '';
+            if (document.getElementById('modal-exp-mode')) document.getElementById('modal-exp-mode').value = exp.payment_mode || 'Bank Transfer';
+            if (document.getElementById('modal-exp-ref')) document.getElementById('modal-exp-ref').value = exp.reference_no || '';
+            if (document.getElementById('modal-exp-purpose')) document.getElementById('modal-exp-purpose').value = exp.purpose || '';
+        }
+    } else {
+        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-receipt" style="color: #c83228; margin-right: 8px;"></i> Record New Expense`;
+        if (isEditEl) isEditEl.value = 'false';
+        if (idEl) idEl.value = '';
+        if (document.getElementById('modal-exp-date')) document.getElementById('modal-exp-date').value = new Date().toISOString().split('T')[0];
+    }
+
+    modal.style.display = 'flex';
+}
+
+async function handleSaveExpense(e) {
+    if (e) e.preventDefault();
+
+    const isEdit = document.getElementById('modal-expense-is-edit')?.value === 'true';
+    const expenseId = document.getElementById('modal-expense-id')?.value;
+
+    const payload = {
+        expense_date: document.getElementById('modal-exp-date')?.value,
+        category: document.getElementById('modal-exp-category')?.value,
+        paid_to: document.getElementById('modal-exp-paid-to')?.value?.trim(),
+        amount: parseFloat(document.getElementById('modal-exp-amount')?.value) || 0,
+        payment_mode: document.getElementById('modal-exp-mode')?.value,
+        reference_no: document.getElementById('modal-exp-ref')?.value?.trim(),
+        purpose: document.getElementById('modal-exp-purpose')?.value?.trim()
+    };
+
+    if (!payload.expense_date || !payload.category || !payload.paid_to || !payload.amount) {
+        showToast('Please fill all required expense fields.', 'warning');
+        return;
+    }
+
+    try {
+        const url = isEdit ? `${API_BASE_URL}/expenses/${encodeURIComponent(expenseId)}` : `${API_BASE_URL}/expenses`;
+        const method = isEdit ? 'PUT' : 'POST';
+
+        const res = await fetchWithAuth(url, {
+            method,
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            showToast(data.message || 'Error saving expense', 'error');
+            return;
+        }
+
+        showToast(isEdit ? `Expense ${expenseId} updated successfully!` : 'Expense recorded successfully!', 'success');
+        closeModal('modal-expense');
+        await fetchExpensesData();
+        fetchDashboardKPIs();
+    } catch (err) {
+        showToast('Network error saving expense', 'error');
+    }
+}
+
+async function deleteExpense(expenseId) {
+    if (!confirm(`Are you sure you want to delete Expense ${expenseId}?`)) return;
+
+    try {
+        const res = await fetchWithAuth(`${API_BASE_URL}/expenses/${encodeURIComponent(expenseId)}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(`Expense ${expenseId} deleted.`, 'success');
+            await fetchExpensesData();
+            fetchDashboardKPIs();
+        } else {
+            showToast(data.message || 'Delete error', 'error');
+        }
+    } catch (err) {
+        showToast('Error deleting expense', 'error');
+    }
+}
+
+function filterExpenses() {
+    const q = (document.getElementById('expense-search-input')?.value || '').toLowerCase().trim();
+    const cat = document.getElementById('expense-category-filter')?.value;
+
+    let filtered = [...(STATE.expenses || [])];
+    if (q) {
+        filtered = filtered.filter(e => 
+            String(e.id || '').toLowerCase().includes(q) ||
+            String(e.category || '').toLowerCase().includes(q) ||
+            String(e.paid_to || '').toLowerCase().includes(q) ||
+            String(e.purpose || '').toLowerCase().includes(q)
+        );
+    }
+    if (cat) {
+        filtered = filtered.filter(e => e.category === cat);
+    }
+
+    const monthGroups = {};
+    filtered.forEach(e => {
+        const mKey = (e.expense_date || '').substring(0, 7);
+        if (mKey) {
+            if (!monthGroups[mKey]) {
+                monthGroups[mKey] = {
+                    month_key: mKey,
+                    month_label: new Date(mKey + '-01').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+                    total_amount: 0,
+                    count: 0,
+                    expenses: []
+                };
+            }
+            monthGroups[mKey].total_amount += parseFloat(e.amount) || 0;
+            monthGroups[mKey].count += 1;
+            monthGroups[mKey].expenses.push(e);
+        }
+    });
+
+    renderExpensesAccordion({ months: Object.values(monthGroups) });
+}
+
+function resetExpenseFilters() {
+    if (document.getElementById('expense-search-input')) document.getElementById('expense-search-input').value = '';
+    if (document.getElementById('expense-category-filter')) document.getElementById('expense-category-filter').value = '';
+    renderExpensesAccordion(STATE.expenseSummary);
+}
+
 // --- VIEW RENDERERS ---
 function renderDashboardRecentShipments() {
     const tbody = document.getElementById('dash-recent-shipments-body');
     if (!tbody) return;
 
-    const list = STATE.shipments.slice(0, 5);
+    const list = STATE.shipments.slice(0, 8);
     if (list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 20px;">No Recent Shipments</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 25px; color: var(--text-muted); font-weight: 600;">No Recent Shipments Recorded</td></tr>`;
         return;
     }
 
     tbody.innerHTML = list.map(s => {
         const saleAmt = parseFloat(s.sale_amount) || 0;
         const purAmt = parseFloat(s.purchase_amount) || 0;
+        const recAmt = Math.min(saleAmt, Math.max(0, parseFloat(s.received_amount) || 0));
         const profit = saleAmt - purAmt;
-        const margin = saleAmt > 0 ? ((profit / saleAmt) * 100).toFixed(1) : 0;
-        const custStatus = s.sale_status || 'UNPAID';
+        const margin = saleAmt > 0 ? ((profit / saleAmt) * 100).toFixed(1) : (purAmt > 0 ? "-100.0" : "0.0");
+        const marginNum = parseFloat(margin);
+        
+        const custStatus = s.sale_status || (recAmt >= saleAmt && saleAmt > 0 ? 'PAID' : (recAmt > 0 ? 'PARTIAL' : 'UNPAID'));
         const vendStatus = s.purchase_status || 'UNPAID';
+
+        let custBadge = 'status-unpaid';
+        if (custStatus === 'PAID') custBadge = 'status-paid';
+        else if (custStatus === 'PARTIAL') custBadge = 'status-partial';
+
+        let vendBadge = 'status-unpaid';
+        if (vendStatus === 'PAID') vendBadge = 'status-paid';
+        else if (vendStatus === 'PARTIAL') vendBadge = 'status-partial';
+
+        const isPositive = profit > 0;
+        const isNegative = profit < 0;
+        const profitColor = isNegative ? 'var(--danger)' : (isPositive ? 'var(--success)' : '#64748b');
+        const marginColor = marginNum < 0 ? 'var(--danger)' : (marginNum > 0 ? 'var(--success)' : '#64748b');
+        const formattedProfit = (profit < 0 ? '-₹' : '₹') + Math.abs(profit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
         return `
             <tr>
-                <td><strong>${s.id}</strong></td>
-                <td>${s.company_name}</td>
-                <td>₹${saleAmt.toLocaleString('en-IN')}</td>
-                <td>₹${purAmt.toLocaleString('en-IN')}</td>
-                <td><strong style="color: var(--success);">₹${profit.toLocaleString('en-IN')}</strong></td>
-                <td><strong>${margin}%</strong></td>
-                <td><span class="status-pill status-${custStatus.toLowerCase()}">${custStatus}</span></td>
-                <td><span class="status-pill status-${vendStatus.toLowerCase()}">${vendStatus}</span></td>
+                <td><strong style="color: var(--primary);">${s.id}</strong></td>
+                <td><strong>${s.company_name}</strong></td>
+                <td><strong style="color: var(--primary);">${formatCurrencyINR(saleAmt)}</strong></td>
+                <td><strong style="color: var(--danger);">${formatCurrencyINR(purAmt)}</strong></td>
+                <td><strong style="color: ${profitColor}; font-weight: 800;">${formattedProfit}</strong></td>
+                <td><strong style="color: ${marginColor}; font-weight: 800;">${marginNum > 0 ? '+' : ''}${margin}%</strong></td>
+                <td><span class="status-pill ${custBadge}">${custStatus}</span></td>
+                <td><span class="status-pill ${vendBadge}">${vendStatus}</span></td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <button class="btn-action" onclick="navigateRoute('/shipment-entry/edit/${encodeURIComponent(s.id)}')" title="View / Edit Job">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                    </button>
+                </td>
             </tr>
         `;
     }).join('');
@@ -597,7 +1007,9 @@ function renderShipmentsTable() {
         const recAmt = Math.min(saleAmt, Math.max(0, parseFloat(s.received_amount) || 0));
         const remBal = Math.max(0, saleAmt - recAmt);
         const netProfit = saleAmt - purAmt;
-        const marginPct = saleAmt > 0 ? ((netProfit / saleAmt) * 100).toFixed(1) : "0.0";
+        const marginPct = saleAmt > 0 ? ((netProfit / saleAmt) * 100).toFixed(1) : (purAmt > 0 ? "-100.0" : "0.0");
+        const isLoss = netProfit < 0;
+        const formattedNet = (netProfit < 0 ? '-₹' : '₹') + Math.abs(netProfit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         
         const custStatus = s.sale_status || (recAmt >= saleAmt && saleAmt > 0 ? 'PAID' : (recAmt > 0 ? 'PARTIAL' : 'UNPAID'));
         let badgeClass = 'status-unpaid';
@@ -640,8 +1052,8 @@ function renderShipmentsTable() {
                             <div><strong>Taxable Sales:</strong> ${formatCurrencyINR(saleAmt)}</div>
                             <div><strong>Customer Received:</strong> ${formatCurrencyINR(recAmt)}</div>
                             <div><strong>Customer Outstanding:</strong> ${formatCurrencyINR(remBal)}</div>
-                            <div style="grid-column: span 2; background: #ecfdf5; padding: 8px 12px; border-radius: 4px; border: 1px solid #a7f3d0;">
-                                <strong style="color: #065f46;">Net Operating Profit: ${formatCurrencyINR(netProfit)} (Margin: ${marginPct}%)</strong>
+                            <div style="grid-column: span 2; background: ${isLoss ? '#fef2f2' : '#ecfdf5'}; padding: 8px 12px; border-radius: 4px; border: 1px solid ${isLoss ? '#fecaca' : '#a7f3d0'};">
+                                <strong style="color: ${isLoss ? '#b91c1c' : '#065f46'};">Net Operating Profit: ${formattedNet} (Margin: ${parseFloat(marginPct) > 0 ? '+' : ''}${marginPct}%)</strong>
                             </div>
                         </div>
                     </div>
@@ -721,14 +1133,21 @@ function renderClientsTable(list) {
                 <td>${c.gstin || '-'}</td>
                 <td>${c.credit_terms || '30 Days'}</td>
                 <td><span class="status-pill status-paid">ACTIVE</span></td>
-                <td style="text-align: right;">
-                    <button class="btn-action" onclick="deleteClient('${c.id}')" style="color: var(--danger); font-weight: 700;"><i class="fa-solid fa-trash"></i> Delete</button>
+                <td class="action-cell">
+                    <button type="button" class="btn-icon-action btn-icon-edit" onclick="openClientModal('${c.id}')" title="Edit Client"><i class="fa-solid fa-pen-to-square"></i></button>
+                    <button type="button" class="btn-icon-action btn-icon-delete" onclick="deleteClient('${c.id}')" title="Delete Client"><i class="fa-solid fa-trash"></i></button>
                 </td>
             </tr>
             <tr id="sub-row-client_${safeId}" class="master-detail-subrow" style="display: none; background: #f8fafc;">
                 <td colspan="9" style="padding: 10px 14px; border-bottom: 2px solid #cbd5e1;">
                     <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 12px 14px; font-size: 13px;">
-                        <div style="font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 8px;"><i class="fa-solid fa-building"></i> Client Details (${c.id})</div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                            <div style="font-weight: 700; font-size: 14px; color: #0f172a;"><i class="fa-solid fa-building"></i> Client Details (${c.id})</div>
+                            <div style="display: flex; gap: 6px;">
+                                <button class="btn-action" onclick="openClientModal('${c.id}')" style="color: #2563eb; font-weight: 700; padding: 4px 8px;"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                                <button class="btn-action" onclick="deleteClient('${c.id}')" style="color: #c83228; font-weight: 700; padding: 4px 8px;"><i class="fa-solid fa-trash"></i> Delete</button>
+                            </div>
+                        </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                             <div><strong>Company Name:</strong> ${c.name}</div>
                             <div><strong>Contact Person:</strong> ${c.contact_person || 'N/A'}</div>
@@ -736,9 +1155,6 @@ function renderClientsTable(list) {
                             <div><strong>Email:</strong> ${c.email || 'N/A'}</div>
                             <div><strong>GSTIN:</strong> ${c.gstin || 'N/A'}</div>
                             <div><strong>Credit Terms:</strong> ${c.credit_terms || '30 Days'}</div>
-                        </div>
-                        <div style="margin-top: 10px; text-align: right;">
-                            <button class="btn-action" onclick="deleteClient('${c.id}')" style="color: var(--danger); font-weight: 700;"><i class="fa-solid fa-trash"></i> Delete Client</button>
                         </div>
                     </div>
                 </td>
@@ -752,44 +1168,124 @@ function renderVendorsTable(list) {
     if (!tbody) return;
     const dataList = list || STATE.vendors;
     if (!dataList || dataList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--text-muted); font-weight: 600;">No Vendors Registered</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 24px; color: var(--text-muted); font-weight: 600;">No Vendors Registered in Master Registry</td></tr>`;
         return;
     }
+
     tbody.innerHTML = dataList.map(v => {
         const safeId = String(v.id).replace(/[^a-zA-Z0-9]/g, '_');
+        const linkedJobs = v.linked_shipments || [];
+        const totalPur = parseFloat(v.total_purchase_amount) || 0;
+        const totalPaid = parseFloat(v.total_paid_amount) || 0;
+        const balPay = parseFloat(v.balance_payable) || 0;
+
+        let jobsTableHtml = '';
+        if (linkedJobs.length > 0) {
+            jobsTableHtml = `
+                <div style="margin-top: 10px;">
+                    <div style="font-weight: 800; font-size: 12.5px; color: #1c2024; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                        <span><i class="fa-solid fa-boxes-packing" style="color: #c83228;"></i> Linked Shipments / Jobs (${linkedJobs.length})</span>
+                        <span style="font-size: 11px; color: #6c727a;">Direct Payment & Freight Ledger Link</span>
+                    </div>
+                    <div style="background: #ffffff; border: 1px solid #e5e2da; border-radius: 6px; overflow: hidden;">
+                        <table style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px;">
+                            <thead>
+                                <tr style="background: #f8fafc; border-bottom: 1px solid #e5e2da; color: #64748b; font-weight: 700; text-align: left;">
+                                    <th style="padding: 6px 8px; width: 25%;">Shipment ID</th>
+                                    <th style="padding: 6px 8px; width: 12%;">Date</th>
+                                    <th style="padding: 6px 8px; width: 20%;">Client / Importer</th>
+                                    <th style="padding: 6px 8px; width: 16%;">Service / Line Charge</th>
+                                    <th style="padding: 6px 8px; text-align: right; width: 13%;">Purchase Amt</th>
+                                    <th style="padding: 6px 8px; text-align: center; width: 55px;">Status</th>
+                                    <th style="padding: 6px 8px; text-align: right; width: 110px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${linkedJobs.map(j => `
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 6px 8px; font-weight: 800; color: #2563eb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${j.shipment_id}</td>
+                                        <td style="padding: 6px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${j.date || '-'}</td>
+                                        <td style="padding: 6px 8px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${j.client_company || '-'}</td>
+                                        <td style="padding: 6px 8px; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${j.expense_description || 'Purchase'}</td>
+                                        <td style="padding: 6px 8px; text-align: right; font-weight: 800; color: #1c2024; white-space: nowrap;">₹${(parseFloat(j.purchase_amount) || 0).toLocaleString('en-IN')}</td>
+                                        <td style="padding: 6px 8px; text-align: center;"><span class="status-pill status-${(j.purchase_status || 'unpaid').toLowerCase()}">${j.purchase_status || 'UNPAID'}</span></td>
+                                        <td style="padding: 6px 8px; text-align: right; white-space: nowrap;">
+                                            <button class="btn-action" onclick="openVendorPaymentForShipment('${v.id}', '${j.shipment_id}', ${parseFloat(j.purchase_amount) || 0})" style="background: #ecfdf5; color: #047857; font-weight: 700; font-size: 10.5px; padding: 3px 7px; margin-right: 2px; border-color: #a7f3d0;" title="Pay Bill for ${j.shipment_id}">
+                                                <i class="fa-solid fa-money-bill-wave"></i> Pay
+                                            </button>
+                                            <button class="btn-action" onclick="openFullEditShipmentPage('${j.shipment_id}')" style="background: #eff6ff; color: #2563eb; font-weight: 700; font-size: 10.5px; padding: 3px 7px;" title="Open Shipment Job">
+                                                <i class="fa-solid fa-arrow-up-right-from-square"></i> Open
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        } else {
+            jobsTableHtml = `
+                <div style="margin-top: 8px; padding: 10px 12px; background: #fafbfa; border: 1px dashed #cbd5e1; border-radius: 6px; color: #64748b; font-size: 12px;">
+                    <i class="fa-solid fa-circle-info" style="color: #64748b; margin-right: 6px;"></i> No shipments currently linked to this vendor. Entering this vendor name in any shipment automatically links it here.
+                </div>
+            `;
+        }
+
         return `
             <tr>
-                <td style="text-align: center; white-space: nowrap;">
-                    <button type="button" onclick="toggleMasterRowExpand('vendor_${safeId}')" style="background: none; border: none; cursor: pointer;">
-                        <i id="expand-icon-vendor_${safeId}" class="fa-solid fa-circle-plus" style="font-size: 18px; color: #2563eb;"></i>
+                <td style="text-align: center; padding: 6px 2px;">
+                    <button type="button" onclick="toggleMasterRowExpand('vendor_${safeId}')" style="background: none; border: none; cursor: pointer; padding: 0;">
+                        <i id="expand-icon-vendor_${safeId}" class="fa-solid fa-circle-plus" style="font-size: 16px; color: #2563eb;"></i>
                     </button>
                 </td>
-                <td><strong style="color: var(--primary);">${v.id}</strong></td>
-                <td><strong>${v.name}</strong></td>
+                <td><strong style="color: var(--primary); font-size: 12px;">${v.id}</strong></td>
+                <td style="white-space: normal; word-break: break-word;"><strong style="color: #1c2024; font-size: 12.5px;">${v.name}</strong></td>
                 <td><span class="status-pill status-partial">${v.vendor_type || 'General'}</span></td>
-                <td>${v.contact_person || '-'}</td>
-                <td>${v.mobile || ''} <br><small style="color: var(--text-muted);">${v.email || ''}</small></td>
-                <td>${v.gstin || '-'}</td>
-                <td><span class="status-pill status-paid">ACTIVE</span></td>
-                <td style="text-align: right;">
-                    <button class="btn-action" onclick="deleteVendor('${v.id}')" style="color: var(--danger); font-weight: 700;"><i class="fa-solid fa-trash"></i> Delete</button>
+                <td style="text-align: center;">
+                    <span class="status-pill ${linkedJobs.length > 0 ? 'status-paid' : 'status-unpaid'}" style="font-weight: 800; cursor: pointer;" onclick="toggleMasterRowExpand('vendor_${safeId}')">
+                        ${linkedJobs.length} Jobs
+                    </span>
+                </td>
+                <td style="text-align: right; font-weight: 800;">₹${totalPur.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="text-align: right; font-weight: 800; color: var(--success);">₹${totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="text-align: right; font-weight: 800; color: ${balPay > 0 ? 'var(--danger)' : 'var(--success)'};">
+                    ₹${balPay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+                <td style="text-align: center;"><span class="status-pill ${v.status === 'ACTIVE' ? 'status-paid' : 'status-unpaid'}">${v.status || 'ACTIVE'}</span></td>
+                <td class="action-cell">
+                    <button type="button" class="btn-icon-action btn-icon-edit" onclick="openVendorModal('${v.id}')" title="Edit Vendor"><i class="fa-solid fa-pen-to-square"></i></button>
+                    <button type="button" class="btn-icon-action btn-icon-delete" onclick="deleteVendor('${v.id}')" title="Delete Vendor"><i class="fa-solid fa-trash"></i></button>
                 </td>
             </tr>
-            <tr id="sub-row-vendor_${safeId}" class="master-detail-subrow" style="display: none; background: #f8fafc;">
-                <td colspan="9" style="padding: 10px 14px; border-bottom: 2px solid #cbd5e1;">
-                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 12px 14px; font-size: 13px;">
-                        <div style="font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 8px;"><i class="fa-solid fa-truck-field"></i> Vendor Details (${v.id})</div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                            <div><strong>Vendor Name:</strong> ${v.name}</div>
-                            <div><strong>Vendor Type:</strong> ${v.vendor_type || 'General'}</div>
-                            <div><strong>Contact Person:</strong> ${v.contact_person || 'N/A'}</div>
-                            <div><strong>Mobile:</strong> ${v.mobile || 'N/A'}</div>
-                            <div><strong>Email:</strong> ${v.email || 'N/A'}</div>
-                            <div><strong>GSTIN:</strong> ${v.gstin || 'N/A'}</div>
+            <tr id="sub-row-vendor_${safeId}" class="master-detail-subrow" style="display: none; background: #fbfaf7;">
+                <td colspan="10" style="padding: 10px 12px; border-bottom: 2px solid #e5e2da; white-space: normal;">
+                    <div style="background: #ffffff; border: 1px solid #e5e2da; border-radius: 8px; padding: 12px 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #edebe6; padding-bottom: 8px; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                            <div style="font-weight: 800; font-size: 14px; color: #1c2024;">
+                                <i class="fa-solid fa-truck-field" style="color: #c83228; margin-right: 6px;"></i> ${v.name} (${v.id})
+                            </div>
+                            <div style="display: flex; gap: 6px;">
+                                <button class="btn-action" onclick="openVendorModal('${v.id}')" style="background: #eff6ff; color: #2563eb; font-weight: 700; font-size: 11.5px; padding: 4px 8px;"><i class="fa-solid fa-pen"></i> Edit Profile</button>
+                                <button class="btn-action" onclick="openVendorPaymentForShipment('${v.id}', '', '')" style="background: #fdf2f2; color: #c83228; font-weight: 700; font-size: 11.5px; padding: 4px 8px;"><i class="fa-solid fa-money-bill-transfer"></i> Record Payment</button>
+                            </div>
                         </div>
-                        <div style="margin-top: 10px; text-align: right;">
-                            <button class="btn-action" onclick="deleteVendor('${v.id}')" style="color: var(--danger); font-weight: 700;"><i class="fa-solid fa-trash"></i> Delete Vendor</button>
+
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; font-size: 12px;">
+                            <div><strong style="color: #64748b; font-size: 10.5px; text-transform: uppercase;">Category:</strong><br><strong>${v.vendor_type || 'General'}</strong></div>
+                            <div><strong style="color: #64748b; font-size: 10.5px; text-transform: uppercase;">Contact & Phone:</strong><br><span>${v.contact_person || 'N/A'}${v.mobile ? ` (${v.mobile})` : ''}</span></div>
+                            <div><strong style="color: #64748b; font-size: 10.5px; text-transform: uppercase;">GSTIN / PAN:</strong><br><span>${v.gstin || 'N/A'}${v.pan ? ` / ${v.pan}` : ''}</span></div>
+                            <div><strong style="color: #64748b; font-size: 10.5px; text-transform: uppercase;">Credit Terms:</strong><br><strong>${v.credit_terms || '15 Days'}</strong></div>
                         </div>
+
+                        ${v.address || v.bank_details || v.remarks ? `
+                            <div style="margin-top: 8px; font-size: 12px; color: #475569; background: #f8fafc; padding: 6px 10px; border-radius: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <div><strong>Bank Details:</strong> ${v.bank_details || 'N/A'}</div>
+                                <div><strong>Address / Terms:</strong> ${v.address || ''} ${v.remarks ? `(${v.remarks})` : ''}</div>
+                            </div>
+                        ` : ''}
+
+                        ${jobsTableHtml}
                     </div>
                 </td>
             </tr>
@@ -916,8 +1412,8 @@ function renderVendorPaymentsTable(list) {
             <td>${vp.payment_mode}</td>
             <td>${vp.reference_no || '-'}</td>
             <td>${vp.created_by || 'Director'}</td>
-            <td style="text-align: right;">
-                <button class="btn-action" onclick="deleteVendorPayment('${vp.id}')" style="color: var(--danger);"><i class="fa-solid fa-trash"></i></button>
+            <td class="action-cell">
+                <button type="button" class="btn-icon-action btn-icon-delete" onclick="deleteVendorPayment('${vp.id}')" title="Delete Vendor Payment"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>
     `).join('');
@@ -937,17 +1433,34 @@ function renderProfitLedgerTable(list) {
         const sAmt = parseFloat(r.sales_amount || r.sale_amount) || 0;
         const pAmt = parseFloat(r.purchase_amount) || 0;
         const profit = r.net_profit !== undefined ? parseFloat(r.net_profit) : (sAmt - pAmt);
-        const margin = r.margin_pct !== undefined ? r.margin_pct : (sAmt > 0 ? ((profit / sAmt) * 100).toFixed(2) : 0);
+        
+        let margin = 0;
+        if (r.margin_pct !== undefined && !isNaN(parseFloat(r.margin_pct))) {
+            margin = parseFloat(r.margin_pct);
+        } else if (sAmt > 0) {
+            margin = parseFloat(((profit / sAmt) * 100).toFixed(2));
+        } else if (pAmt > 0) {
+            margin = -100.0;
+        } else {
+            margin = 0.0;
+        }
+
+        const isPositive = profit > 0;
+        const isNegative = profit < 0;
+        const profitColor = isNegative ? 'var(--danger)' : (isPositive ? 'var(--success)' : '#64748b');
+        const marginColor = margin < 0 ? 'var(--danger)' : (margin > 0 ? 'var(--success)' : '#64748b');
+        const formattedProfit = (profit < 0 ? '-₹' : '₹') + Math.abs(profit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formattedMargin = (margin > 0 ? '+' : '') + margin.toFixed(2) + '%';
 
         return `
             <tr>
                 <td><strong>${r.shipment_id || r.id}</strong></td>
                 <td>${r.date}</td>
                 <td><strong>${r.company_name}</strong></td>
-                <td>₹${sAmt.toLocaleString('en-IN')}</td>
-                <td>₹${pAmt.toLocaleString('en-IN')}</td>
-                <td><strong style="color: var(--success);">₹${profit.toLocaleString('en-IN')}</strong></td>
-                <td><strong>${margin}%</strong></td>
+                <td>₹${sAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>₹${pAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td><strong style="color: ${profitColor}; font-weight: 800; font-size: 13px;">${formattedProfit}</strong></td>
+                <td><strong style="color: ${marginColor}; font-weight: 800; font-size: 13px;">${formattedMargin}</strong></td>
             </tr>
         `;
     }).join('');
@@ -1003,17 +1516,41 @@ function renderProfitReport(list) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px;">No Profit Data</td></tr>`;
         return;
     }
-    tbody.innerHTML = list.map(r => `
-        <tr>
-            <td><strong>${r.shipment_id}</strong></td>
-            <td>${r.date}</td>
-            <td><strong>${r.company_name}</strong></td>
-            <td>₹${r.sales_amount.toLocaleString('en-IN')}</td>
-            <td>₹${r.purchase_amount.toLocaleString('en-IN')}</td>
-            <td><strong style="color: var(--success);">₹${r.net_profit.toLocaleString('en-IN')}</strong></td>
-            <td><strong>${r.margin_pct}%</strong></td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = list.map(r => {
+        const sAmt = parseFloat(r.sales_amount) || 0;
+        const pAmt = parseFloat(r.purchase_amount) || 0;
+        const profit = r.net_profit !== undefined ? parseFloat(r.net_profit) : (sAmt - pAmt);
+        
+        let margin = 0;
+        if (r.margin_pct !== undefined && !isNaN(parseFloat(r.margin_pct))) {
+            margin = parseFloat(r.margin_pct);
+        } else if (sAmt > 0) {
+            margin = parseFloat(((profit / sAmt) * 100).toFixed(2));
+        } else if (pAmt > 0) {
+            margin = -100.0;
+        } else {
+            margin = 0.0;
+        }
+
+        const isPositive = profit > 0;
+        const isNegative = profit < 0;
+        const profitColor = isNegative ? 'var(--danger)' : (isPositive ? 'var(--success)' : '#64748b');
+        const marginColor = margin < 0 ? 'var(--danger)' : (margin > 0 ? 'var(--success)' : '#64748b');
+        const formattedProfit = (profit < 0 ? '-₹' : '₹') + Math.abs(profit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formattedMargin = (margin > 0 ? '+' : '') + margin.toFixed(2) + '%';
+
+        return `
+            <tr>
+                <td><strong>${r.shipment_id}</strong></td>
+                <td>${r.date}</td>
+                <td><strong>${r.company_name}</strong></td>
+                <td>₹${sAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>₹${pAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td><strong style="color: ${profitColor}; font-weight: 800; font-size: 13px;">${formattedProfit}</strong></td>
+                <td><strong style="color: ${marginColor}; font-weight: 800; font-size: 13px;">${formattedMargin}</strong></td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function renderGstReport(data) {
@@ -1063,11 +1600,18 @@ function populateClientDropdowns() {
 }
 
 function populateVendorDropdowns() {
-    const modalVpSelect = document.getElementById('modal-vp-vendor-select');
-    if (!modalVpSelect) return;
+    const datalist = document.getElementById('vendor-list-options');
+    if (datalist) {
+        datalist.innerHTML = (STATE.vendors || []).map(v => 
+            `<option value="${v.name}">${v.name} (${v.id} - ${v.vendor_type || 'General'})</option>`
+        ).join('');
+    }
 
-    modalVpSelect.innerHTML = '<option value="">-- Select Vendor --</option>' + 
-        STATE.vendors.map(v => `<option value="${v.id}">${v.name} (${v.vendor_type})</option>`).join('');
+    const modalVpSelect = document.getElementById('modal-vp-vendor-select');
+    if (modalVpSelect) {
+        modalVpSelect.innerHTML = '<option value="">-- Select Vendor --</option>' + 
+            (STATE.vendors || []).map(v => `<option value="${v.id}">${v.name} (${v.vendor_type || 'General'})</option>`).join('');
+    }
 }
 
 function handleShipmentClientSelectChange(el) {
@@ -1172,7 +1716,7 @@ function addPurchaseFormRow(data = {}) {
 
     tr.innerHTML = `
         <td>
-            <input type="text" class="form-control pur-vendor-name" value="${data.vendor_name || ''}" placeholder="Vendor Name" required>
+            <input type="text" list="vendor-list-options" class="form-control pur-vendor-name" value="${data.vendor_name || ''}" placeholder="Type or Select Vendor" required autocomplete="off">
         </td>
         <td><input type="text" class="form-control pur-expense-name" value="${data.expense_name || ''}" placeholder="Service Charges" required></td>
         <td>
@@ -1651,9 +2195,58 @@ async function handleSaveVendorPayment(e) {
         fetchVendorPaymentsData();
         fetchShipmentsData();
         fetchDashboardKPIs();
+        fetchVendorsData();
     } catch (err) {
         showToast('Vendor payment connection error', 'error');
     }
+}
+
+function openVendorPaymentForShipment(vendorId, shipmentId, amount) {
+    const modal = document.getElementById('modal-vendor-payment');
+    if (!modal) return;
+    const form = modal.querySelector('form');
+    if (form) form.reset();
+
+    const shpSelect = document.getElementById('modal-vp-shipment-select');
+    if (shpSelect) {
+        shpSelect.innerHTML = '<option value="">-- Select Shipment --</option>' + 
+            (STATE.shipments || []).map(s => `<option value="${s.id}">${s.id} (${s.company_name})</option>`).join('');
+        shpSelect.value = shipmentId;
+    }
+
+    onVendorPaymentShipmentChange();
+
+    const vendorSelect = document.getElementById('modal-vp-vendor-select');
+    const vObj = (STATE.vendors || []).find(item => item.id === vendorId);
+    const vName = vObj ? vObj.name : vendorId;
+
+    if (vendorSelect) {
+        let matched = false;
+        for (let i = 0; i < vendorSelect.options.length; i++) {
+            const optVal = vendorSelect.options[i].value;
+            const optText = vendorSelect.options[i].text;
+            if (optVal === vendorId || optVal === vName || optText.includes(vName)) {
+                vendorSelect.selectedIndex = i;
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            vendorSelect.innerHTML += `<option value="${vName}" selected>${vName}</option>`;
+        }
+    }
+
+    const amtInput = document.getElementById('modal-vp-amount');
+    if (amtInput && amount) {
+        amtInput.value = parseFloat(amount).toFixed(2);
+    }
+
+    const dateInput = document.getElementById('modal-vp-date');
+    if (dateInput) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    modal.style.display = 'flex';
 }
 
 async function deleteVendorPayment(vpId) {
@@ -1672,29 +2265,60 @@ async function deleteVendorPayment(vpId) {
     } catch (e) {}
 }
 
-function openClientModal() {
+function openClientModal(clientId = '') {
     const modal = document.getElementById('modal-client');
-    if (modal) {
-        const form = modal.querySelector('form');
-        if (form) form.reset();
-        modal.style.display = 'flex';
+    if (!modal) return;
+    const form = modal.querySelector('form');
+    if (form) form.reset();
+
+    const titleEl = document.getElementById('modal-client-title');
+    const isEditEl = document.getElementById('modal-client-is-edit');
+    const idEl = document.getElementById('modal-client-id');
+
+    if (clientId) {
+        const c = (STATE.clients || []).find(item => item.id === clientId);
+        if (c) {
+            if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Edit Client (${c.id})`;
+            if (isEditEl) isEditEl.value = 'true';
+            if (idEl) idEl.value = c.id;
+
+            if (document.getElementById('modal-client-name')) document.getElementById('modal-client-name').value = c.name || '';
+            if (document.getElementById('modal-client-contact')) document.getElementById('modal-client-contact').value = c.contact_person || '';
+            if (document.getElementById('modal-client-mobile')) document.getElementById('modal-client-mobile').value = c.mobile || '';
+            if (document.getElementById('modal-client-email')) document.getElementById('modal-client-email').value = c.email || '';
+            if (document.getElementById('modal-client-gstin')) document.getElementById('modal-client-gstin').value = c.gstin || '';
+            if (document.getElementById('modal-client-credit')) document.getElementById('modal-client-credit').value = c.credit_terms || '30 Days';
+        }
+    } else {
+        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-building-user"></i> Add New Client Master`;
+        if (isEditEl) isEditEl.value = 'false';
+        if (idEl) idEl.value = '';
     }
+
+    modal.style.display = 'flex';
 }
 
 async function handleSaveClient(e) {
     e.preventDefault();
 
+    const isEdit = document.getElementById('modal-client-is-edit')?.value === 'true';
+    const clientId = document.getElementById('modal-client-id')?.value;
+
     const payload = {
-        name: document.getElementById('modal-client-name').value,
-        contact_person: document.getElementById('modal-client-contact').value,
-        mobile: document.getElementById('modal-client-mobile').value,
-        gstin: document.getElementById('modal-client-gstin').value,
-        credit_terms: document.getElementById('modal-client-credit').value
+        name: document.getElementById('modal-client-name')?.value,
+        contact_person: document.getElementById('modal-client-contact')?.value || '',
+        mobile: document.getElementById('modal-client-mobile')?.value || '',
+        email: document.getElementById('modal-client-email')?.value || '',
+        gstin: document.getElementById('modal-client-gstin')?.value || '',
+        credit_terms: document.getElementById('modal-client-credit')?.value || '30 Days'
     };
 
     try {
-        const res = await fetchWithAuth(`${API_BASE_URL}/clients`, {
-            method: 'POST',
+        const url = isEdit ? `${API_BASE_URL}/clients/${encodeURIComponent(clientId)}` : `${API_BASE_URL}/clients`;
+        const method = isEdit ? 'PUT' : 'POST';
+
+        const res = await fetchWithAuth(url, {
+            method,
             body: JSON.stringify(payload)
         });
 
@@ -1704,12 +2328,12 @@ async function handleSaveClient(e) {
             return;
         }
 
-        showToast(data.message || 'Client created successfully!', 'success');
-        const form = document.querySelector('#modal-client form');
-        if (form) form.reset();
+        showToast(isEdit ? `Client ${clientId} updated successfully!` : 'Client created successfully!', 'success');
         closeModal('modal-client');
-        fetchClientsData();
-    } catch (e) {}
+        await fetchClientsData();
+    } catch (err) {
+        showToast('Network error saving client', 'error');
+    }
 }
 
 async function toggleClientStatus(clientId, status) {
@@ -1725,30 +2349,66 @@ async function toggleClientStatus(clientId, status) {
     } catch (e) {}
 }
 
-function openVendorModal() {
+function openVendorModal(vendorId = '') {
     const modal = document.getElementById('modal-vendor');
-    if (modal) {
-        const form = modal.querySelector('form');
-        if (form) form.reset();
-        modal.style.display = 'flex';
+    if (!modal) return;
+    const form = modal.querySelector('form');
+    if (form) form.reset();
+
+    const titleEl = document.getElementById('modal-vendor-title');
+    const isEditEl = document.getElementById('modal-vendor-is-edit');
+    const idEl = document.getElementById('modal-vendor-id');
+
+    if (vendorId) {
+        const v = (STATE.vendors || []).find(item => item.id === vendorId);
+        if (v) {
+            if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Edit Vendor (${v.id})`;
+            if (isEditEl) isEditEl.value = 'true';
+            if (idEl) idEl.value = v.id;
+
+            if (document.getElementById('modal-vendor-name')) document.getElementById('modal-vendor-name').value = v.name || '';
+            if (document.getElementById('modal-vendor-type')) document.getElementById('modal-vendor-type').value = v.vendor_type || 'Shipping Line';
+            if (document.getElementById('modal-vendor-contact')) document.getElementById('modal-vendor-contact').value = v.contact_person || '';
+            if (document.getElementById('modal-vendor-mobile')) document.getElementById('modal-vendor-mobile').value = v.mobile || '';
+            if (document.getElementById('modal-vendor-email')) document.getElementById('modal-vendor-email').value = v.email || '';
+            if (document.getElementById('modal-vendor-gstin')) document.getElementById('modal-vendor-gstin').value = v.gstin || '';
+            if (document.getElementById('modal-vendor-credit')) document.getElementById('modal-vendor-credit').value = v.credit_terms || '15 Days';
+            if (document.getElementById('modal-vendor-bank')) document.getElementById('modal-vendor-bank').value = v.bank_details || '';
+            if (document.getElementById('modal-vendor-remarks')) document.getElementById('modal-vendor-remarks').value = v.remarks || '';
+        }
+    } else {
+        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-truck-ramp-box"></i> Add New Vendor Master`;
+        if (isEditEl) isEditEl.value = 'false';
+        if (idEl) idEl.value = '';
     }
+
+    modal.style.display = 'flex';
 }
 
 async function handleSaveVendor(e) {
     e.preventDefault();
 
+    const isEdit = document.getElementById('modal-vendor-is-edit')?.value === 'true';
+    const vendorId = document.getElementById('modal-vendor-id')?.value;
+
     const payload = {
-        name: document.getElementById('modal-vendor-name').value,
-        vendor_type: document.getElementById('modal-vendor-type').value,
-        contact_person: document.getElementById('modal-vendor-contact').value,
-        mobile: document.getElementById('modal-vendor-mobile').value,
-        gstin: document.getElementById('modal-vendor-gstin').value,
-        bank_details: document.getElementById('modal-vendor-bank').value
+        name: document.getElementById('modal-vendor-name')?.value,
+        vendor_type: document.getElementById('modal-vendor-type')?.value || 'General Vendor',
+        contact_person: document.getElementById('modal-vendor-contact')?.value || '',
+        mobile: document.getElementById('modal-vendor-mobile')?.value || '',
+        email: document.getElementById('modal-vendor-email')?.value || '',
+        gstin: document.getElementById('modal-vendor-gstin')?.value || '',
+        credit_terms: document.getElementById('modal-vendor-credit')?.value || '15 Days',
+        bank_details: document.getElementById('modal-vendor-bank')?.value || '',
+        remarks: document.getElementById('modal-vendor-remarks')?.value || ''
     };
 
     try {
-        const res = await fetchWithAuth(`${API_BASE_URL}/vendors`, {
-            method: 'POST',
+        const url = isEdit ? `${API_BASE_URL}/vendors/${encodeURIComponent(vendorId)}` : `${API_BASE_URL}/vendors`;
+        const method = isEdit ? 'PUT' : 'POST';
+
+        const res = await fetchWithAuth(url, {
+            method,
             body: JSON.stringify(payload)
         });
 
@@ -1758,12 +2418,48 @@ async function handleSaveVendor(e) {
             return;
         }
 
-        showToast(data.message || 'Vendor created successfully!', 'success');
-        const form = document.querySelector('#modal-vendor form');
-        if (form) form.reset();
+        showToast(isEdit ? `Vendor ${vendorId} updated successfully!` : 'Vendor created successfully!', 'success');
         closeModal('modal-vendor');
-        fetchVendorsData();
-    } catch (e) {}
+        await fetchVendorsData();
+    } catch (err) {
+        showToast('Network error saving vendor', 'error');
+    }
+}
+
+async function deleteVendor(vendorId) {
+    if (!confirm(`Are you sure you want to delete Vendor ${vendorId}? Linked payments will be detached.`)) return;
+
+    try {
+        const res = await fetchWithAuth(`${API_BASE_URL}/vendors/${encodeURIComponent(vendorId)}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(`Vendor ${vendorId} deleted successfully`, 'success');
+            await fetchVendorsData();
+        } else {
+            showToast(data.message || 'Delete vendor error', 'error');
+        }
+    } catch (e) {
+        showToast('Error deleting vendor', 'error');
+    }
+}
+
+async function syncAllVendorsNow() {
+    try {
+        showToast('Syncing all vendors from shipment records...', 'info');
+        const res = await fetchWithAuth(`${API_BASE_URL}/vendors/sync`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            showToast('All vendors synced from shipments with zero duplicates!', 'success');
+            await fetchVendorsData();
+            await fetchShipmentsData();
+        } else {
+            showToast(data.message || 'Sync error', 'error');
+        }
+    } catch (e) {
+        showToast('Network error syncing vendors', 'error');
+    }
 }
 
 async function toggleVendorStatus(vendorId, status) {
@@ -1969,18 +2665,41 @@ function resetShipmentFilters() {
 }
 
 function toggleMobileSidebar() {
-    const sidebar = document.querySelector('.sidebar');
+    const sidebar = document.querySelector('.sidebar') || document.querySelector('#app-sidebar');
     const overlay = document.getElementById('mobile-sidebar-overlay');
-    if (sidebar) {
+    if (!sidebar) return;
+
+    if (window.innerWidth <= 1024) {
         sidebar.classList.toggle('open');
         if (overlay) {
-            if (sidebar.classList.contains('open')) {
-                overlay.style.display = 'block';
-            } else {
-                overlay.style.display = 'none';
-            }
+            overlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none';
         }
+    } else {
+        sidebar.classList.toggle('sidebar-collapsed');
     }
+}
+
+function updateDateDisplay() {
+    const el = document.getElementById('topbar-current-datetime') || document.getElementById('topbar-current-date');
+    if (!el) return;
+    const now = new Date();
+    const formattedDate = now.toLocaleDateString('en-IN', {
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    });
+    const formattedTime = now.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    });
+    el.innerHTML = `<span>${formattedDate} &nbsp;•&nbsp; <strong style="color: #1c2024; font-family: monospace; font-size: 13.5px;">${formattedTime}</strong></span>`;
+}
+
+if (!window._clockInterval) {
+    window._clockInterval = setInterval(updateDateDisplay, 1000);
 }
 
 function exportTableToCSV(tableId, filename) {

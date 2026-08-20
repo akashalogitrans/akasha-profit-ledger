@@ -21,47 +21,68 @@
         <!-- 1. LOGIN SCREEN -->
         <div id="login-screen" class="login-screen" style="display: flex;">
             <div class="login-card">
+                <!-- LEFT SIDE: BRANDING & LOGO -->
                 <div class="login-left">
-                    <div style="margin-bottom: 16px;">
-                        <svg width="220" height="46" viewBox="0 0 220 46" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect width="42" height="42" rx="8" fill="#2563EB"/>
-                            <path d="M21 7L32 31H10L21 7Z" fill="#FFFFFF"/>
-                            <path d="M21 16L27 31H15L21 16Z" fill="#1D4ED8"/>
-                            <text x="52" y="26" fill="#FFFFFF" font-family="'IBM Plex Sans', sans-serif" font-weight="800" font-size="18" letter-spacing="0.5">AKASHA</text>
-                            <text x="52" y="38" fill="#38BDF8" font-family="'IBM Plex Sans', sans-serif" font-weight="700" font-size="9.5" letter-spacing="1">LOGITRANS ERP</text>
-                        </svg>
+                    <div class="login-logo-container">
+                        <img src="https://www.akashalogitrans.com/logo.png" alt="Akasha LogiTrans LLP" style="max-width: 240px; height: auto; display: inline-block; object-fit: contain;" onerror="this.onerror=null; this.src='https://akashalogitrans.com/logo.png';">
+                        <div class="login-portal-subtitle">LOGISTICS & FINANCIAL TRACKING PORTAL</div>
                     </div>
-                    <h2>Akasha LogiTrans LLP</h2>
-                    <p class="login-tagline">Freight Forwarding & Corporate Accounting ERP</p>
-                    <div class="login-security-badge">
-                        <i class="fa-solid fa-shield-halved"></i> Director Security Authentication
+
+                    <div class="login-left-divider"></div>
+
+                    <div class="login-features-list">
+                        <div class="login-feature-item">
+                            <i class="fa-solid fa-ship"></i>
+                            <span>Ocean Freight & Container Operations</span>
+                        </div>
+                        <div class="login-feature-item">
+                            <i class="fa-solid fa-plane-departure"></i>
+                            <span>Air Cargo & Inland Transportation</span>
+                        </div>
+                        <div class="login-feature-item">
+                            <i class="fa-solid fa-file-invoice-dollar"></i>
+                            <span>Multi-Currency Sales & Purchase Ledgers</span>
+                        </div>
                     </div>
                 </div>
 
+                <!-- RIGHT SIDE: LOGIN FORM -->
                 <div class="login-right">
-                    <div class="login-title">Director Authentication</div>
-                    <div class="login-subtitle">Enter 6-Digit Security T-PIN to access ERP</div>
+                    <div class="login-title">Sign In</div>
+                    <div class="login-subtitle">Enter your director credentials to access ERP</div>
 
-                    <form onsubmit="handleLogin(event)">
-                        <div class="form-group" style="margin-bottom: 20px;">
-                            <label style="font-weight: 700; margin-bottom: 8px; display: block; color: #f8fafc;">Director Security T-PIN *</label>
-                            <input type="password" id="login-code-pin" class="form-control" maxlength="6" placeholder="••••••" required style="text-align: center; font-size: 24px; font-weight: 900; letter-spacing: 6px; color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; background: #0f172a !important; border: 2px solid #3b82f6 !important; caret-color: #ffffff;">
-                            <input type="hidden" id="login-code-name" value="">
-                        </div>
-
-                        <div id="login-error-message" style="display: none; color: #f87171; font-size: 13px; font-weight: 700; margin-bottom: 16px; text-align: center; background: rgba(239, 68, 68, 0.15); padding: 10px 14px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.4);">
-                            <i class="fa-solid fa-triangle-exclamation"></i> Invalid Security T-PIN! Enter authorized 6-digit T-PIN.
-                        </div>
-
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px;">
-                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: #cbd5e1; font-weight: 600;">
-                                <input type="checkbox" id="login-remember-me" checked style="width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer;">
-                                Remember Session
+                    <form onsubmit="handleLogin(event)" id="form-login">
+                        <!-- USERNAME / PHONE FIELD -->
+                        <div class="form-group" style="margin-bottom: 18px;">
+                            <label style="font-size: 11.5px; font-weight: 800; color: #475569; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; display: block;">
+                                USERNAME / PHONE NO. *
                             </label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-regular fa-user lead-icon"></i>
+                                <input type="text" id="login-identifier" class="form-control" placeholder="Enter Phone Number or Username" required autocomplete="username">
+                            </div>
                         </div>
 
-                        <button type="submit" class="btn-primary" style="width: 100%; padding: 14px; font-size: 15px; font-weight: 700; background: #0f172a; border: 1px solid #3b82f6; border-radius: 4px; cursor: pointer; color: #ffffff;">
-                            <i class="fa-solid fa-shield-halved"></i> Verify T-PIN & Enter ERP
+                        <!-- 4-DIGIT MPIN FIELD -->
+                        <div class="form-group" style="margin-bottom: 22px;">
+                            <label style="font-size: 11.5px; font-weight: 800; color: #475569; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; display: block;">
+                                4-DIGIT MPIN *
+                            </label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-lock lead-icon"></i>
+                                <input type="password" id="login-mpin" class="form-control" maxlength="4" placeholder="••••" required inputmode="numeric" autocomplete="current-password" style="letter-spacing: 4px; font-size: 16px;">
+                                <i class="fa-solid fa-eye trail-icon" id="login-mpin-eye" onclick="togglePasswordVisibility('login-mpin')"></i>
+                            </div>
+                        </div>
+
+                        <!-- ERROR MESSAGE BOX -->
+                        <div id="login-error-message" style="display: none; color: #dc2626; font-size: 13px; font-weight: 700; margin-bottom: 16px; text-align: center; background: #fef2f2; padding: 10px 14px; border-radius: 8px; border: 1px solid #fecaca;">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Invalid Credentials or MPIN!
+                        </div>
+
+                        <!-- SIGN IN BUTTON -->
+                        <button type="submit" class="btn-signin">
+                            Sign In <i class="fa-solid fa-arrow-right"></i>
                         </button>
                     </form>
                 </div>
@@ -72,24 +93,20 @@
         <div id="erp-shell" class="erp-shell" style="display: none;">
             <div id="mobile-sidebar-overlay" class="mobile-sidebar-overlay" onclick="toggleMobileSidebar()"></div>
 
-            <!-- SIDEBAR NAVIGATION -->
+            <!-- SIDEBAR NAVIGATION (Pure White + Red Active Pill) -->
             <aside class="sidebar">
                 <div class="sidebar-header">
                     <div class="sidebar-logo">
-                        <svg width="180" height="38" viewBox="0 0 180 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect width="36" height="36" rx="6" fill="#2563EB"/>
-                            <path d="M18 6L27 26H9L18 6Z" fill="#FFFFFF"/>
-                            <path d="M18 14L23 26H13L18 14Z" fill="#1D4ED8"/>
-                            <text x="44" y="22" fill="#FFFFFF" font-family="'IBM Plex Sans', sans-serif" font-weight="800" font-size="15" letter-spacing="0.5">AKASHA</text>
-                            <text x="44" y="31" fill="#38BDF8" font-family="'IBM Plex Sans', sans-serif" font-weight="700" font-size="8.5" letter-spacing="1">LOGITRANS ERP</text>
-                        </svg>
+                        <img src="https://www.akashalogitrans.com/logo.png" alt="Akasha LogiTrans" style="max-height: 38px; width: auto; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <span style="display:none; color:#1c2024; font-weight:800; font-size:15px; font-family:'Cairo',sans-serif;">AKASHA LOGITRANS</span>
                     </div>
+                    <button class="sidebar-collapse-btn" title="Collapse Sidebar"><i class="fa-solid fa-chevron-left"></i></button>
                 </div>
 
                 <div class="sidebar-menu">
                     <div class="menu-category">MAIN</div>
                     <a class="menu-item active" href="/dashboard" data-view="dashboard" data-path="/dashboard">
-                        <div class="menu-item-left"><i class="fa-solid fa-chart-line"></i> <span>Dashboard</span></div>
+                        <div class="menu-item-left"><i class="fa-solid fa-table-cells-large"></i> <span>Dashboard</span></div>
                     </a>
                     <a class="menu-item" href="/shipment-entry" data-view="shipments" data-path="/shipment-entry">
                         <div class="menu-item-left"><i class="fa-solid fa-boxes-packing"></i> <span>Shipment Register</span></div>
@@ -107,6 +124,9 @@
                     </a>
                     <a class="menu-item" href="/vendor-payment" data-view="vendor_payment" data-path="/vendor-payment">
                         <div class="menu-item-left"><i class="fa-solid fa-money-bill-transfer"></i> <span>Vendor Payment</span></div>
+                    </a>
+                    <a class="menu-item" href="/expenses" data-view="expenses" data-path="/expenses">
+                        <div class="menu-item-left"><i class="fa-solid fa-receipt"></i> <span>Expense Register</span></div>
                     </a>
                     <a class="menu-item" href="/profit-ledger" data-view="profit_ledger" data-path="/profit-ledger">
                         <div class="menu-item-left"><i class="fa-solid fa-scale-balanced"></i> <span>Profit & Margin</span></div>
@@ -148,8 +168,7 @@
 
                 <div class="sidebar-footer">
                     <div class="user-card">
-                        <img id="current-user-avatar" class="user-avatar" src="https://akashalogitrans.com/khushal.png" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
-                        <div class="user-avatar-badge" style="display:none; width:34px; height:34px; border-radius:50%; background:#2563eb; color:#ffffff; align-items:center; justify-content:center; font-weight:800; font-size:14px;">D</div>
+                        <div class="topbar-user-avatar" id="sidebar-user-avatar" style="width: 32px; height: 32px; font-size: 12px;">KA</div>
                         <div class="user-info">
                             <h5 id="current-user-name">Khushal Patel</h5>
                             <p id="current-user-role">CEO & Founder</p>
@@ -161,22 +180,24 @@
             <!-- MAIN CONTENT WRAPPER -->
             <div class="main-wrapper">
 
-                <!-- TOP NAVBAR (CLEAN HEADER - ZERO NOTIFICATION ICON) -->
+                <!-- TOP NAVBAR -->
                 <header class="topbar">
                     <div class="topbar-left">
-                        <button class="top-icon-btn mobile-hamburger" id="sidebar-toggle" onclick="toggleMobileSidebar()" title="Toggle Menu">
-                            <i class="fa-solid fa-bars" style="font-size: 18px;"></i>
-                        </button>
-                        <div class="global-search">
-                            <i class="fa-solid fa-magnifying-glass"></i>
-                            <input type="text" id="global-search-input" placeholder="Search Shipment ID, Client ID, Company Name..." onkeyup="handleGlobalSearch(event)">
+                        <div class="topbar-live-clock" id="topbar-live-clock">
+                            <i class="fa-regular fa-clock"></i>
+                            <span id="topbar-current-datetime">Loading Date & Time...</span>
                         </div>
-                        <span class="date-chip" id="topbar-current-date"><i class="fa-solid fa-calendar-day"></i> Fri, 07 Aug 2026</span>
                     </div>
 
                     <div class="topbar-right">
-                        <span style="font-size: 13px; font-weight: 700; color: #0f172a;"><i class="fa-solid fa-user-shield"></i> <span id="topbar-user-name">Director</span></span>
-                        <button class="btn-action" onclick="handleLogout()" style="background: #1e293b; color: #ffffff; border: 1px solid #334155; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 4px; display: inline-flex; align-items: center; gap: 6px;">
+                        <div class="topbar-user-profile">
+                            <div class="topbar-user-meta">
+                                <div class="topbar-user-name" id="topbar-user-name">Khushal Patel</div>
+                                <div class="topbar-user-role" id="topbar-user-role">DIRECTOR</div>
+                            </div>
+                            <div class="topbar-user-avatar" id="topbar-user-avatar">KA</div>
+                        </div>
+                        <button class="btn-action" onclick="handleLogout()" style="background: #fdf2f2; color: #c83228; border: 1px solid #fecaca; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;" title="Logout">
                             <i class="fa-solid fa-right-from-bracket"></i> Logout
                         </button>
                     </div>
@@ -187,79 +208,113 @@
 
                     <!-- VIEW 1: DASHBOARD -->
                     <div id="view-dashboard" class="view-section">
-                        <div class="page-header">
-                            <div>
-                                <h2 class="page-title">Executive Accounting & Profit Dashboard</h2>
-                                <p class="page-subtitle">Real-time Freight Forwarding & Corporate Financial Summary</p>
+                        
+                        <!-- EXECUTIVE DASHBOARD BANNER -->
+                        <div class="dash-welcome-banner">
+                            <div class="dash-welcome-left">
+                                <h3><i class="fa-solid fa-chart-pie" style="color: #c83228;"></i> Executive Freight & Accounting Dashboard</h3>
+                                <p>Real-time Freight Forwarding, Profit Margin & Corporate Financial Summary</p>
                             </div>
-                            <button class="quick-add-btn" onclick="navigateRoute('/shipment-entry/new')">+ Create Shipment</button>
+                            <div class="dash-quick-actions">
+                                <a href="javascript:void(0)" onclick="navigateRoute('/shipment-entry/new')" class="dash-action-btn primary">
+                                    <i class="fa-solid fa-plus"></i> New Shipment
+                                </a>
+                                <a href="javascript:void(0)" onclick="openReceivePaymentModal()" class="dash-action-btn secondary">
+                                    <i class="fa-solid fa-hand-holding-dollar"></i> Receive Payment
+                                </a>
+                                <a href="javascript:void(0)" onclick="openVendorPaymentModal()" class="dash-action-btn secondary">
+                                    <i class="fa-solid fa-money-bill-transfer"></i> Vendor Payment
+                                </a>
+                                <a href="javascript:void(0)" onclick="openClientModal()" class="dash-action-btn secondary">
+                                    <i class="fa-solid fa-building-user"></i> + Client
+                                </a>
+                            </div>
                         </div>
 
-                        <!-- 5 KPI CARDS -->
-                        <div class="grid-12" style="margin-bottom: 20px;">
-                            <div class="kpi-card col-3">
+                        <!-- 6 EXECUTIVE KPI CARDS (Divided 3-3 in 2 Rows) -->
+                        <div class="kpi-grid-3x2">
+                            <!-- Box 1: Total Sales -->
+                            <div class="kpi-card col-blue">
                                 <div class="kpi-top">
                                     <span class="kpi-title">TOTAL SALES</span>
-                                    <div class="kpi-icon icon-blue"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+                                    <div class="kpi-icon icon-blue"><i class="fa-solid fa-file-invoice-dollar"></i></div>
                                 </div>
                                 <div class="kpi-value" id="kpi-monthly-revenue">₹0.00</div>
-                                <div class="kpi-trend trend-up"><i class="fa-solid fa-circle-info"></i> Customer Invoiced Total</div>
+                                <div class="kpi-trend"><i class="fa-solid fa-circle-check" style="color: #2563eb;"></i> Customer Invoiced Total</div>
                             </div>
 
-                            <div class="kpi-card col-3">
+                            <!-- Box 2: Total Purchase -->
+                            <div class="kpi-card col-slate">
                                 <div class="kpi-top">
                                     <span class="kpi-title">TOTAL PURCHASE</span>
-                                    <div class="kpi-icon icon-blue"><i class="fa-solid fa-money-bill-transfer"></i></div>
+                                    <div class="kpi-icon icon-slate"><i class="fa-solid fa-ship"></i></div>
                                 </div>
                                 <div class="kpi-value" id="kpi-total-purchase">₹0.00</div>
-                                <div class="kpi-trend trend-up"><i class="fa-solid fa-circle-info"></i> Vendor Billed Total</div>
+                                <div class="kpi-trend"><i class="fa-solid fa-circle-info" style="color: #64748b;"></i> Vendor Line Charges</div>
                             </div>
 
-                            <div class="kpi-card col-2">
+                            <!-- Box 3: Net Profit -->
+                            <div class="kpi-card col-green">
                                 <div class="kpi-top">
                                     <span class="kpi-title">NET PROFIT</span>
                                     <div class="kpi-icon icon-green"><i class="fa-solid fa-wallet"></i></div>
                                 </div>
-                                <div class="kpi-value" id="kpi-net-profit" style="color: var(--success);">₹0.00</div>
-                                <div class="kpi-trend trend-up"><i class="fa-solid fa-percent"></i> Margin: <span id="kpi-margin-pct">0%</span></div>
+                                <div class="kpi-value" id="kpi-net-profit" style="color: #16a34a;">₹0.00</div>
+                                <div class="kpi-trend"><i class="fa-solid fa-percent" style="color: #16a34a;"></i> Margin: <span id="kpi-margin-pct" style="font-weight: 800; color: #16a34a;">0.00%</span></div>
                             </div>
 
-                            <div class="kpi-card col-2">
+                            <!-- Box 4: Receivable -->
+                            <div class="kpi-card col-orange">
                                 <div class="kpi-top">
                                     <span class="kpi-title">RECEIVABLE</span>
                                     <div class="kpi-icon icon-orange"><i class="fa-solid fa-hand-holding-dollar"></i></div>
                                 </div>
-                                <div class="kpi-value" id="kpi-pending-payment" style="color: var(--warning);">₹0.00</div>
-                                <div class="kpi-trend trend-up"><i class="fa-solid fa-clock"></i> Outstanding Customer</div>
+                                <div class="kpi-value" id="kpi-pending-payment" style="color: #d97706;">₹0.00</div>
+                                <div class="kpi-trend"><i class="fa-solid fa-clock" style="color: #d97706;"></i> Uncollected Invoices</div>
                             </div>
 
-                            <div class="kpi-card col-2">
+                            <!-- Box 5: Payable -->
+                            <div class="kpi-card col-red">
                                 <div class="kpi-top">
                                     <span class="kpi-title">PAYABLE</span>
                                     <div class="kpi-icon icon-red"><i class="fa-solid fa-receipt"></i></div>
                                 </div>
-                                <div class="kpi-value" id="kpi-vendor-payable" style="color: var(--danger);">₹0.00</div>
-                                <div class="kpi-trend trend-up"><i class="fa-solid fa-clock"></i> Outstanding Vendor</div>
+                                <div class="kpi-value" id="kpi-vendor-payable" style="color: #c83228;">₹0.00</div>
+                                <div class="kpi-trend"><i class="fa-solid fa-hourglass-half" style="color: #c83228;"></i> Outstanding Bills</div>
+                            </div>
+
+                            <!-- Box 6: Total Expenses (Financial Year) -->
+                            <div class="kpi-card col-purple" style="cursor: pointer;" onclick="navigateRoute('/expenses')" title="Click to view Month-Wise Expense Register">
+                                <div class="kpi-top">
+                                    <span class="kpi-title">TOTAL EXPENSES (FY)</span>
+                                    <div class="kpi-icon icon-purple"><i class="fa-solid fa-money-check-dollar"></i></div>
+                                </div>
+                                <div class="kpi-value" id="kpi-total-expense" style="color: #7c3aed;">₹0.00</div>
+                                <div class="kpi-trend"><i class="fa-solid fa-calendar-check" style="color: #7c3aed;"></i> <span id="kpi-expense-fy-label">FY 2026-27</span> Office & Operations</div>
                             </div>
                         </div>
 
                         <!-- RECENT SHIPMENTS TABLE -->
                         <div class="panel-card" style="margin-bottom: 20px;">
                             <div class="panel-header">
-                                <div class="panel-title"><i class="fa-solid fa-boxes-packing"></i> Recent Shipment Transactions</div>
+                                <div class="panel-title" style="font-size: 15px; font-weight: 800; color: #1c2024;"><i class="fa-solid fa-boxes-packing" style="color: #c83228; margin-right: 6px;"></i> Recent Shipment Operations</div>
+                                <button class="btn-action" onclick="navigateRoute('/shipment-entry')" style="font-size: 12px; padding: 6px 12px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 700;">
+                                    View All Register &rarr;
+                                </button>
                             </div>
                             <div class="panel-body" style="padding: 0;">
                                 <table class="erp-table">
                                     <thead>
                                         <tr>
                                             <th>Shipment ID</th>
-                                            <th>Client</th>
-                                            <th>Sales</th>
-                                            <th>Purchase</th>
-                                            <th>Profit</th>
+                                            <th>Company / Client</th>
+                                            <th>Sales Amount</th>
+                                            <th>Purchase Amount</th>
+                                            <th>Net Profit</th>
                                             <th>Margin %</th>
                                             <th>Customer Status</th>
                                             <th>Vendor Status</th>
+                                            <th style="text-align: center;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="dash-recent-shipments-body"></tbody>
@@ -275,7 +330,7 @@
                                 <h2 class="page-title">Shipment Master Register</h2>
                                 <p class="page-subtitle">Parent shipment transaction jobs linked to sales, purchases, & payments</p>
                             </div>
-                            <div style="display: flex; gap: 10px;">
+                            <div class="page-header-actions">
                                 <button class="btn-action" style="background: #ffffff;" onclick="exportTableToCSV('table-shipments-body', 'Shipment_Master_Report')"><i class="fa-solid fa-file-excel" style="color: #059669;"></i> Export Excel</button>
                                 <button class="quick-add-btn" onclick="navigateRoute('/shipment-entry/new')">+ Create Shipment</button>
                             </div>
@@ -338,7 +393,9 @@
                                 <h2 class="page-title" id="shipment-form-title">Create New Shipment Job</h2>
                                 <p class="page-subtitle">Parent transaction mapping Client, Sales, Purchases, & Margins</p>
                             </div>
-                            <button class="btn-action" onclick="navigateRoute('/shipment-entry')"><i class="fa-solid fa-arrow-left"></i> Back to Register</button>
+                            <div class="page-header-actions">
+                                <button class="btn-action" onclick="navigateRoute('/shipment-entry')"><i class="fa-solid fa-arrow-left"></i> Back to Register</button>
+                            </div>
                         </div>
 
                         <form id="form-shipment-master" onsubmit="handleSaveShipment(event)">
@@ -405,10 +462,10 @@
                                             <thead>
                                                 <tr>
                                                     <th>Vendor Name</th>
-                                                    <th>Service Charges</th>
+                                                    <th>Expense / Service</th>
                                                     <th style="width: 90px;">Currency</th>
                                                     <th style="width: 90px;">Ex. Rate</th>
-                                                    <th>Amount</th>
+                                                    <th>Foreign Amt</th>
                                                     <th>Taxable (₹)</th>
                                                     <th style="width: 75px;">GST %</th>
                                                     <th>GST Amount (₹)</th>
@@ -488,7 +545,9 @@
                                 <h2 class="page-title">Customer Payment Received Module</h2>
                                 <p class="page-subtitle">Record customer receipts against outstanding shipment invoices</p>
                             </div>
-                            <button class="quick-add-btn" onclick="openReceivePaymentModal()">+ Receive Payment</button>
+                            <div class="page-header-actions">
+                                <button class="quick-add-btn" onclick="openReceivePaymentModal()">+ Receive Payment</button>
+                            </div>
                         </div>
 
                         <div class="panel-card">
@@ -520,7 +579,9 @@
                                 <h2 class="page-title">Vendor Payment Module</h2>
                                 <p class="page-subtitle">Record payments to shipping lines, transporters, & vendors</p>
                             </div>
-                            <button class="quick-add-btn" onclick="openVendorPaymentModal()">+ Make Vendor Payment</button>
+                            <div class="page-header-actions">
+                                <button class="quick-add-btn" onclick="openVendorPaymentModal()">+ Make Vendor Payment</button>
+                            </div>
                         </div>
 
                         <div class="panel-card">
@@ -552,7 +613,9 @@
                                 <h2 class="page-title">Profit & Margin Ledger</h2>
                                 <p class="page-subtitle">Shipment-wise operating revenue vs purchase cost analysis</p>
                             </div>
-                            <button class="btn-action" onclick="exportTableToCSV('table-profit-body', 'Profit_Ledger')"><i class="fa-solid fa-file-excel" style="color: #059669;"></i> Export Excel</button>
+                            <div class="page-header-actions">
+                                <button class="btn-action" onclick="exportTableToCSV('table-profit-body', 'Profit_Ledger')"><i class="fa-solid fa-file-excel" style="color: #059669;"></i> Export Excel</button>
+                            </div>
                         </div>
 
                         <div class="panel-card">
@@ -575,6 +638,69 @@
                         </div>
                     </div>
 
+                    <!-- VIEW 6B: EXPENSE REGISTER (MONTH-WISE ACCORDION) -->
+                    <div id="view-expenses" class="view-section" style="display: none;">
+                        <div class="page-header">
+                            <div>
+                                <h2 class="page-title"><i class="fa-solid fa-receipt" style="color: #c83228; margin-right: 8px;"></i> Expense Register</h2>
+                                <p class="page-subtitle">Month-wise company operational, office rent, utilities, salaries & direct expenses</p>
+                            </div>
+                            <div class="page-header-actions">
+                                <button class="btn-action" onclick="fetchExpensesData()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                                <button class="quick-add-btn" onclick="openExpenseModal()" style="background: #c83228; color: #ffffff; padding: 0 16px; font-weight: 700; height: 38px; border-radius: 6px; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-plus"></i> Record Expense</button>
+                            </div>
+                        </div>
+
+                        <!-- 3 EXPENSE KPI CARDS -->
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px;">
+                            <div class="panel-card" style="padding: 16px 20px; border-left: 4px solid #7c3aed;">
+                                <div style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">FINANCIAL YEAR TOTAL EXPENSE</div>
+                                <div id="exp-kpi-fy-total" style="font-size: 22px; font-weight: 900; color: #7c3aed; margin-top: 4px;">₹0.00</div>
+                                <div id="exp-kpi-fy-sub" style="font-size: 11.5px; color: #64748b; margin-top: 2px;">FY 2026-27 Approved Expenses</div>
+                            </div>
+                            <div class="panel-card" style="padding: 16px 20px; border-left: 4px solid #2563eb;">
+                                <div style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">THIS MONTH EXPENSE</div>
+                                <div id="exp-kpi-cur-month" style="font-size: 22px; font-weight: 900; color: #2563eb; margin-top: 4px;">₹0.00</div>
+                                <div id="exp-kpi-cur-sub" style="font-size: 11.5px; color: #64748b; margin-top: 2px;">Current Month Running Total</div>
+                            </div>
+                            <div class="panel-card" style="padding: 16px 20px; border-left: 4px solid #059669;">
+                                <div style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL RECORDED ENTRIES</div>
+                                <div id="exp-kpi-total-count" style="font-size: 22px; font-weight: 900; color: #059669; margin-top: 4px;">0 Entries</div>
+                                <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">Audited & Logged by Directors</div>
+                            </div>
+                        </div>
+
+                        <!-- SEARCH & FILTERS -->
+                        <div class="panel-card" style="margin-bottom: 16px;">
+                            <div class="panel-body" style="padding: 12px 16px;">
+                                <div style="display: flex; gap: 12px; align-items: center;">
+                                    <div style="flex: 1;">
+                                        <input type="text" id="expense-search-input" class="form-control" placeholder="Search Expense ID, Category, Paid To, Purpose..." onkeyup="filterExpenses()">
+                                    </div>
+                                    <div style="width: 220px;">
+                                        <select id="expense-category-filter" class="form-control" onchange="filterExpenses()">
+                                            <option value="">-- All Categories --</option>
+                                            <option value="Office Rent">Office Rent</option>
+                                            <option value="Electricity & Utilities">Electricity & Utilities</option>
+                                            <option value="Staff Salaries">Staff Salaries</option>
+                                            <option value="Tea & Pantry">Tea & Pantry / Welfare</option>
+                                            <option value="Internet & Software">Internet & Software</option>
+                                            <option value="Port Custom Visit">Port / Custom Operations</option>
+                                            <option value="Legal & Accounting">Legal & Accounting</option>
+                                            <option value="General Expense">General Expense</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn-action" onclick="resetExpenseFilters()" style="padding: 0 14px; height: 38px;"><i class="fa-solid fa-filter-circle-xmark"></i> Reset</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MONTH-WISE COLLAPSIBLE EXPENSES CONTAINER -->
+                        <div id="expenses-month-accordion-container" style="display: flex; flex-direction: column; gap: 14px;">
+                            <!-- Populated dynamically month-wise by JS -->
+                        </div>
+                    </div>
+
                     <!-- VIEW 7: CLIENT MASTER -->
                     <div id="view-clients" class="view-section" style="display: none;">
                         <div class="page-header">
@@ -582,7 +708,9 @@
                                 <h2 class="page-title">Client Master Registry</h2>
                                 <p class="page-subtitle">Manage client accounts, credit terms, and status</p>
                             </div>
-                            <button class="quick-add-btn" onclick="openClientModal()">+ Add New Client</button>
+                            <div class="page-header-actions">
+                                <button class="quick-add-btn" onclick="openClientModal()">+ Add New Client</button>
+                            </div>
                         </div>
 
                         <!-- FILTERS BAR -->
@@ -628,9 +756,12 @@
                         <div class="page-header">
                             <div>
                                 <h2 class="page-title">Vendor Master Registry</h2>
-                                <p class="page-subtitle">Manage shipping lines, transporters, CHA, and port vendors</p>
+                                <p class="page-subtitle">Transporters, Custom House Agents (CHA), Port & Service Providers</p>
                             </div>
-                            <button class="quick-add-btn" onclick="openVendorModal()">+ Add New Vendor</button>
+                            <div class="page-header-actions">
+                                <button class="btn-action" onclick="syncAllVendorsNow()" style="background: #ffffff; color: #1c2024; font-weight: 700; border: 1px solid #cbd5e1; height: 38px; padding: 0 14px;"><i class="fa-solid fa-rotate"></i> Sync Shipments</button>
+                                <button class="quick-add-btn" onclick="openVendorModal()">+ Add New Vendor</button>
+                            </div>
                         </div>
 
                         <!-- FILTERS BAR -->
@@ -638,7 +769,7 @@
                             <div class="panel-body" style="padding: 12px 14px;">
                                 <div style="display: flex; gap: 10px; align-items: center;">
                                     <div style="flex: 1; position: relative;">
-                                        <input type="text" id="vendor-search-input" class="form-control" placeholder="Search Vendor ID, Vendor Name, Type, GSTIN..." onkeyup="handleGlobalSearch(this.value)">
+                                        <input type="text" id="vendor-search-input" class="form-control" placeholder="Search Vendor ID, Vendor Name, Category..." onkeyup="handleGlobalSearch(this.value)">
                                     </div>
                                     <button class="btn-action" onclick="handleGlobalSearch(document.getElementById('vendor-search-input').value)" style="background: #0f172a; color: #ffffff; padding: 0 16px; font-weight: 700; height: 38px;">
                                         <i class="fa-solid fa-magnifying-glass"></i> Search
@@ -653,15 +784,16 @@
                                     <table class="erp-table">
                                         <thead>
                                             <tr>
-                                                <th style="width: 40px; text-align: center;">+</th>
-                                                <th>Vendor ID</th>
-                                                <th>Vendor Name</th>
-                                                <th>Type</th>
-                                                <th>Contact Person</th>
-                                                <th>Mobile / Email</th>
-                                                <th>GSTIN</th>
-                                                <th>Status</th>
-                                                <th style="text-align: right;">Action</th>
+                                                <th style="width: 32px; text-align: center; padding: 8px 4px;">+</th>
+                                                <th style="width: 78px;">Vendor ID</th>
+                                                <th style="width: 20%;">Vendor Name</th>
+                                                <th style="width: 13%;">Category</th>
+                                                <th style="text-align: center; width: 10%;">Linked Jobs</th>
+                                                <th style="text-align: right; width: 14%;">Total Purchases</th>
+                                                <th style="text-align: right; width: 13%;">Total Paid</th>
+                                                <th style="text-align: right; width: 14%;">Balance Payable</th>
+                                                <th style="text-align: center; width: 66px;">Status</th>
+                                                <th class="action-col" style="text-align: right; width: 75px;">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody id="table-vendors-body"></tbody>
@@ -678,7 +810,9 @@
                                 <h2 class="page-title">Service Master Registry</h2>
                                 <p class="page-subtitle">Freight forwarding charge types & default GST rates</p>
                             </div>
-                            <button class="quick-add-btn" onclick="openServiceModal()">+ Add Service</button>
+                            <div class="page-header-actions">
+                                <button class="quick-add-btn" onclick="openServiceModal()">+ Add Service</button>
+                            </div>
                         </div>
 
                         <div class="panel-card">
@@ -706,7 +840,9 @@
                                 <h2 class="page-title">Customer Receivable Outstanding Report</h2>
                                 <p class="page-subtitle">Client-wise outstanding balances and days overdue</p>
                             </div>
-                            <button class="btn-action" onclick="exportTableToCSV('table-receivable-body', 'Receivable_Report')"><i class="fa-solid fa-file-excel" style="color: #059669;"></i> Export Excel</button>
+                            <div class="page-header-actions">
+                                <button class="btn-action" onclick="exportTableToCSV('table-receivable-body', 'Receivable_Report')"><i class="fa-solid fa-file-excel" style="color: #059669;"></i> Export Excel</button>
+                            </div>
                         </div>
 
                         <div class="panel-card">
@@ -738,7 +874,9 @@
                                 <h2 class="page-title">Vendor Payable Outstanding Report</h2>
                                 <p class="page-subtitle">Vendor-wise bill balances and days outstanding</p>
                             </div>
-                            <button class="btn-action" onclick="exportTableToCSV('table-payable-body', 'Payable_Report')"><i class="fa-solid fa-file-excel" style="color: #059669;"></i> Export Excel</button>
+                            <div class="page-header-actions">
+                                <button class="btn-action" onclick="exportTableToCSV('table-payable-body', 'Payable_Report')"><i class="fa-solid fa-file-excel" style="color: #059669;"></i> Export Excel</button>
+                            </div>
                         </div>
 
                         <div class="panel-card">
@@ -769,7 +907,9 @@
                                 <h2 class="page-title">Comprehensive Profitability Report</h2>
                                 <p class="page-subtitle">Operating Net Profit and Margin % summary</p>
                             </div>
-                            <button class="btn-action" onclick="exportTableToCSV('table-report-profit-body', 'Profitability_Report')"><i class="fa-solid fa-file-excel" style="color: #059669;"></i> Export Excel</button>
+                            <div class="page-header-actions">
+                                <button class="btn-action" onclick="exportTableToCSV('table-report-profit-body', 'Profitability_Report')"><i class="fa-solid fa-file-excel" style="color: #059669;"></i> Export Excel</button>
+                            </div>
                         </div>
 
                         <div class="panel-card">
@@ -1000,10 +1140,12 @@
     <div id="modal-client" class="modal-overlay" style="display: none;">
         <div class="modal-card" style="max-width: 500px;">
             <div class="modal-header">
-                <div class="modal-title"><i class="fa-solid fa-building-user"></i> Client Master Form</div>
+                <div id="modal-client-title" class="modal-title"><i class="fa-solid fa-building-user"></i> Client Master Form</div>
                 <button type="button" class="close-btn" onclick="closeModal('modal-client')">&times;</button>
             </div>
             <form onsubmit="handleSaveClient(event)" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+                <input type="hidden" id="modal-client-is-edit" value="false">
+                <input type="hidden" id="modal-client-id" value="">
                 <div class="modal-body">
                     <div class="form-group" style="margin-bottom: 14px;">
                         <label class="form-label">Company Name *</label>
@@ -1016,6 +1158,10 @@
                     <div class="form-group" style="margin-bottom: 14px;">
                         <label class="form-label">Mobile Number</label>
                         <input type="text" id="modal-client-mobile" class="form-control" placeholder="10-digit mobile">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 14px;">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" id="modal-client-email" class="form-control" placeholder="client@company.com">
                     </div>
                     <div class="form-group" style="margin-bottom: 14px;">
                         <label class="form-label">GSTIN</label>
@@ -1039,21 +1185,26 @@
         </div>
     </div>
 
+    <!-- GLOBAL VENDOR AUTOCOMPLETE DATALIST -->
+    <datalist id="vendor-list-options"></datalist>
+
     <!-- MODAL 4: VENDOR MASTER MODAL -->
     <div id="modal-vendor" class="modal-overlay" style="display: none;">
-        <div class="modal-card" style="max-width: 500px;">
+        <div class="modal-card" style="max-width: 540px;">
             <div class="modal-header">
-                <div class="modal-title"><i class="fa-solid fa-truck-ramp-box"></i> Vendor Master Form</div>
+                <div id="modal-vendor-title" class="modal-title"><i class="fa-solid fa-truck-ramp-box"></i> Vendor Master Form</div>
                 <button type="button" class="close-btn" onclick="closeModal('modal-vendor')">&times;</button>
             </div>
             <form onsubmit="handleSaveVendor(event)" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+                <input type="hidden" id="modal-vendor-is-edit" value="false">
+                <input type="hidden" id="modal-vendor-id" value="">
                 <div class="modal-body">
                     <div class="form-group" style="margin-bottom: 14px;">
                         <label class="form-label">Vendor Company Name *</label>
                         <input type="text" id="modal-vendor-name" class="form-control" required placeholder="e.g. MAERSK LINE">
                     </div>
                     <div class="form-group" style="margin-bottom: 14px;">
-                        <label class="form-label">Vendor Type *</label>
+                        <label class="form-label">Vendor Type / Category *</label>
                         <select id="modal-vendor-type" class="form-control" required>
                             <option value="Shipping Line">Shipping Line</option>
                             <option value="Transporter">Transporter</option>
@@ -1061,6 +1212,7 @@
                             <option value="Agent">Agent</option>
                             <option value="Port">Port</option>
                             <option value="Documentation Vendor">Documentation Vendor</option>
+                            <option value="General Vendor">General Vendor</option>
                             <option value="Other">Other</option>
                         </select>
                     </div>
@@ -1073,12 +1225,30 @@
                         <input type="text" id="modal-vendor-mobile" class="form-control" placeholder="10-digit mobile">
                     </div>
                     <div class="form-group" style="margin-bottom: 14px;">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" id="modal-vendor-email" class="form-control" placeholder="vendor@domain.com">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 14px;">
                         <label class="form-label">GSTIN</label>
-                        <input type="text" id="modal-vendor-gstin" class="form-control" placeholder="GSTIN number">
+                        <input type="text" id="modal-vendor-gstin" class="form-control" placeholder="24AAAAA0000A1Z5">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 14px;">
+                        <label class="form-label">Credit Terms</label>
+                        <select id="modal-vendor-credit" class="form-control">
+                            <option value="Immediate / Cash">Immediate / Cash</option>
+                            <option value="7 Days">7 Days</option>
+                            <option value="15 Days" selected>15 Days</option>
+                            <option value="30 Days">30 Days</option>
+                            <option value="45 Days">45 Days</option>
+                        </select>
                     </div>
                     <div class="form-group" style="margin-bottom: 14px;">
                         <label class="form-label">Bank Details</label>
-                        <input type="text" id="modal-vendor-bank" class="form-control" placeholder="Bank Name, A/C Number, IFSC">
+                        <input type="text" id="modal-vendor-bank" class="form-control" placeholder="Bank Name, A/C Number, IFSC Code">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 14px;">
+                        <label class="form-label">Address & Remarks</label>
+                        <textarea id="modal-vendor-remarks" class="form-control" rows="2" placeholder="Address, office location or special terms"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1119,7 +1289,121 @@
         </div>
     </div>
 
+    <!-- MODAL 5B: ADD / EDIT EXPENSE -->
+    <div id="modal-expense" class="modal-overlay" style="display: none;">
+        <div class="modal-card" style="max-width: 620px; background: #ffffff; color: #152732; border: 1px solid #e2e8f0; border-radius: 12px;">
+            <div class="modal-header" style="background: #fafbfa; border-bottom: 1px solid #e2e8f0; color: #152732; padding: 16px 20px;">
+                <div class="modal-title" id="modal-expense-title" style="color: #152732; font-weight: 800; font-size: 16px;"><i class="fa-solid fa-receipt" style="color: #c83228; margin-right: 8px;"></i> Record New Expense</div>
+                <button type="button" class="close-btn" onclick="closeModal('modal-expense')" style="color: #64748b;">&times;</button>
+            </div>
+            <form id="form-expense" onsubmit="handleSaveExpense(event)" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+                <input type="hidden" id="modal-expense-id" value="">
+                <input type="hidden" id="modal-expense-is-edit" value="false">
+                <div class="modal-body" style="padding: 20px; overflow-y: auto;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                        <div class="form-group">
+                            <label class="form-label" style="font-weight: 700; font-size: 12px;">Expense Date *</label>
+                            <input type="date" id="modal-exp-date" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="font-weight: 700; font-size: 12px;">Expense Category *</label>
+                            <select id="modal-exp-category" class="form-control" required>
+                                <option value="Office Rent">Office Rent</option>
+                                <option value="Electricity & Utilities">Electricity & Utilities</option>
+                                <option value="Staff Salaries">Staff Salaries</option>
+                                <option value="Tea & Pantry">Tea & Pantry / Staff Welfare</option>
+                                <option value="Internet & Software">Internet, Software & Cloud</option>
+                                <option value="Port Custom Visit">Port / Custom Operations Conveyance</option>
+                                <option value="Travel & Transport">Travel & Business Development</option>
+                                <option value="Legal & Accounting">Legal & Accounting / Audit</option>
+                                <option value="Marketing & Printing">Marketing, Printing & Stationery</option>
+                                <option value="General Expense">General Office Expense</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 14px; margin-bottom: 14px;">
+                        <div class="form-group">
+                            <label class="form-label" style="font-weight: 700; font-size: 12px;">Paid To / Beneficiary *</label>
+                            <input type="text" id="modal-exp-paid-to" class="form-control" required placeholder="e.g. Commercial Properties Hub / Vendor">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="font-weight: 700; font-size: 12px; color: #c83228;">Amount (₹) *</label>
+                            <input type="number" step="0.01" id="modal-exp-amount" class="form-control" required placeholder="0.00" style="font-weight: 800; font-size: 15px; color: #1c2024;">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                        <div class="form-group">
+                            <label class="form-label" style="font-weight: 700; font-size: 12px;">Payment Mode *</label>
+                            <select id="modal-exp-mode" class="form-control" required>
+                                <option value="Bank Transfer">Bank Transfer / NEFT / RTGS</option>
+                                <option value="UPI">UPI / GPay / PhonePe</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Cheque">Cheque</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="font-weight: 700; font-size: 12px;">Reference / UTR No.</label>
+                            <input type="text" id="modal-exp-ref" class="form-control" placeholder="e.g. HDFC-RTGS-8821 or UPI Ref">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 6px;">
+                        <label class="form-label" style="font-weight: 700; font-size: 12px;">Purpose / Description *</label>
+                        <textarea id="modal-exp-purpose" class="form-control" rows="3" required placeholder="Describe reason for expense, e.g. August Head Office Rent, Electricity bill for 4th floor, Client visit conveyance..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background: #fafbfa; border-top: 1px solid #e2e8f0; padding: 12px 20px;">
+                    <button type="button" class="btn-action" onclick="closeModal('modal-expense')" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">Cancel</button>
+                    <button type="submit" class="btn-primary" style="background: #0f172a; color: #ffffff; font-weight: 700; border: none; border-radius: 6px; padding: 0 18px; height: 38px;"><i class="fa-solid fa-floppy-disk"></i> Save Expense</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 6: FORGOT / RESET 4-DIGIT MPIN MODAL -->
+    <div id="modal-forgot-mpin" class="modal-overlay" style="display: none;">
+        <div class="modal-card" style="max-width: 460px; background: #ffffff; color: #152732; border: 1px solid #e2e8f0; border-radius: 12px;">
+            <div class="modal-header" style="background: #fafbfa; border-bottom: 1px solid #e2e8f0; color: #152732; padding: 16px 20px;">
+                <div class="modal-title" style="color: #152732; font-weight: 800; font-size: 16px;"><i class="fa-solid fa-key" style="color: #dc2626; margin-right: 8px;"></i> Reset 4-Digit Security MPIN</div>
+                <button type="button" class="close-btn" onclick="closeModal('modal-forgot-mpin')" style="color: #64748b;">&times;</button>
+            </div>
+            <form onsubmit="handleForgotMpinSubmit(event)" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+                <div class="modal-body" style="padding: 20px;">
+                    <div style="font-size: 12.5px; color: #64748b; margin-bottom: 16px; line-height: 1.4; background: #f8fafc; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                        <i class="fa-solid fa-circle-info" style="color: #2563eb; margin-right: 4px;"></i> Enter your registered Phone/Username and your <strong>Last (Current) MPIN</strong> to securely set a new 4-digit MPIN.
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 14px;">
+                        <label class="form-label" style="font-weight: 700; font-size: 12px;">Director Username / Phone No. *</label>
+                        <input type="text" id="forgot-mpin-identifier" class="form-control" required placeholder="e.g. 9328227962 or KHUSHAL VASOYA">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 14px;">
+                        <label class="form-label" style="font-weight: 700; font-size: 12px; color: #dc2626;">Last / Current 4-Digit MPIN *</label>
+                        <input type="password" id="forgot-mpin-last" class="form-control" maxlength="4" required placeholder="Enter last/previous 4 digits" style="letter-spacing: 4px; font-weight: 800; font-size: 15px;">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 14px;">
+                        <label class="form-label" style="font-weight: 700; font-size: 12px;">New 4-Digit MPIN *</label>
+                        <input type="password" id="forgot-mpin-new" class="form-control" maxlength="4" required placeholder="Enter new 4 digits" style="letter-spacing: 4px; font-weight: 800; font-size: 15px;">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 6px;">
+                        <label class="form-label" style="font-weight: 700; font-size: 12px;">Confirm New 4-Digit MPIN *</label>
+                        <input type="password" id="forgot-mpin-confirm" class="form-control" maxlength="4" required placeholder="Re-enter new 4 digits" style="letter-spacing: 4px; font-weight: 800; font-size: 15px;">
+                    </div>
+                </div>
+                <div class="modal-footer" style="background: #fafbfa; border-top: 1px solid #e2e8f0; padding: 12px 20px;">
+                    <button type="button" class="btn-action" onclick="closeModal('modal-forgot-mpin')" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">Cancel</button>
+                    <button type="submit" class="btn-primary" style="background: #dc2626; color: #ffffff; font-weight: 700; border: none; border-radius: 6px; padding: 0 16px;"><i class="fa-solid fa-check"></i> Verify Last MPIN & Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- MAIN APP JAVASCRIPT ENGINE -->
-    <script src="app.js?v=9.6.0"></script>
+    <script src="app.js?v=10.1.0"></script>
 </body>
 </html>

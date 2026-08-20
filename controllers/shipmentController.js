@@ -4,6 +4,7 @@
    ========================================================================== */
 
 const pool = require('../config/db');
+const { ensureVendorExists } = require('./vendorController');
 
 function extractShpId(req) {
     let p = req.params ? (req.params[0] || req.params.id || req.query?.id || '') : req;
@@ -186,12 +187,12 @@ async function createShipment(req, res) {
             return res.status(409).json({ success: false, message: `Shipment ID '${shpId}' already exists.` });
         }
 
-        // Calculate Purchase & Sales Totals from Items Array
+        // Calculate Purchase & Sales Totals from Items Array & Auto-Ingest Vendors
         let calcPurTotal = 0;
         let parsedPurItems = [];
         if (purchase_items) {
             parsedPurItems = typeof purchase_items === 'string' ? JSON.parse(purchase_items) : purchase_items;
-            parsedPurItems.forEach(item => {
+            for (const item of parsedPurItems) {
                 const exRate = parseFloat(item.ex_rate) || 1;
                 const baseAmt = parseFloat(item.foreign_amount) || parseFloat(item.amount) || 0;
                 const gstPct = parseFloat(item.gst_pct) || 0;
@@ -199,7 +200,17 @@ async function createShipment(req, res) {
                 const gstAmt = item.gst_amt !== undefined ? parseFloat(item.gst_amt) : ((taxable * gstPct) / 100);
                 const lineTot = item.amount && parseFloat(item.amount) > 0 ? parseFloat(item.amount) : (taxable + gstAmt);
                 calcPurTotal += lineTot;
-            });
+
+                // Auto-Ingest & Link Vendor in Vendor Master if not a shipping line
+                if (item.vendor_name && item.vendor_name.trim()) {
+                    await ensureVendorExists(item.vendor_name.trim(), item.expense_name || 'General Vendor');
+                }
+            }
+        }
+
+        // Auto-Ingest transport_name as Vendor if present
+        if (transport_name && transport_name.trim()) {
+            await ensureVendorExists(transport_name.trim(), 'Transporter');
         }
 
         let calcSaleTotal = 0;
@@ -270,7 +281,7 @@ async function updateShipment(req, res) {
         let parsedPurItems = [];
         if (purchase_items) {
             parsedPurItems = typeof purchase_items === 'string' ? JSON.parse(purchase_items) : purchase_items;
-            parsedPurItems.forEach(item => {
+            for (const item of parsedPurItems) {
                 const exRate = parseFloat(item.ex_rate) || 1;
                 const baseAmt = parseFloat(item.foreign_amount) || parseFloat(item.amount) || 0;
                 const gstPct = parseFloat(item.gst_pct) || 0;
@@ -278,7 +289,17 @@ async function updateShipment(req, res) {
                 const gstAmt = item.gst_amt !== undefined ? parseFloat(item.gst_amt) : ((taxable * gstPct) / 100);
                 const lineTot = item.amount && parseFloat(item.amount) > 0 ? parseFloat(item.amount) : (taxable + gstAmt);
                 calcPurTotal += lineTot;
-            });
+
+                // Auto-Ingest & Link Vendor in Vendor Master if not a shipping line
+                if (item.vendor_name && item.vendor_name.trim()) {
+                    await ensureVendorExists(item.vendor_name.trim(), item.expense_name || 'General Vendor');
+                }
+            }
+        }
+
+        // Auto-Ingest transport_name as Vendor if present
+        if (transport_name && transport_name.trim()) {
+            await ensureVendorExists(transport_name.trim(), 'Transporter');
         }
 
         let calcSaleTotal = 0;

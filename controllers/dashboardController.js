@@ -62,6 +62,25 @@ async function getKPIs(req, res) {
         `;
         const [recentPayments] = await pool.execute(recentPaymentsSql);
 
+        // 5. Total Expenses for Current Financial Year
+        const now = new Date();
+        const curYear = now.getFullYear();
+        const curMonth = now.getMonth() + 1;
+        const fyStartYear = curMonth >= 4 ? curYear : curYear - 1;
+        const fyStartDate = `${fyStartYear}-04-01`;
+        const fyEndDate = `${fyStartYear + 1}-03-31`;
+
+        let fyExpense = 0;
+        let fyExpenseCount = 0;
+        try {
+            const [expRows] = await pool.execute(
+                `SELECT COALESCE(SUM(amount), 0) AS fy_expense, COUNT(id) AS fy_expense_count FROM expenses WHERE expense_date >= ? AND expense_date <= ?`,
+                [fyStartDate, fyEndDate]
+            );
+            fyExpense = expRows ? parseFloat(expRows[0].fy_expense) || 0 : 0;
+            fyExpenseCount = expRows ? parseInt(expRows[0].fy_expense_count) || 0 : 0;
+        } catch (e) {}
+
         return res.json({
             success: true,
             monthly_revenue: parseFloat(kpi.total_revenue) || 0,
@@ -74,6 +93,9 @@ async function getKPIs(req, res) {
             pending_shipments: parseInt(kpi.pending_shipments) || 0,
             todays_collection: parseFloat(coll.todays_collection) || 0,
             monthly_collection: parseFloat(coll.monthly_collection) || 0,
+            total_expense: fyExpense,
+            fy_expense_count: fyExpenseCount,
+            fy_label: `FY ${fyStartYear}-${String(fyStartYear + 1).slice(-2)}`,
             top_clients: topClients || [],
             recent_payments: recentPayments || []
         });

@@ -129,6 +129,21 @@ CREATE TABLE vendor_payments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 7B. EXPENSES TABLE (Operational, Office & Direct Expenses)
+CREATE TABLE IF NOT EXISTS expenses (
+    id VARCHAR(50) PRIMARY KEY,
+    expense_date DATE NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    paid_to VARCHAR(200) NOT NULL,
+    amount DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+    payment_mode VARCHAR(50) DEFAULT 'Bank Transfer',
+    reference_no VARCHAR(100),
+    purpose TEXT,
+    recorded_by VARCHAR(100) DEFAULT 'Director',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 8. LOGIN AUDIT LOGS TABLE
 CREATE TABLE login_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
