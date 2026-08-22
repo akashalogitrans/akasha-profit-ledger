@@ -1157,22 +1157,24 @@ select.form-control option {
     text-overflow: clip !important;
     white-space: nowrap !important;
     text-align: right !important;
+    width: 80px !important;
+    min-width: 80px !important;
 }
 
 .btn-icon-action {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 5px;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
     border: 1px solid #cbd5e1;
     background: #ffffff;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 13px;
     transition: var(--transition);
     padding: 0;
-    margin: 0 1px;
+    margin: 0 2px;
 }
 
 .btn-icon-edit {

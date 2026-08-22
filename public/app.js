@@ -1004,10 +1004,9 @@ function renderDashboardRecentShipments() {
                 <td><strong style="color: ${marginColor}; font-weight: 800;">${marginNum > 0 ? '+' : ''}${margin}%</strong></td>
                 <td><span class="status-pill ${custBadge}">${custStatus}</span></td>
                 <td><span class="status-pill ${vendBadge}">${vendStatus}</span></td>
-                <td style="text-align: center; white-space: nowrap;">
-                    <button class="btn-action" onclick="navigateRoute('/shipment-entry/edit/${encodeURIComponent(s.id)}')" title="View / Edit Job">
-                        <i class="fa-solid fa-pen-to-square"></i> Edit
-                    </button>
+                <td class="action-cell">
+                    <button type="button" class="btn-icon-action btn-icon-edit" onclick="navigateRoute('/shipment-entry/edit/${encodeURIComponent(s.id)}')" title="View / Edit Job"><i class="fa-solid fa-pen-to-square"></i></button>
+                    <button type="button" class="btn-icon-action btn-icon-delete" onclick="deleteShipment('${s.id}')" title="Delete Shipment"><i class="fa-solid fa-trash"></i></button>
                 </td>
             </tr>
         `;
@@ -1056,9 +1055,9 @@ function renderShipmentsTable() {
                 <td><strong style="color: #0f172a; font-size: 13.5px;">${s.company_name}</strong></td>
                 <td><strong style="font-size: 13.5px; color: var(--danger);">${formatCurrencyINR(purAmt)}</strong></td>
                 <td><strong style="font-size: 13.5px; color: var(--primary);">${formatCurrencyINR(saleAmt)}</strong></td>
-                <td style="text-align: right; white-space: nowrap;">
-                    <button class="btn-action" onclick="navigateRoute('/shipment-entry/edit/${encodeURIComponent(s.id)}')" title="Edit Shipment"><i class="fa-solid fa-pen"></i> Edit</button>
-                    <button class="btn-action" onclick="deleteShipment('${s.id}')" title="Delete Shipment" style="color: var(--danger);"><i class="fa-solid fa-trash"></i> Delete</button>
+                <td class="action-cell">
+                    <button type="button" class="btn-icon-action btn-icon-edit" onclick="navigateRoute('/shipment-entry/edit/${encodeURIComponent(s.id)}')" title="Edit Shipment"><i class="fa-solid fa-pen-to-square"></i></button>
+                    <button type="button" class="btn-icon-action btn-icon-delete" onclick="deleteShipment('${s.id}')" title="Delete Shipment"><i class="fa-solid fa-trash"></i></button>
                 </td>
             </tr>
 
