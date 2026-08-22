@@ -136,8 +136,8 @@ async function fetchWithAuth(url, options = {}) {
     let token = localStorage.getItem('akasha_erp_jwt_token') || sessionStorage.getItem('akasha_erp_jwt_token');
     const headers = options.headers || {};
 
-    if (!headers['Authorization']) {
-        headers['Authorization'] = token ? `Bearer ${token}` : `Bearer DIRECTOR_SESSION_TOKEN`;
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
     }
     if (options.body && typeof options.body === 'string' && !headers['Content-Type']) {
         headers['Content-Type'] = 'application/json';
@@ -145,6 +145,11 @@ async function fetchWithAuth(url, options = {}) {
 
     try {
         const response = await fetch(url, { ...options, headers });
+        if (response.status === 401 || response.status === 403) {
+            console.warn('Session expired or unauthorized (401/403). Redirecting to login...');
+            handleLogout(true);
+            return response;
+        }
         return response;
     } catch (err) {
         console.error('Fetch Auth Error:', err);
@@ -153,29 +158,47 @@ async function fetchWithAuth(url, options = {}) {
 }
 
 function restoreUserSession() {
+    const savedLocalToken = localStorage.getItem('akasha_erp_jwt_token');
+    const savedSessionToken = sessionStorage.getItem('akasha_erp_jwt_token');
     const savedLocalUser = localStorage.getItem('akasha_erp_session');
     const savedSessionUser = sessionStorage.getItem('akasha_erp_session');
+
+    const token = savedLocalToken || savedSessionToken;
     const savedUser = savedLocalUser || savedSessionUser;
 
     let user = null;
-    if (savedUser) {
+    if (token && savedUser) {
         try {
             user = JSON.parse(savedUser);
         } catch (e) {
-            console.log("Session restore error");
+            console.error("Session restore error:", e);
         }
     }
 
-    if (!user || !user.name) {
-        user = STATE.adminUsers[0]; // Primary active director KHUSHAL VASOYA
-        localStorage.setItem('akasha_erp_session', JSON.stringify(user));
-    }
+    if (user && user.name && token) {
+        STATE.currentUser = user;
+        if (document.getElementById('login-screen')) document.getElementById('login-screen').style.display = 'none';
+        if (document.getElementById('erp-shell')) document.getElementById('erp-shell').style.display = 'flex';
+        updateCurrentUserInfo();
+        return true;
+    } else {
+        // Not authenticated -> Lock to Login Screen
+        STATE.currentUser = null;
+        localStorage.removeItem('akasha_erp_jwt_token');
+        localStorage.removeItem('akasha_erp_session');
+        sessionStorage.removeItem('akasha_erp_jwt_token');
+        sessionStorage.removeItem('akasha_erp_session');
 
-    STATE.currentUser = user;
-    if (document.getElementById('login-screen')) document.getElementById('login-screen').style.display = 'none';
-    if (document.getElementById('erp-shell')) document.getElementById('erp-shell').style.display = 'flex';
-    updateCurrentUserInfo();
-    return true;
+        // Save target path to redirect after successful login
+        const currentPath = window.location.pathname.replace(/\/$/, '') || '/';
+        if (currentPath !== '/' && currentPath !== '/dashboard') {
+            sessionStorage.setItem('akasha_erp_redirect_url', window.location.pathname);
+        }
+
+        if (document.getElementById('login-screen')) document.getElementById('login-screen').style.display = 'flex';
+        if (document.getElementById('erp-shell')) document.getElementById('erp-shell').style.display = 'none';
+        return false;
+    }
 }
 
 async function handleLogin(event) {
@@ -239,7 +262,12 @@ async function handleLogin(event) {
         document.getElementById('erp-shell').style.display = 'flex';
 
         updateCurrentUserInfo();
-        navigateRoute('/dashboard', true);
+
+        // Redirect to intended page or /dashboard
+        const targetRedirect = sessionStorage.getItem('akasha_erp_redirect_url') || '/dashboard';
+        sessionStorage.removeItem('akasha_erp_redirect_url');
+
+        navigateRoute(targetRedirect, true);
         fetchBackendAPIData();
         showToast(`Welcome back, ${data.user.name}!`, "success");
     } catch (err) {
@@ -250,18 +278,25 @@ async function handleLogin(event) {
     }
 }
 
-function handleLogout() {
+function handleLogout(isSessionExpired = false) {
     localStorage.removeItem('akasha_erp_jwt_token');
     localStorage.removeItem('akasha_erp_session');
     sessionStorage.removeItem('akasha_erp_jwt_token');
     sessionStorage.removeItem('akasha_erp_session');
+    sessionStorage.removeItem('akasha_erp_redirect_url');
     STATE.currentUser = null;
+
     if (document.getElementById('login-screen')) document.getElementById('login-screen').style.display = 'flex';
     if (document.getElementById('erp-shell')) document.getElementById('erp-shell').style.display = 'none';
     if (document.getElementById('login-identifier')) document.getElementById('login-identifier').value = '';
     if (document.getElementById('login-mpin')) document.getElementById('login-mpin').value = '';
+
     window.history.pushState({}, '', '/');
-    showToast('Logged out safely.', 'info');
+    if (isSessionExpired) {
+        showToast('Your session has expired. Please log in again.', 'warning');
+    } else {
+        showToast('Logged out safely.', 'info');
+    }
 }
 
 function updateCurrentUserInfo() {
@@ -337,6 +372,10 @@ function navigateRoute(path, pushState = true) {
 
 function handleRouteMatch(pathname) {
     if (!STATE.currentUser) {
+        const clean = pathname.replace(/\/$/, '') || '/';
+        if (clean !== '/' && clean !== '/dashboard') {
+            sessionStorage.setItem('akasha_erp_redirect_url', pathname);
+        }
         if (document.getElementById('login-screen')) document.getElementById('login-screen').style.display = 'flex';
         if (document.getElementById('erp-shell')) document.getElementById('erp-shell').style.display = 'none';
         return;
