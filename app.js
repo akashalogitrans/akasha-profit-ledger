@@ -133,7 +133,7 @@ function updateDateDisplay() {
 
 // --- JWT & AUTHENTICATION ENGINE ---
 async function fetchWithAuth(url, options = {}) {
-    let token = localStorage.getItem('akasha_erp_jwt_token') || sessionStorage.getItem('akasha_erp_jwt_token');
+    let token = sessionStorage.getItem('akasha_erp_jwt_token') || localStorage.getItem('akasha_erp_jwt_token');
     const headers = options.headers || {};
 
     if (token) {
@@ -158,13 +158,13 @@ async function fetchWithAuth(url, options = {}) {
 }
 
 function restoreUserSession() {
-    const savedLocalToken = localStorage.getItem('akasha_erp_jwt_token');
-    const savedSessionToken = sessionStorage.getItem('akasha_erp_jwt_token');
-    const savedLocalUser = localStorage.getItem('akasha_erp_session');
-    const savedSessionUser = sessionStorage.getItem('akasha_erp_session');
+    // Purge any legacy persistent localStorage to prevent direct unauthorized access
+    localStorage.removeItem('akasha_erp_jwt_token');
+    localStorage.removeItem('akasha_erp_session');
 
-    const token = savedLocalToken || savedSessionToken;
-    const savedUser = savedLocalUser || savedSessionUser;
+    // Strict Tab/Window Session
+    const token = sessionStorage.getItem('akasha_erp_jwt_token');
+    const savedUser = sessionStorage.getItem('akasha_erp_session');
 
     let user = null;
     if (token && savedUser) {
@@ -182,10 +182,8 @@ function restoreUserSession() {
         updateCurrentUserInfo();
         return true;
     } else {
-        // Not authenticated -> Lock to Login Screen
+        // Not authenticated -> Force display of Login Screen
         STATE.currentUser = null;
-        localStorage.removeItem('akasha_erp_jwt_token');
-        localStorage.removeItem('akasha_erp_session');
         sessionStorage.removeItem('akasha_erp_jwt_token');
         sessionStorage.removeItem('akasha_erp_session');
 
@@ -246,17 +244,8 @@ async function handleLogin(event) {
         STATE.currentUser = data.user;
         const jwtToken = data.token;
 
-        if (rememberMe) {
-            localStorage.setItem('akasha_erp_jwt_token', jwtToken);
-            localStorage.setItem('akasha_erp_session', JSON.stringify(data.user));
-            sessionStorage.removeItem('akasha_erp_jwt_token');
-            sessionStorage.removeItem('akasha_erp_session');
-        } else {
-            sessionStorage.setItem('akasha_erp_jwt_token', jwtToken);
-            sessionStorage.setItem('akasha_erp_session', JSON.stringify(data.user));
-            localStorage.removeItem('akasha_erp_jwt_token');
-            localStorage.removeItem('akasha_erp_session');
-        }
+        sessionStorage.setItem('akasha_erp_jwt_token', jwtToken);
+        sessionStorage.setItem('akasha_erp_session', JSON.stringify(data.user));
 
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('erp-shell').style.display = 'flex';
