@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=20.0.0">
+    <link rel="stylesheet" href="styles.css?v=22.0.0">
 </head>
 <body>
 
@@ -97,9 +97,6 @@
                 <!-- TOP NAVBAR WITH BRAND LOGO & DIRECT NAVIGATION -->
                 <header class="topbar">
                     <div class="topbar-left">
-                        <a href="javascript:void(0)" onclick="navigateRoute('/dashboard')" class="topbar-brand-link" style="display: flex; align-items: center; gap: 8px; text-decoration: none; margin-right: 12px;">
-                            <img src="https://akashalogitrans.com/akasha-logo.png" alt="Akasha Logo" class="topbar-brand-logo" onerror="this.src='https://via.placeholder.com/130x34/ea3829/ffffff?text=AKASHA+ERP'" style="height: 32px; width: auto; object-fit: contain;">
-                        </a>
                         <button class="topbar-home-btn" onclick="navigateRoute('/dashboard')" title="Go to Dashboard">
                             <i class="fa-solid fa-house"></i> <span>Dashboard</span>
                         </button>
@@ -107,7 +104,7 @@
                             <i class="fa-regular fa-clock"></i>
                             <span id="topbar-current-datetime">Loading Date & Time...</span>
                         </div>
-                        <div class="topbar-fy-badge">
+                        <div class="topbar-fy-badge" id="topbar-fy-badge">
                             <i class="fa-solid fa-shield-halved" style="color: var(--neon-green); font-size: 11px;"></i>
                             <span>FY 2026-27</span>
                         </div>
@@ -119,15 +116,15 @@
                             <i class="fa-solid fa-sun" id="theme-toggle-icon"></i>
                         </button>
                         
-                        <div class="topbar-user-profile">
+                        <div class="topbar-user-profile" id="topbar-user-profile-box">
                             <div class="topbar-user-meta">
                                 <div class="topbar-user-name" id="topbar-user-name">Khushal Patel</div>
                                 <div class="topbar-user-role" id="topbar-user-role">DIRECTOR</div>
                             </div>
                             <div class="topbar-user-avatar" id="topbar-user-avatar">KA</div>
                         </div>
-                        <button class="btn-action" onclick="handleLogout()" style="background: rgba(255, 59, 48, 0.1); color: var(--brand-red); border-color: rgba(255, 59, 48, 0.3); font-weight: 700;" title="Logout">
-                            <i class="fa-solid fa-right-from-bracket"></i> Logout
+                        <button class="btn-action topbar-logout-btn" onclick="handleLogout()" title="Logout of ERP Session">
+                            <i class="fa-solid fa-right-from-bracket"></i> <span class="logout-text">Logout</span>
                         </button>
                     </div>
                 </header>
@@ -573,8 +570,8 @@
 
                             <!-- SECTION 1: COMMON DETAILS -->
                             <div class="panel-card" style="margin-bottom: 20px;">
-                                <div class="panel-header" style="background: #0f172a; color: #ffffff;">
-                                    <div class="panel-title"><i class="fa-solid fa-circle-info"></i> SECTION 1: SHIPMENT COMMON DETAILS</div>
+                                <div class="panel-header">
+                                    <div class="panel-title"><i class="fa-solid fa-circle-info" style="color: var(--neon-blue); margin-right: 6px;"></i> SECTION 1: SHIPMENT COMMON DETAILS</div>
                                 </div>
                                 <div class="panel-body">
                                     <div class="grid-12" style="gap: 16px;">
@@ -586,11 +583,11 @@
                                         </div>
                                         <div class="col-3">
                                             <label class="form-label">Client ID (Auto)</label>
-                                            <input type="text" id="form-shipment-client-id" class="form-control" readonly placeholder="Auto populated" style="background: #f1f5f9; font-weight: 700;">
+                                            <input type="text" id="form-shipment-client-id" class="form-control" readonly placeholder="Auto populated" style="background: var(--bg-surface-elevated); font-weight: 700;">
                                         </div>
                                         <div class="col-5">
                                             <label class="form-label">Shipment ID (Parent Transaction) *</label>
-                                            <input type="text" id="form-shipment-id" class="form-control" readonly placeholder="AKASHA/CLI-101/001" style="background: #f1f5f9; font-weight: 800; color: #0f172a;">
+                                            <input type="text" id="form-shipment-id" class="form-control" readonly placeholder="AKASHA/CLI-101/001" style="background: var(--bg-surface-elevated); font-weight: 800; color: var(--neon-blue);">
                                         </div>
                                         <div class="col-3">
                                             <label class="form-label">Shipment Date *</label>
@@ -622,9 +619,9 @@
 
                             <!-- SECTION 2: PURCHASE ENTRY -->
                             <div class="panel-card" style="margin-bottom: 20px;">
-                                <div class="panel-header" style="background: #1e293b; color: #ffffff; display: flex; justify-content: space-between; align-items: center;">
-                                    <div class="panel-title"><i class="fa-solid fa-file-contract"></i> SECTION 2: PURCHASE ENTRY (VENDOR BILLING)</div>
-                                    <button type="button" class="btn-action" style="background: #3b82f6; color: #ffffff; white-space: nowrap;" onclick="addPurchaseFormRow()"><i class="fa-solid fa-plus"></i> + Add Purchase Row</button>
+                                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div class="panel-title"><i class="fa-solid fa-file-contract" style="color: var(--brand-red); margin-right: 6px;"></i> SECTION 2: PURCHASE ENTRY (VENDOR BILLING)</div>
+                                    <button type="button" class="btn-action" style="background: var(--neon-blue-bg); color: var(--neon-blue); border-color: var(--neon-blue-border); font-weight: 700; white-space: nowrap;" onclick="addPurchaseFormRow()"><i class="fa-solid fa-plus"></i> Add Purchase Row</button>
                                 </div>
                                 <div class="panel-body" style="padding: 0;">
                                     <div class="item-entry-table-wrapper">
@@ -651,9 +648,9 @@
 
                             <!-- SECTION 3: SALES BILL ENTRY -->
                             <div class="panel-card" style="margin-bottom: 20px;">
-                                <div class="panel-header" style="background: #1e293b; color: #ffffff; display: flex; justify-content: space-between; align-items: center;">
-                                    <div class="panel-title"><i class="fa-solid fa-file-invoice-dollar"></i> SECTION 3: SALES BILL ENTRY (CUSTOMER INVOICING)</div>
-                                    <button type="button" class="btn-action" style="background: #059669; color: #ffffff; white-space: nowrap;" onclick="addSalesFormRow()"><i class="fa-solid fa-plus"></i> + Add Sales Row</button>
+                                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div class="panel-title"><i class="fa-solid fa-file-invoice-dollar" style="color: var(--neon-green); margin-right: 6px;"></i> SECTION 3: SALES BILL ENTRY (CUSTOMER INVOICING)</div>
+                                    <button type="button" class="btn-action" style="background: var(--neon-green-bg); color: var(--neon-green); border-color: var(--neon-green-border); font-weight: 700; white-space: nowrap;" onclick="addSalesFormRow()"><i class="fa-solid fa-plus"></i> Add Sales Row</button>
                                 </div>
                                 <div class="panel-body" style="padding: 0;">
                                     <div class="item-entry-table-wrapper">
@@ -680,30 +677,30 @@
 
                             <!-- SECTION 4: FINANCIAL SUMMARY -->
                             <div class="panel-card" style="margin-bottom: 24px;">
-                                <div class="panel-header" style="background: #0f172a; color: #ffffff;">
-                                    <div class="panel-title"><i class="fa-solid fa-scale-balanced"></i> SECTION 4: FINANCIAL & OPERATING MARGIN SUMMARY</div>
+                                <div class="panel-header">
+                                    <div class="panel-title"><i class="fa-solid fa-scale-balanced" style="color: var(--neon-purple); margin-right: 6px;"></i> SECTION 4: FINANCIAL & OPERATING MARGIN SUMMARY</div>
                                 </div>
                                 <div class="panel-body">
                                     <div class="grid-12" style="gap: 16px;">
-                                        <div class="col-4" style="background: #eff6ff; padding: 14px; border-radius: 4px; border: 1px solid #bfdbfe;">
-                                            <div style="font-weight: 700; color: #1e3a8a; margin-bottom: 6px;">CUSTOMER SALES TOTAL</div>
-                                            <div style="font-size: 22px; font-weight: 900; color: #1e40af;" id="summary-sales-total">₹0.00</div>
+                                        <div class="col-4" style="background: var(--neon-blue-bg); padding: 14px; border-radius: 6px; border: 1px solid var(--neon-blue-border);">
+                                            <div style="font-weight: 700; font-size: 11.5px; color: var(--neon-blue); margin-bottom: 6px; text-transform: uppercase;">CUSTOMER SALES TOTAL</div>
+                                            <div style="font-size: 22px; font-weight: 900; color: var(--neon-blue);" id="summary-sales-total">₹0.00</div>
                                         </div>
-                                        <div class="col-4" style="background: #fef2f2; padding: 14px; border-radius: 4px; border: 1px solid #fecaca;">
-                                            <div style="font-weight: 700; color: #991b1b; margin-bottom: 6px;">VENDOR PURCHASE TOTAL</div>
-                                            <div style="font-size: 22px; font-weight: 900; color: #b91c1c;" id="summary-purchase-total">₹0.00</div>
+                                        <div class="col-4" style="background: var(--brand-red-bg); padding: 14px; border-radius: 6px; border: 1px solid var(--brand-red-border);">
+                                            <div style="font-weight: 700; font-size: 11.5px; color: var(--brand-red); margin-bottom: 6px; text-transform: uppercase;">VENDOR PURCHASE TOTAL</div>
+                                            <div style="font-size: 22px; font-weight: 900; color: var(--brand-red);" id="summary-purchase-total">₹0.00</div>
                                         </div>
-                                        <div class="col-4" style="background: #ecfdf5; padding: 14px; border-radius: 4px; border: 1px solid #a7f3d0;">
-                                            <div style="font-weight: 700; color: #065f46; margin-bottom: 6px;">NET OPERATING PROFIT</div>
-                                            <div style="font-size: 22px; font-weight: 900; color: #047857;" id="summary-net-profit">₹0.00</div>
+                                        <div class="col-4" style="background: var(--neon-green-bg); padding: 14px; border-radius: 6px; border: 1px solid var(--neon-green-border);">
+                                            <div style="font-weight: 700; font-size: 11.5px; color: var(--neon-green); margin-bottom: 6px; text-transform: uppercase;">NET OPERATING PROFIT</div>
+                                            <div style="font-size: 22px; font-weight: 900; color: var(--neon-green);" id="summary-net-profit">₹0.00</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             <div style="display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 40px;">
-                                <button type="button" class="btn-action" style="padding: 12px 24px;" onclick="navigateRoute('/shipment-entry')">Cancel</button>
-                                <button type="submit" class="btn-primary" style="padding: 12px 32px; background: #0f172a; border-radius: 4px; color: #ffffff;"><i class="fa-solid fa-floppy-disk"></i> Save Shipment Job</button>
+                                <button type="button" class="btn-action" style="padding: 10px 24px;" onclick="navigateRoute('/shipment-entry')">Cancel</button>
+                                <button type="submit" class="btn-primary" style="padding: 10px 32px; background: var(--brand-red-gradient); border: none; font-weight: 800; border-radius: 6px; color: #ffffff;"><i class="fa-solid fa-floppy-disk"></i> Save Shipment Job</button>
                             </div>
                         </form>
                     </div>
@@ -1574,6 +1571,6 @@
     </div>
 
     <!-- MAIN APP JAVASCRIPT ENGINE -->
-    <script src="app.js?v=20.0.0"></script>
+    <script src="app.js?v=22.0.0"></script>
 </body>
 </html>

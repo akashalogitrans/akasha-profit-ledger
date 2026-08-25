@@ -643,6 +643,26 @@ body {
     justify-content: center;
 }
 
+.topbar-logout-btn {
+    background: rgba(255, 59, 48, 0.1);
+    color: var(--brand-red);
+    border-color: rgba(255, 59, 48, 0.3);
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.topbar-logout-btn:hover {
+    background: var(--brand-red);
+    color: #ffffff;
+}
+
 /* ==========================================================================
    6. CONTENT BODY & VIEW LAYOUTS
    ========================================================================== */
@@ -1239,6 +1259,72 @@ body {
     outline: none;
 }
 
+.form-control[readonly],
+.form-control:disabled,
+.input-readonly {
+    background: var(--bg-surface-elevated) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+    cursor: default;
+    font-weight: 700;
+}
+
+.input-total-green {
+    background: var(--neon-green-bg) !important;
+    color: var(--neon-green) !important;
+    border: 1px solid var(--neon-green-border) !important;
+    font-weight: 800;
+}
+
+.input-total-red {
+    background: var(--brand-red-bg) !important;
+    color: var(--brand-red) !important;
+    border: 1px solid var(--brand-red-border) !important;
+    font-weight: 800;
+}
+
+/* ITEM ENTRY TABLE (SHIPMENT FORM) */
+.item-entry-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-surface);
+    margin-bottom: 6px;
+}
+
+.item-entry-table {
+    min-width: 820px;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.item-entry-table th {
+    padding: 8px 10px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: var(--bg-surface-subtle);
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.item-entry-table td {
+    padding: 6px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.item-entry-table .form-control {
+    height: 32px;
+    font-size: 11.5px;
+    padding: 0 8px;
+}
+
 .grid-12 {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
@@ -1449,6 +1535,82 @@ body {
 }
 
 @media (max-width: 768px) {
+    /* MOBILE TOPBAR (ZERO OVERFLOW & CLEAN ALIGNMENT) */
+    .topbar {
+        padding: 0 10px !important;
+        height: 48px !important;
+    }
+    .topbar-left {
+        gap: 6px !important;
+    }
+    .topbar-home-btn {
+        padding: 5px 10px !important;
+        font-size: 11.5px !important;
+    }
+    .topbar-live-clock,
+    .topbar-fy-badge {
+        display: none !important; /* Hide clock and multi-line wrapping FY badge on small mobile screens */
+    }
+    .topbar-right {
+        gap: 6px !important;
+    }
+    .topbar-user-profile {
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
+    }
+    .topbar-user-meta {
+        display: none !important; /* Hide 'dhruv ADMIN' text on mobile so only DT avatar circle displays */
+    }
+    .topbar-user-avatar {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 11px !important;
+    }
+    .topbar-logout-btn {
+        padding: 0 !important;
+        width: 30px !important;
+        height: 30px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 6px !important;
+    }
+    .topbar-logout-btn .logout-text {
+        display: none !important; /* Icon-only logout on mobile */
+    }
+
+    /* 2-PART DASHBOARD BANNER ON MOBILE */
+    .dash-welcome-banner {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        padding: 12px 14px !important;
+        gap: 12px !important;
+    }
+    .dash-welcome-left {
+        width: 100% !important;
+        margin-bottom: 2px !important;
+    }
+    .dash-welcome-left h3 {
+        font-size: 14px !important;
+    }
+    .dash-welcome-left p {
+        font-size: 11px !important;
+    }
+    .dash-quick-actions {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+    .dash-action-btn {
+        width: 100% !important;
+        justify-content: center !important;
+        text-align: center !important;
+        padding: 8px 6px !important;
+        font-size: 11.5px !important;
+    }
+
     .app-module-grid {
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 10px !important;
@@ -1527,23 +1689,23 @@ body {
         gap: 8px !important;
     }
 
-    /* ZERO HORIZONTAL SCROLL: MOBILE CARD FEED */
+    /* ZERO HORIZONTAL SCROLL: MOBILE CARD FEED (EXCLUDES MULTI-COLUMN FORM ITEM TABLES) */
     .table-container {
         overflow-x: visible !important;
     }
-    .erp-table, 
-    .erp-table tbody {
+    .erp-table:not(.item-entry-table), 
+    .erp-table:not(.item-entry-table) tbody {
         display: flex !important;
         flex-direction: column !important;
         gap: 12px !important;
         width: 100% !important;
         border: none !important;
     }
-    .erp-table thead {
+    .erp-table:not(.item-entry-table) thead {
         display: none !important;
     }
-    .erp-table tbody tr.shipment-main-row,
-    .erp-table tbody tr:not([id*="sub-row"]):not(.master-detail-subrow) {
+    .erp-table:not(.item-entry-table) tbody tr.shipment-main-row,
+    .erp-table:not(.item-entry-table) tbody tr:not([id*="sub-row"]):not(.master-detail-subrow) {
         display: flex !important;
         flex-direction: column !important;
         background: var(--bg-surface) !important;
@@ -1555,7 +1717,7 @@ body {
         gap: 6px !important;
         position: relative !important;
     }
-    .erp-table tbody tr td {
+    .erp-table:not(.item-entry-table) tbody tr td {
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
@@ -1567,7 +1729,7 @@ body {
         color: var(--text-primary) !important;
         white-space: normal !important;
     }
-    .erp-table tbody tr td::before {
+    .erp-table:not(.item-entry-table) tbody tr td::before {
         content: attr(data-label);
         font-size: 11px !important;
         font-weight: 700 !important;
@@ -1577,12 +1739,12 @@ body {
         flex-shrink: 0 !important;
         margin-right: 10px !important;
     }
-    .erp-table tbody tr td.col-expand,
-    .erp-table tbody tr td:first-child:not([data-label]) {
+    .erp-table:not(.item-entry-table) tbody tr td.col-expand,
+    .erp-table:not(.item-entry-table) tbody tr td:first-child:not([data-label]) {
         display: none !important;
     }
-    .erp-table tbody tr td.action-cell,
-    .erp-table tbody tr td:last-child {
+    .erp-table:not(.item-entry-table) tbody tr td.action-cell,
+    .erp-table:not(.item-entry-table) tbody tr td:last-child {
         display: flex !important;
         align-items: center !important;
         justify-content: stretch !important;
@@ -1594,8 +1756,8 @@ body {
         border-bottom: none !important;
         border-top: 1px dashed var(--border-color) !important;
     }
-    .erp-table tbody tr td.action-cell::before,
-    .erp-table tbody tr td:last-child::before {
+    .erp-table:not(.item-entry-table) tbody tr td.action-cell::before,
+    .erp-table:not(.item-entry-table) tbody tr td:last-child::before {
         display: none !important;
     }
     .erp-table tbody tr td.action-cell .btn-icon-action {

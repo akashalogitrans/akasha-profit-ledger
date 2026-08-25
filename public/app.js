@@ -1967,14 +1967,14 @@ function populateVendorDropdowns() {
     const datalist = document.getElementById('vendor-list-options');
     if (datalist) {
         datalist.innerHTML = (STATE.vendors || []).map(v => 
-            `<option value="${v.name}">${v.name} (${v.id} - ${v.vendor_type || 'General'})</option>`
+            `<option value="${v.name}">${v.name}</option>`
         ).join('');
     }
 
     const modalVpSelect = document.getElementById('modal-vp-vendor-select');
     if (modalVpSelect) {
         modalVpSelect.innerHTML = '<option value="">-- Select Vendor --</option>' + 
-            (STATE.vendors || []).map(v => `<option value="${v.id}">${v.name} (${v.vendor_type || 'General'})</option>`).join('');
+            (STATE.vendors || []).map(v => `<option value="${v.id}">${v.name}</option>`).join('');
     }
 }
 
@@ -2042,11 +2042,11 @@ function addSalesFormRow(data = {}) {
         <td><input type="number" class="form-control sale-ex-rate" value="${exRate}" step="0.01" oninput="recalculateFormTotals()" required></td>
         <td><input type="number" class="form-control sale-qty" value="${initQty}" step="1" oninput="recalculateFormTotals()" required></td>
         <td><input type="number" class="form-control sale-rate" value="${initRate}" step="0.01" oninput="recalculateFormTotals()" required></td>
-        <td><input type="number" class="form-control sale-taxable" value="0" readonly style="background: #f1f5f9; font-weight: 700;"></td>
+        <td><input type="number" class="form-control sale-taxable input-readonly" value="0" readonly></td>
         <td><input type="number" class="form-control sale-gst-pct" value="${initGst}" step="0.01" oninput="recalculateFormTotals()"></td>
-        <td><input type="number" class="form-control sale-gst-amt" value="0" readonly style="background: #f1f5f9;"></td>
-        <td><input type="number" class="form-control sale-total" value="0" readonly style="background: #ecfdf5; font-weight: 800;"></td>
-        <td style="text-align: center;"><button type="button" class="btn-action" style="color: var(--danger);" onclick="removeFormRow('${rowId}')">&times;</button></td>
+        <td><input type="number" class="form-control sale-gst-amt input-readonly" value="0" readonly></td>
+        <td><input type="number" class="form-control sale-total input-total-green" value="0" readonly></td>
+        <td style="text-align: center;"><button type="button" class="btn-action" style="color: var(--brand-red);" onclick="removeFormRow('${rowId}')">&times;</button></td>
     `;
 
     tbody.appendChild(tr);
@@ -2095,11 +2095,11 @@ function addPurchaseFormRow(data = {}) {
         </td>
         <td><input type="number" class="form-control pur-ex-rate" value="${exRate}" step="0.01" oninput="recalculateFormTotals()" required></td>
         <td><input type="number" class="form-control pur-amount" value="${baseAmt}" step="0.01" oninput="recalculateFormTotals()" required></td>
-        <td><input type="number" class="form-control pur-taxable" value="0" readonly style="background: #f1f5f9; font-weight: 700;"></td>
+        <td><input type="number" class="form-control pur-taxable input-readonly" value="0" readonly></td>
         <td><input type="number" class="form-control pur-gst-pct" value="${initGst}" step="0.01" oninput="recalculateFormTotals()"></td>
-        <td><input type="number" class="form-control pur-gst-amt" value="0" readonly style="background: #f1f5f9;"></td>
-        <td><input type="number" class="form-control pur-total" value="0" readonly style="background: #fef2f2; font-weight: 800;"></td>
-        <td style="text-align: center;"><button type="button" class="btn-action" style="color: var(--danger);" onclick="removeFormRow('${rowId}')">&times;</button></td>
+        <td><input type="number" class="form-control pur-gst-amt input-readonly" value="0" readonly></td>
+        <td><input type="number" class="form-control pur-total input-total-red" value="0" readonly></td>
+        <td style="text-align: center;"><button type="button" class="btn-action" style="color: var(--brand-red);" onclick="removeFormRow('${rowId}')">&times;</button></td>
     `;
 
     tbody.appendChild(tr);
