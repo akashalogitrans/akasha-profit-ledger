@@ -31,10 +31,10 @@ const STATE = {
 };
 
 const API_BASE_URL = `${window.location.origin}/api`;
-let revenueChart = null;
 
 // --- DOM INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
+    initERPTheme();
     const isAuthenticated = restoreUserSession();
     initNavigation();
     updateDateDisplay();
@@ -314,8 +314,8 @@ const ROUTE_MAP = {
     '/': { view: 'dashboard', path: '/dashboard', title: 'Executive Dashboard | Akasha ERP' },
     '/dashboard': { view: 'dashboard', path: '/dashboard', title: 'Executive Dashboard | Akasha ERP' },
     '/shipment-entry': { view: 'shipments', path: '/shipment-entry', title: 'Shipment Register | Akasha ERP' },
-    '/sales-ledger': { view: 'shipments', path: '/sales-ledger', title: 'Sales Ledger | Akasha ERP' },
-    '/purchase-ledger': { view: 'shipments', path: '/purchase-ledger', title: 'Purchase Ledger | Akasha ERP' },
+    '/sales-ledger': { view: 'sales-ledger', path: '/sales-ledger', title: 'Sales Ledger | Akasha ERP' },
+    '/purchase-ledger': { view: 'purchase-ledger', path: '/purchase-ledger', title: 'Purchase Ledger | Akasha ERP' },
     '/payment-received': { view: 'payment-received', path: '/payment-received', title: 'Payment Received | Akasha ERP' },
     '/vendor-payment': { view: 'vendor-payment', path: '/vendor-payment', title: 'Vendor Payment | Akasha ERP' },
     '/expenses': { view: 'expenses', path: '/expenses', title: 'Expense Register | Akasha ERP' },
@@ -397,6 +397,9 @@ function switchView(viewId) {
     // Map viewId to HTML element ID
     let targetElId = `view-${viewId}`;
     if (viewId === 'payment_received') targetElId = 'view-payment-received';
+    if (viewId === 'sales_ledger' || viewId === 'sales-ledger') targetElId = 'view-sales-ledger';
+    if (viewId === 'purchase_ledger' || viewId === 'purchase-ledger') targetElId = 'view-purchase-ledger';
+    if (viewId === 'payment_received') targetElId = 'view-payment-received';
     if (viewId === 'vendor_payment') targetElId = 'view-vendor-payment';
     if (viewId === 'profit_ledger') targetElId = 'view-profit-ledger';
     if (viewId === 'report_receivable') targetElId = 'view-report-receivable';
@@ -428,6 +431,8 @@ function switchView(viewId) {
 
     if (viewId === 'dashboard') fetchDashboardKPIs();
     if (viewId === 'shipments') renderShipmentsTable();
+    if (viewId === 'sales-ledger' || viewId === 'sales_ledger') renderSalesLedgerTable();
+    if (viewId === 'purchase-ledger' || viewId === 'purchase_ledger') renderPurchaseLedgerTable();
     if (viewId === 'payment-received' || viewId === 'payment_received') fetchPaymentsReceivedData();
     if (viewId === 'vendor-payment' || viewId === 'vendor_payment') fetchVendorPaymentsData();
     if (viewId === 'expenses') fetchExpensesData();
@@ -582,6 +587,8 @@ async function fetchShipmentsData() {
                 STATE.shipments = data;
                 STATE.filteredShipments = [...STATE.shipments];
                 renderShipmentsTable();
+                renderSalesLedgerTable();
+                renderPurchaseLedgerTable();
                 renderDashboardRecentShipments();
                 recalculateKPIsFromState();
             }
@@ -852,22 +859,41 @@ async function handleSaveExpense(e) {
     if (e) e.preventDefault();
 
     const isEdit = document.getElementById('modal-expense-is-edit')?.value === 'true';
-    const expenseId = document.getElementById('modal-expense-id')?.value;
+    const expenseId = (document.getElementById('modal-expense-id')?.value || '').trim();
+    const expenseDate = document.getElementById('modal-exp-date')?.value;
+    const category = (document.getElementById('modal-exp-category')?.value || '').trim();
+    const paidTo = (document.getElementById('modal-exp-paid-to')?.value || '').trim();
+    const amount = parseFloat(document.getElementById('modal-exp-amount')?.value) || 0;
+    const paymentMode = document.getElementById('modal-exp-mode')?.value || 'Bank Transfer';
+    const refNo = (document.getElementById('modal-exp-ref')?.value || '').trim();
+    const purpose = (document.getElementById('modal-exp-purpose')?.value || '').trim();
 
-    const payload = {
-        expense_date: document.getElementById('modal-exp-date')?.value,
-        category: document.getElementById('modal-exp-category')?.value,
-        paid_to: document.getElementById('modal-exp-paid-to')?.value?.trim(),
-        amount: parseFloat(document.getElementById('modal-exp-amount')?.value) || 0,
-        payment_mode: document.getElementById('modal-exp-mode')?.value,
-        reference_no: document.getElementById('modal-exp-ref')?.value?.trim(),
-        purpose: document.getElementById('modal-exp-purpose')?.value?.trim()
-    };
-
-    if (!payload.expense_date || !payload.category || !payload.paid_to || !payload.amount) {
-        showToast('Please fill all required expense fields.', 'warning');
+    if (!expenseDate) {
+        showToast('Please specify the Expense Incurred Date.', 'warning');
         return;
     }
+    if (!category) {
+        showToast('Please select or specify an Expense Category (e.g. Office Rent, Payroll).', 'warning');
+        return;
+    }
+    if (!paidTo) {
+        showToast('Please enter the Payee / Vendor name (Paid To).', 'warning');
+        return;
+    }
+    if (amount <= 0 || isNaN(amount)) {
+        showToast('Please enter a valid positive expense amount.', 'warning');
+        return;
+    }
+
+    const payload = {
+        expense_date: expenseDate,
+        category,
+        paid_to: paidTo,
+        amount,
+        payment_mode: paymentMode,
+        reference_no: refNo,
+        purpose
+    };
 
     try {
         const url = isEdit ? `${API_BASE_URL}/expenses/${encodeURIComponent(expenseId)}` : `${API_BASE_URL}/expenses`;
@@ -880,16 +906,16 @@ async function handleSaveExpense(e) {
 
         const data = await res.json();
         if (!res.ok || !data.success) {
-            showToast(data.message || 'Error saving expense', 'error');
+            showToast(data.message || 'Error recording operational expense.', 'error');
             return;
         }
 
-        showToast(isEdit ? `Expense ${expenseId} updated successfully!` : 'Expense recorded successfully!', 'success');
+        showToast(isEdit ? `Expense ${expenseId} updated successfully!` : `Expense voucher of ₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })} recorded!`, 'success');
         closeModal('modal-expense');
         await fetchExpensesData();
         fetchDashboardKPIs();
     } catch (err) {
-        showToast('Network error saving expense', 'error');
+        showToast('Network error while saving expense voucher.', 'error');
     }
 }
 
@@ -996,15 +1022,15 @@ function renderDashboardRecentShipments() {
 
         return `
             <tr>
-                <td><strong style="color: var(--primary);">${s.id}</strong></td>
-                <td><strong>${s.company_name}</strong></td>
-                <td><strong style="color: var(--primary);">${formatCurrencyINR(saleAmt)}</strong></td>
-                <td><strong style="color: var(--danger);">${formatCurrencyINR(purAmt)}</strong></td>
-                <td><strong style="color: ${profitColor}; font-weight: 800;">${formattedProfit}</strong></td>
-                <td><strong style="color: ${marginColor}; font-weight: 800;">${marginNum > 0 ? '+' : ''}${margin}%</strong></td>
-                <td><span class="status-pill ${custBadge}">${custStatus}</span></td>
-                <td><span class="status-pill ${vendBadge}">${vendStatus}</span></td>
-                <td class="action-cell">
+                <td class="col-id" data-label="Shipment ID"><strong style="color: var(--neon-blue); font-weight: 800;">${s.id}</strong></td>
+                <td class="col-client" data-label="Client / Importer"><strong>${s.company_name}</strong></td>
+                <td class="col-sales" data-label="Sales Value" style="text-align: right;"><strong style="color: var(--neon-blue); font-weight: 800;">${formatCurrencyINR(saleAmt)}</strong></td>
+                <td class="col-purchase" data-label="Purchase Cost" style="text-align: right;"><strong style="color: var(--brand-red); font-weight: 800;">${formatCurrencyINR(purAmt)}</strong></td>
+                <td class="col-profit" data-label="Net Profit" style="text-align: right;"><strong style="color: ${profitColor}; font-weight: 800;">${formattedProfit}</strong></td>
+                <td class="col-margin" data-label="Profit Margin" style="text-align: right;"><strong style="color: ${marginColor}; font-weight: 800;">${marginNum > 0 ? '+' : ''}${margin}%</strong></td>
+                <td class="col-cust-status" data-label="Customer Status" style="text-align: center;"><span class="status-pill ${custBadge}">${custStatus}</span></td>
+                <td class="col-vend-status" data-label="Vendor Status" style="text-align: center;"><span class="status-pill ${vendBadge}">${vendStatus}</span></td>
+                <td class="action-cell" style="text-align: right;">
                     <button type="button" class="btn-icon-action btn-icon-edit" onclick="navigateRoute('/shipment-entry/edit/${encodeURIComponent(s.id)}')" title="View / Edit Job"><i class="fa-solid fa-pen-to-square"></i></button>
                     <button type="button" class="btn-icon-action btn-icon-delete" onclick="deleteShipment('${s.id}')" title="Delete Shipment"><i class="fa-solid fa-trash"></i></button>
                 </td>
@@ -1045,16 +1071,16 @@ function renderShipmentsTable() {
 
         return `
             <tr class="shipment-main-row" id="main-row-${safeId}">
-                <td style="text-align: center; white-space: nowrap;">
+                <td class="col-expand" style="text-align: center; white-space: nowrap;">
                     <button type="button" onclick="toggleShipmentRowExpand('${s.id}')" style="background: none; border: none; cursor: pointer;">
-                        <i id="expand-icon-${safeId}" class="fa-solid fa-circle-plus" style="font-size: 18px; color: #2563eb;"></i>
+                        <i id="expand-icon-${safeId}" class="fa-solid fa-circle-plus" style="font-size: 16px; color: var(--neon-blue);"></i>
                     </button>
                 </td>
-                <td><strong style="color: var(--primary); font-size: 13.5px;">${s.id}</strong></td>
-                <td>${s.date}</td>
-                <td><strong style="color: #0f172a; font-size: 13.5px;">${s.company_name}</strong></td>
-                <td><strong style="font-size: 13.5px; color: var(--danger);">${formatCurrencyINR(purAmt)}</strong></td>
-                <td><strong style="font-size: 13.5px; color: var(--primary);">${formatCurrencyINR(saleAmt)}</strong></td>
+                <td class="col-id" data-label="Shipment ID"><strong style="color: var(--neon-blue); font-size: 13px; font-weight: 800;">${s.id}</strong></td>
+                <td class="col-date" data-label="Date"><span>${s.date}</span></td>
+                <td class="col-client" data-label="Client / Company"><strong>${s.company_name}</strong></td>
+                <td class="col-purchase" data-label="Purchase Cost" style="text-align: right;"><strong style="font-size: 13px; color: var(--brand-red);">${formatCurrencyINR(purAmt)}</strong></td>
+                <td class="col-sales" data-label="Sales Value" style="text-align: right;"><strong style="font-size: 13px; color: var(--neon-blue);">${formatCurrencyINR(saleAmt)}</strong></td>
                 <td class="action-cell">
                     <button type="button" class="btn-icon-action btn-icon-edit" onclick="navigateRoute('/shipment-entry/edit/${encodeURIComponent(s.id)}')" title="Edit Shipment"><i class="fa-solid fa-pen-to-square"></i></button>
                     <button type="button" class="btn-icon-action btn-icon-delete" onclick="deleteShipment('${s.id}')" title="Delete Shipment"><i class="fa-solid fa-trash"></i></button>
@@ -1134,6 +1160,317 @@ function renderPagination(totalItems) {
 function changePage(page) {
     STATE.currentPage = page;
     renderShipmentsTable();
+}
+
+// --- SALES LEDGER ENGINE (Dedicated Customer Invoicing & Receivables Flow) ---
+function renderSalesLedgerTable(customList = null) {
+    const tbody = document.getElementById('table-sales-ledger-body');
+    if (!tbody) return;
+
+    const list = customList !== null ? customList : (STATE.shipments || []);
+
+    // Compute Summary KPIs
+    let totalSales = 0;
+    let totalReceived = 0;
+    list.forEach(s => {
+        const sale = parseFloat(s.sale_amount) || 0;
+        const rec = parseFloat(s.received_amount) || 0;
+        totalSales += sale;
+        totalReceived += rec;
+    });
+    const balanceRec = Math.max(0, totalSales - totalReceived);
+
+    if (document.getElementById('sales-kpi-total-sales')) {
+        document.getElementById('sales-kpi-total-sales').innerText = formatCurrencyINR(totalSales);
+    }
+    if (document.getElementById('sales-kpi-total-received')) {
+        document.getElementById('sales-kpi-total-received').innerText = formatCurrencyINR(totalReceived);
+    }
+    if (document.getElementById('sales-kpi-balance-rec')) {
+        document.getElementById('sales-kpi-balance-rec').innerText = formatCurrencyINR(balanceRec);
+    }
+
+    if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 30px; color: var(--text-muted); font-weight: 600;"><i class="fa-solid fa-file-invoice-dollar" style="font-size: 24px; margin-bottom: 8px; display: block;"></i> No Sales Invoices Found.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = list.map(s => {
+        const safeId = String(s.id).replace(/[^a-zA-Z0-9]/g, '_');
+        const saleAmt = parseFloat(s.sale_amount) || 0;
+        const recAmt = Math.min(saleAmt, Math.max(0, parseFloat(s.received_amount) || 0));
+        const remBal = Math.max(0, saleAmt - recAmt);
+        const custStatus = s.sale_status || (recAmt >= saleAmt && saleAmt > 0 ? 'PAID' : (recAmt > 0 ? 'PARTIAL' : 'UNPAID'));
+
+        let badgeClass = 'status-unpaid';
+        if (custStatus === 'PAID') badgeClass = 'status-paid';
+        else if (custStatus === 'PARTIAL') badgeClass = 'status-partial';
+
+        let saleItems = [];
+        try {
+            saleItems = typeof s.sale_items === 'string' ? JSON.parse(s.sale_items) : (s.sale_items || []);
+        } catch (e) { saleItems = []; }
+
+        const itemsHtml = saleItems.length > 0 ? `
+            <table class="erp-table" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; margin-top: 8px; font-size: 11.5px;">
+                <thead>
+                    <tr style="background: #eff6ff; color: #1e3a8a;">
+                        <th style="padding: 5px 8px;">Service Item</th>
+                        <th style="padding: 5px 8px; text-align: center;">Qty</th>
+                        <th style="padding: 5px 8px; text-align: right;">Rate (₹)</th>
+                        <th style="padding: 5px 8px; text-align: center;">Currency</th>
+                        <th style="padding: 5px 8px; text-align: center;">GST %</th>
+                        <th style="padding: 5px 8px; text-align: right;">Total Amount (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${saleItems.map(it => `
+                        <tr>
+                            <td style="padding: 5px 8px; font-weight: 700;">${it.service_name || '-'}</td>
+                            <td style="padding: 5px 8px; text-align: center;">${it.qty || 1}</td>
+                            <td style="padding: 5px 8px; text-align: right;">${(parseFloat(it.rate) || 0).toLocaleString('en-IN')}</td>
+                            <td style="padding: 5px 8px; text-align: center;">${it.currency || 'INR'}</td>
+                            <td style="padding: 5px 8px; text-align: center;">${it.gst_pct || 18}%</td>
+                            <td style="padding: 5px 8px; text-align: right; font-weight: 800; color: #1e40af;">${formatCurrencyINR(it.amount || 0)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        ` : `<div style="font-size: 12px; color: #64748b; font-style: italic; margin-top: 6px;">No item breakdown available.</div>`;
+
+        return `
+            <tr class="shipment-main-row" id="sales-row-${safeId}">
+                <td class="col-expand" style="text-align: center; white-space: nowrap;">
+                    <button type="button" onclick="toggleSalesLedgerRowExpand('${safeId}')" style="background: none; border: none; cursor: pointer;">
+                        <i id="sales-expand-icon-${safeId}" class="fa-solid fa-circle-plus" style="font-size: 16px; color: var(--neon-blue);"></i>
+                    </button>
+                </td>
+                <td class="col-id" data-label="Shipment ID"><strong style="color: var(--neon-blue); font-size: 13px; font-weight: 800;">${s.id}</strong></td>
+                <td class="col-date" data-label="Invoice Date"><span>${s.date}</span></td>
+                <td class="col-client" data-label="Client / Importer"><strong>${s.company_name}</strong> <small style="color: var(--text-muted);">(${s.client_id || 'N/A'})</small></td>
+                <td class="col-sales" data-label="Total Invoiced" style="text-align: right;"><strong style="font-size: 13px; color: var(--neon-blue);">${formatCurrencyINR(saleAmt)}</strong></td>
+                <td class="col-received" data-label="Collected" style="text-align: right;"><strong style="font-size: 13px; color: var(--neon-green);">${formatCurrencyINR(recAmt)}</strong></td>
+                <td class="col-balance" data-label="Balance Due" style="text-align: right;"><strong style="font-size: 13px; color: ${remBal > 0 ? 'var(--neon-amber)' : 'var(--neon-green)'};">${formatCurrencyINR(remBal)}</strong></td>
+                <td class="col-status" data-label="Status" style="text-align: center;"><span class="status-pill ${badgeClass}">${custStatus}</span></td>
+                <td class="action-cell">
+                    <button type="button" class="btn-icon-action btn-icon-edit" onclick="navigateRoute('/shipment-entry/edit/${encodeURIComponent(s.id)}')" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                    <button type="button" class="btn-icon-action btn-icon-delete" onclick="deleteShipment('${s.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                    <button type="button" class="btn-action" onclick="openReceivePaymentModal('${s.id}')" style="background: var(--neon-green-bg); color: var(--neon-green); border-color: var(--neon-green-border); font-weight: 700;" title="Receive Payment for ${s.id}"><i class="fa-solid fa-hand-holding-dollar"></i> Receive Payment</button>
+                </td>
+            </tr>
+            <tr id="sales-sub-row-${safeId}" style="display: none; background: #f8fafc;">
+                <td colspan="9" style="padding: 12px 18px; border-bottom: 2px solid #cbd5e1;">
+                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+                            <strong style="font-size: 13px; color: #1e3a8a;"><i class="fa-solid fa-list-check"></i> Customer Sales Breakdown & Services (${s.id})</strong>
+                            <span style="font-size: 12px; color: #64748b;">Shipping Line: <strong>${s.line_name || 'N/A'}</strong> | Transport: <strong>${s.transport_name || 'N/A'}</strong></span>
+                        </div>
+                        ${itemsHtml}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function toggleSalesLedgerRowExpand(safeId) {
+    const sub = document.getElementById(`sales-sub-row-${safeId}`);
+    const icon = document.getElementById(`sales-expand-icon-${safeId}`);
+    if (!sub) return;
+    const isClosed = sub.style.display === 'none' || !sub.style.display;
+    sub.style.display = isClosed ? 'table-row' : 'none';
+    if (icon) {
+        icon.className = `fa-solid ${isClosed ? 'fa-circle-minus' : 'fa-circle-plus'}`;
+        icon.style.color = isClosed ? '#dc2626' : '#2563eb';
+    }
+}
+
+function filterSalesLedger() {
+    const q = (document.getElementById('sales-search-input')?.value || '').toLowerCase().trim();
+    const month = document.getElementById('sales-month-filter')?.value;
+    const status = document.getElementById('sales-status-filter')?.value;
+
+    let filtered = [...(STATE.shipments || [])];
+    if (q) {
+        filtered = filtered.filter(s =>
+            String(s.id || '').toLowerCase().includes(q) ||
+            String(s.client_id || '').toLowerCase().includes(q) ||
+            String(s.company_name || '').toLowerCase().includes(q)
+        );
+    }
+    if (month) {
+        filtered = filtered.filter(s => (s.date || '').startsWith(month));
+    }
+    if (status) {
+        filtered = filtered.filter(s => {
+            const sale = parseFloat(s.sale_amount) || 0;
+            const rec = parseFloat(s.received_amount) || 0;
+            const custStatus = s.sale_status || (rec >= sale && sale > 0 ? 'PAID' : (rec > 0 ? 'PARTIAL' : 'UNPAID'));
+            return custStatus === status;
+        });
+    }
+    renderSalesLedgerTable(filtered);
+}
+
+function resetSalesLedgerFilters() {
+    if (document.getElementById('sales-search-input')) document.getElementById('sales-search-input').value = '';
+    if (document.getElementById('sales-month-filter')) document.getElementById('sales-month-filter').value = '';
+    if (document.getElementById('sales-status-filter')) document.getElementById('sales-status-filter').value = '';
+    renderSalesLedgerTable(STATE.shipments);
+}
+
+// --- PURCHASE LEDGER ENGINE (Dedicated Vendor & Line Purchase Flow) ---
+function renderPurchaseLedgerTable(customList = null) {
+    const tbody = document.getElementById('table-purchase-ledger-body');
+    if (!tbody) return;
+
+    const list = customList !== null ? customList : (STATE.shipments || []);
+
+    // Compute Summary KPIs
+    let totalPur = 0;
+    let totalPaid = 0;
+    list.forEach(s => {
+        const pur = parseFloat(s.purchase_amount) || 0;
+        const paid = s.purchase_status === 'PAID' ? pur : (s.purchase_status === 'PARTIAL' ? pur * 0.5 : 0);
+        totalPur += pur;
+        totalPaid += paid;
+    });
+    const balancePay = Math.max(0, totalPur - totalPaid);
+
+    if (document.getElementById('purchase-kpi-total-cost')) {
+        document.getElementById('purchase-kpi-total-cost').innerText = formatCurrencyINR(totalPur);
+    }
+    if (document.getElementById('purchase-kpi-total-paid')) {
+        document.getElementById('purchase-kpi-total-paid').innerText = formatCurrencyINR(totalPaid);
+    }
+    if (document.getElementById('purchase-kpi-balance-pay')) {
+        document.getElementById('purchase-kpi-balance-pay').innerText = formatCurrencyINR(balancePay);
+    }
+
+    if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 30px; color: var(--text-muted); font-weight: 600;"><i class="fa-solid fa-file-contract" style="font-size: 24px; margin-bottom: 8px; display: block;"></i> No Purchase Records Found.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = list.map(s => {
+        const safeId = String(s.id).replace(/[^a-zA-Z0-9]/g, '_');
+        const purAmt = parseFloat(s.purchase_amount) || 0;
+        const vendStatus = s.purchase_status || 'UNPAID';
+        const paidAmt = vendStatus === 'PAID' ? purAmt : (vendStatus === 'PARTIAL' ? purAmt * 0.5 : 0);
+        const balPay = Math.max(0, purAmt - paidAmt);
+
+        let vendBadge = 'status-unpaid';
+        if (vendStatus === 'PAID') vendBadge = 'status-paid';
+        else if (vendStatus === 'PARTIAL') vendBadge = 'status-partial';
+
+        let purItems = [];
+        try {
+            purItems = typeof s.purchase_items === 'string' ? JSON.parse(s.purchase_items) : (s.purchase_items || []);
+        } catch (e) { purItems = []; }
+
+        const itemsHtml = purItems.length > 0 ? `
+            <table class="erp-table" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; margin-top: 8px; font-size: 11.5px;">
+                <thead>
+                    <tr style="background: #fdf2f2; color: #991b1b;">
+                        <th style="padding: 5px 8px;">Vendor / Shipping Line</th>
+                        <th style="padding: 5px 8px;">Expense / Charge Item</th>
+                        <th style="padding: 5px 8px; text-align: center;">Currency</th>
+                        <th style="padding: 5px 8px; text-align: right;">Foreign Amt</th>
+                        <th style="padding: 5px 8px; text-align: center;">Ex. Rate</th>
+                        <th style="padding: 5px 8px; text-align: right;">Total INR (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${purItems.map(it => `
+                        <tr>
+                            <td style="padding: 5px 8px; font-weight: 700; color: #0f172a;">${it.vendor_name || '-'}</td>
+                            <td style="padding: 5px 8px; color: #475569;">${it.expense_name || it.expense_description || '-'}</td>
+                            <td style="padding: 5px 8px; text-align: center;">${it.currency || 'INR'}</td>
+                            <td style="padding: 5px 8px; text-align: right;">${(parseFloat(it.foreign_amount) || 0).toLocaleString('en-IN')}</td>
+                            <td style="padding: 5px 8px; text-align: center;">${it.ex_rate || 1}</td>
+                            <td style="padding: 5px 8px; text-align: right; font-weight: 800; color: #b91c1c;">${formatCurrencyINR(it.amount || 0)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        ` : `<div style="font-size: 12px; color: #64748b; font-style: italic; margin-top: 6px;">No vendor items breakdown available.</div>`;
+
+        return `
+            <tr class="shipment-main-row" id="pur-row-${safeId}">
+                <td class="col-expand" style="text-align: center; white-space: nowrap;">
+                    <button type="button" onclick="togglePurchaseLedgerRowExpand('${safeId}')" style="background: none; border: none; cursor: pointer;">
+                        <i id="pur-expand-icon-${safeId}" class="fa-solid fa-circle-plus" style="font-size: 16px; color: var(--neon-blue);"></i>
+                    </button>
+                </td>
+                <td class="col-id" data-label="Shipment ID"><strong style="color: var(--neon-blue); font-size: 13px; font-weight: 800;">${s.id}</strong></td>
+                <td class="col-date" data-label="Purchase Date"><span>${s.purchase_date || s.date}</span></td>
+                <td class="col-vendor" data-label="Vendor / Shipping Line"><strong>${s.line_name || 'General Vendor'}</strong> <small style="color: var(--text-muted);">(${s.transport_name || 'Transporter'})</small></td>
+                <td class="col-client" data-label="Client"><strong>${s.company_name}</strong></td>
+                <td class="col-amount" data-label="Purchase Cost" style="text-align: right;"><strong style="font-size: 13px; color: var(--brand-red);">${formatCurrencyINR(purAmt)}</strong></td>
+                <td class="col-paid" data-label="Paid to Vendor" style="text-align: right;"><strong style="font-size: 13px; color: var(--neon-green);">${formatCurrencyINR(paidAmt)}</strong></td>
+                <td class="col-balance" data-label="Balance Payable" style="text-align: right;"><strong style="font-size: 13px; color: ${balPay > 0 ? 'var(--neon-amber)' : 'var(--neon-green)'};">${formatCurrencyINR(balPay)}</strong></td>
+                <td class="col-status" data-label="Status" style="text-align: center;"><span class="status-pill ${vendBadge}">${vendStatus}</span></td>
+                <td class="action-cell">
+                    <button type="button" class="btn-icon-action btn-icon-edit" onclick="navigateRoute('/shipment-entry/edit/${encodeURIComponent(s.id)}')" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                    <button type="button" class="btn-icon-action btn-icon-delete" onclick="deleteShipment('${s.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                    <button type="button" class="btn-action" onclick="openVendorPaymentForShipment('', '${s.id}', ${purAmt})" style="background: rgba(255, 59, 48, 0.1); color: var(--brand-red); border-color: rgba(255, 59, 48, 0.3); font-weight: 700;" title="Pay Vendor Bill for ${s.id}"><i class="fa-solid fa-money-bill-transfer"></i> Pay Vendor</button>
+                </td>
+            </tr>
+            <tr id="pur-sub-row-${safeId}" style="display: none; background: #fbfaf7;">
+                <td colspan="10" style="padding: 12px 18px; border-bottom: 2px solid #cbd5e1;">
+                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+                            <strong style="font-size: 13px; color: #991b1b;"><i class="fa-solid fa-truck-ramp-box"></i> Vendor Purchase & Line Breakdown (${s.id})</strong>
+                            <span style="font-size: 12px; color: #64748b;">Client: <strong>${s.company_name}</strong> | Type: <strong>${s.shipment_type || 'Export'}</strong></span>
+                        </div>
+                        ${itemsHtml}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function togglePurchaseLedgerRowExpand(safeId) {
+    const sub = document.getElementById(`pur-sub-row-${safeId}`);
+    const icon = document.getElementById(`pur-expand-icon-${safeId}`);
+    if (!sub) return;
+    const isClosed = sub.style.display === 'none' || !sub.style.display;
+    sub.style.display = isClosed ? 'table-row' : 'none';
+    if (icon) {
+        icon.className = `fa-solid ${isClosed ? 'fa-circle-minus' : 'fa-circle-plus'}`;
+        icon.style.color = isClosed ? '#dc2626' : '#2563eb';
+    }
+}
+
+function filterPurchaseLedger() {
+    const q = (document.getElementById('purchase-search-input')?.value || '').toLowerCase().trim();
+    const month = document.getElementById('purchase-month-filter')?.value;
+    const status = document.getElementById('purchase-status-filter')?.value;
+
+    let filtered = [...(STATE.shipments || [])];
+    if (q) {
+        filtered = filtered.filter(s =>
+            String(s.id || '').toLowerCase().includes(q) ||
+            String(s.line_name || '').toLowerCase().includes(q) ||
+            String(s.transport_name || '').toLowerCase().includes(q) ||
+            String(s.company_name || '').toLowerCase().includes(q)
+        );
+    }
+    if (month) {
+        filtered = filtered.filter(s => (s.date || '').startsWith(month) || (s.purchase_date || '').startsWith(month));
+    }
+    if (status) {
+        filtered = filtered.filter(s => (s.purchase_status || 'UNPAID') === status);
+    }
+    renderPurchaseLedgerTable(filtered);
+}
+
+function resetPurchaseLedgerFilters() {
+    if (document.getElementById('purchase-search-input')) document.getElementById('purchase-search-input').value = '';
+    if (document.getElementById('purchase-month-filter')) document.getElementById('purchase-month-filter').value = '';
+    if (document.getElementById('purchase-status-filter')) document.getElementById('purchase-status-filter').value = '';
+    renderPurchaseLedgerTable(STATE.shipments);
 }
 
 function renderClientsTable(list) {
@@ -1914,59 +2251,89 @@ function openFullEditShipmentPage(shipmentId) {
 }
 
 async function handleSaveShipment(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
-    const isEdit = document.getElementById('form-shipment-is-edit').value === 'true';
-    const shpId = document.getElementById('form-shipment-id').value;
-    const clientId = document.getElementById('form-shipment-client-id').value;
+    const isEdit = document.getElementById('form-shipment-is-edit')?.value === 'true';
+    const shpId = (document.getElementById('form-shipment-id')?.value || '').trim();
+    const clientId = document.getElementById('form-shipment-client-id')?.value;
     const clientSelect = document.getElementById('form-shipment-client-select');
-    const companyName = clientSelect.options[clientSelect.selectedIndex]?.text.split('(')[0].trim() || 'Client';
+    const selectedText = clientSelect && clientSelect.selectedIndex >= 0 ? clientSelect.options[clientSelect.selectedIndex]?.text : '';
+    const companyName = (selectedText.split('(')[0] || '').trim();
+    const shipmentDate = document.getElementById('form-shipment-date')?.value;
+
+    if (!shpId) {
+        showToast('Please enter a valid Shipment ID (e.g. AKASHA/CLI-101/001).', 'warning');
+        return;
+    }
+    if (!clientId || !companyName || companyName === '-- Select Client --' || companyName === 'Select Client') {
+        showToast('Please select a valid Client Account from the dropdown.', 'warning');
+        return;
+    }
+    if (!shipmentDate) {
+        showToast('Please specify a valid Shipment Booking Date.', 'warning');
+        return;
+    }
 
     const salesItems = [];
     document.querySelectorAll('#form-sales-rows-body tr').forEach(tr => {
-        const sName = tr.querySelector('.sale-service-name')?.value;
-        if (sName || document.querySelectorAll('#form-sales-rows-body tr').length === 1) {
+        const sName = (tr.querySelector('.sale-service-name')?.value || '').trim();
+        const rate = parseFloat(tr.querySelector('.sale-rate')?.value) || 0;
+        const qty = parseFloat(tr.querySelector('.sale-qty')?.value) || 1;
+        const exRate = parseFloat(tr.querySelector('.sale-ex-rate')?.value) || 1;
+        const gstPct = parseFloat(tr.querySelector('.sale-gst-pct')?.value) || 18;
+        const taxable = parseFloat(tr.querySelector('.sale-taxable')?.value) || (rate * qty * exRate);
+        const gstAmt = parseFloat(tr.querySelector('.sale-gst-amt')?.value) || ((taxable * gstPct) / 100);
+        const amount = parseFloat(tr.querySelector('.sale-total')?.value) || (taxable + gstAmt);
+
+        if (sName || amount > 0 || document.querySelectorAll('#form-sales-rows-body tr').length === 1) {
             salesItems.push({
                 service_name: sName || 'Ocean Freight',
                 currency: tr.querySelector('.sale-currency')?.value || 'INR',
-                ex_rate: parseFloat(tr.querySelector('.sale-ex-rate')?.value) || 1,
-                qty: parseFloat(tr.querySelector('.sale-qty')?.value) || 1,
-                rate: parseFloat(tr.querySelector('.sale-rate')?.value) || 0,
-                taxable: parseFloat(tr.querySelector('.sale-taxable')?.value) || 0,
-                gst_pct: parseFloat(tr.querySelector('.sale-gst-pct')?.value) || 18,
-                gst_amt: parseFloat(tr.querySelector('.sale-gst-amt')?.value) || 0,
-                amount: parseFloat(tr.querySelector('.sale-total')?.value) || 0
+                ex_rate: exRate,
+                qty: qty,
+                rate: rate,
+                taxable: taxable,
+                gst_pct: gstPct,
+                gst_amt: gstAmt,
+                amount: amount
             });
         }
     });
 
     const purchaseItems = [];
     document.querySelectorAll('#form-purchase-rows-body tr').forEach(tr => {
-        const vName = tr.querySelector('.pur-vendor-name')?.value;
-        const eName = tr.querySelector('.pur-expense-name')?.value;
-        if (vName || eName || document.querySelectorAll('#form-purchase-rows-body tr').length === 1) {
+        const vName = (tr.querySelector('.pur-vendor-name')?.value || '').trim();
+        const eName = (tr.querySelector('.pur-expense-name')?.value || '').trim();
+        const fAmt = parseFloat(tr.querySelector('.pur-amount')?.value) || 0;
+        const exRate = parseFloat(tr.querySelector('.pur-ex-rate')?.value) || 1;
+        const gstPct = parseFloat(tr.querySelector('.pur-gst-pct')?.value) || 18;
+        const taxable = parseFloat(tr.querySelector('.pur-taxable')?.value) || (fAmt * exRate);
+        const gstAmt = parseFloat(tr.querySelector('.pur-gst-amt')?.value) || ((taxable * gstPct) / 100);
+        const amount = parseFloat(tr.querySelector('.pur-total')?.value) || (taxable + gstAmt);
+
+        if (vName || eName || amount > 0 || document.querySelectorAll('#form-purchase-rows-body tr').length === 1) {
             purchaseItems.push({
-                vendor_name: vName || 'Vendor',
+                vendor_name: vName || 'General Vendor',
                 expense_name: eName || 'Freight',
                 currency: tr.querySelector('.pur-currency')?.value || 'INR',
-                ex_rate: parseFloat(tr.querySelector('.pur-ex-rate')?.value) || 1,
-                foreign_amount: parseFloat(tr.querySelector('.pur-amount')?.value) || 0,
-                taxable: parseFloat(tr.querySelector('.pur-taxable')?.value) || 0,
-                gst_pct: parseFloat(tr.querySelector('.pur-gst-pct')?.value) || 18,
-                gst_amt: parseFloat(tr.querySelector('.pur-gst-amt')?.value) || 0,
-                amount: parseFloat(tr.querySelector('.pur-total')?.value) || 0
+                ex_rate: exRate,
+                foreign_amount: fAmt,
+                taxable: taxable,
+                gst_pct: gstPct,
+                gst_amt: gstAmt,
+                amount: amount
             });
         }
     });
 
     const payload = {
         id: shpId,
-        date: document.getElementById('form-shipment-date').value,
+        date: shipmentDate,
         client_id: clientId,
         company_name: companyName,
-        line_name: document.getElementById('form-shipment-line').value,
-        shipment_type: document.getElementById('form-shipment-type').value,
-        sb_be_no: document.getElementById('form-shipment-sb-be').value,
+        line_name: (document.getElementById('form-shipment-line')?.value || '').trim(),
+        shipment_type: document.getElementById('form-shipment-type')?.value || 'EXPORT FCL',
+        sb_be_no: (document.getElementById('form-shipment-sb-be')?.value || '').trim(),
         purchase_items: JSON.stringify(purchaseItems),
         sale_items: JSON.stringify(salesItems)
     };
@@ -1982,15 +2349,15 @@ async function handleSaveShipment(e) {
 
         const data = await res.json();
         if (!res.ok || !data.success) {
-            showToast(data.message || 'Error saving shipment', 'error');
+            showToast(data.message || 'Unable to save shipment. Please check your inputs.', 'error');
             return;
         }
 
-        showToast(isEdit ? 'Shipment updated successfully' : 'Shipment created successfully', 'success');
+        showToast(isEdit ? `Shipment ${shpId} updated successfully!` : `Shipment ${shpId} created successfully!`, 'success');
         await fetchBackendAPIData();
         navigateRoute('/shipment-entry');
     } catch (err) {
-        showToast(err.message || 'Network error saving shipment', 'error');
+        showToast(err.message || 'Network error while connecting to ERP server.', 'error');
     }
 }
 
@@ -2067,18 +2434,35 @@ function handlePaymentModalShipmentChange(el) {
 }
 
 async function handleSaveCustomerPayment(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
-    const shpId = document.getElementById('modal-pay-shipment-select').value;
-    const amount = parseFloat(document.getElementById('modal-pay-amount').value);
+    const shpId = (document.getElementById('modal-pay-shipment-select')?.value || '').trim();
+    const paymentDate = document.getElementById('modal-pay-date')?.value;
+    const amount = parseFloat(document.getElementById('modal-pay-amount')?.value) || 0;
+    const paymentMode = document.getElementById('modal-pay-mode')?.value || 'Bank Transfer';
+    const bank = (document.getElementById('modal-pay-bank')?.value || '').trim();
+    const utr = (document.getElementById('modal-pay-utr')?.value || '').trim();
+
+    if (!shpId) {
+        showToast('Please select a valid Shipment Invoice to record payment.', 'warning');
+        return;
+    }
+    if (!paymentDate) {
+        showToast('Please specify the Payment Receipt Date.', 'warning');
+        return;
+    }
+    if (amount <= 0 || isNaN(amount)) {
+        showToast('Please enter a valid positive payment amount.', 'warning');
+        return;
+    }
 
     const payload = {
         shipment_id: shpId,
-        payment_date: document.getElementById('modal-pay-date').value,
+        payment_date: paymentDate,
         amount,
-        payment_mode: document.getElementById('modal-pay-mode').value,
-        bank: document.getElementById('modal-pay-bank').value,
-        utr: document.getElementById('modal-pay-utr').value
+        payment_mode: paymentMode,
+        bank,
+        utr
     };
 
     try {
@@ -2089,16 +2473,17 @@ async function handleSaveCustomerPayment(e) {
 
         const data = await res.json();
         if (!res.ok || !data.success) {
-            showToast(data.message || 'Payment error', 'error');
+            showToast(data.message || 'Error recording customer payment.', 'error');
             return;
         }
 
-        showToast(data.message || 'Customer Payment recorded!', 'success');
+        showToast(`Customer payment of ₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })} recorded successfully!`, 'success');
         closeModal('modal-receive-payment');
         fetchShipmentsData();
         fetchPaymentsReceivedData();
+        fetchDashboardKPIs();
     } catch (err) {
-        showToast('Payment connection error', 'error');
+        showToast('Network error while connecting to payment service.', 'error');
     }
 }
 
@@ -2186,23 +2571,44 @@ function onVendorPaymentShipmentChange() {
 }
 
 async function handleSaveVendorPayment(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
-    const shpId = document.getElementById('modal-vp-shipment-select').value;
+    const shpId = document.getElementById('modal-vp-shipment-select')?.value;
     const txtVal = document.getElementById('modal-vp-vendor-text')?.value;
     const vendorVal = document.getElementById('modal-vp-vendor-select')?.value;
     const vendorSelectEl = document.getElementById('modal-vp-vendor-select');
     const selectedText = vendorSelectEl && vendorSelectEl.selectedIndex >= 0 ? vendorSelectEl.options[vendorSelectEl.selectedIndex]?.text : '';
-    const vendorName = (txtVal || vendorVal || selectedText || 'Vendor').split('(')[0].trim();
+    const vendorName = (txtVal || vendorVal || selectedText || '').split('(')[0].trim();
+    const amount = parseFloat(document.getElementById('modal-vp-amount')?.value) || 0;
+    const paymentDate = document.getElementById('modal-vp-date')?.value;
+    const paymentMode = document.getElementById('modal-vp-mode')?.value || 'Bank Transfer';
+    const refNo = (document.getElementById('modal-vp-ref')?.value || '').trim();
+
+    if (!shpId) {
+        showToast('Please select a Shipment Job for vendor disbursement.', 'warning');
+        return;
+    }
+    if (!vendorName) {
+        showToast('Please select or specify a Vendor / Shipping Line.', 'warning');
+        return;
+    }
+    if (!paymentDate) {
+        showToast('Please specify the Vendor Payment Date.', 'warning');
+        return;
+    }
+    if (amount <= 0 || isNaN(amount)) {
+        showToast('Please enter a valid positive disbursement amount.', 'warning');
+        return;
+    }
 
     const payload = {
         shipment_id: shpId,
         vendor_id: vendorVal || vendorName,
         vendor_name: vendorName,
-        amount: parseFloat(document.getElementById('modal-vp-amount').value) || 0,
-        payment_date: document.getElementById('modal-vp-date').value,
-        payment_mode: document.getElementById('modal-vp-mode').value,
-        reference_no: document.getElementById('modal-vp-ref').value
+        amount,
+        payment_date: paymentDate,
+        payment_mode: paymentMode,
+        reference_no: refNo
     };
 
     try {
@@ -2213,18 +2619,18 @@ async function handleSaveVendorPayment(e) {
 
         const data = await res.json();
         if (!res.ok || !data.success) {
-            showToast(data.message || 'Vendor Payment error', 'error');
+            showToast(data.message || 'Error recording vendor payment.', 'error');
             return;
         }
 
-        showToast(data.message || 'Vendor Payment recorded!', 'success');
+        showToast(`Vendor payment of ₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })} recorded successfully!`, 'success');
         closeModal('modal-vendor-payment');
         fetchVendorPaymentsData();
         fetchShipmentsData();
         fetchDashboardKPIs();
         fetchVendorsData();
     } catch (err) {
-        showToast('Vendor payment connection error', 'error');
+        showToast('Network error while recording vendor payment.', 'error');
     }
 }
 
@@ -2326,18 +2732,41 @@ function openClientModal(clientId = '') {
 }
 
 async function handleSaveClient(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     const isEdit = document.getElementById('modal-client-is-edit')?.value === 'true';
-    const clientId = document.getElementById('modal-client-id')?.value;
+    const clientId = (document.getElementById('modal-client-id')?.value || '').trim();
+    const name = (document.getElementById('modal-client-name')?.value || '').trim();
+    const contactPerson = (document.getElementById('modal-client-contact')?.value || '').trim();
+    const mobile = (document.getElementById('modal-client-mobile')?.value || '').trim();
+    const email = (document.getElementById('modal-client-email')?.value || '').trim();
+    const gstin = (document.getElementById('modal-client-gstin')?.value || '').trim().toUpperCase();
+    const creditTerms = document.getElementById('modal-client-credit')?.value || '30 Days';
+
+    if (!name) {
+        showToast('Please enter the Client Company Name.', 'warning');
+        return;
+    }
+    if (mobile && !/^\d{10}$/.test(mobile)) {
+        showToast('Please enter a valid 10-digit mobile number.', 'warning');
+        return;
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('Please enter a valid email address (e.g. info@company.com).', 'warning');
+        return;
+    }
+    if (gstin && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin)) {
+        showToast('Please enter a valid 15-character Indian GSTIN format.', 'warning');
+        return;
+    }
 
     const payload = {
-        name: document.getElementById('modal-client-name')?.value,
-        contact_person: document.getElementById('modal-client-contact')?.value || '',
-        mobile: document.getElementById('modal-client-mobile')?.value || '',
-        email: document.getElementById('modal-client-email')?.value || '',
-        gstin: document.getElementById('modal-client-gstin')?.value || '',
-        credit_terms: document.getElementById('modal-client-credit')?.value || '30 Days'
+        name,
+        contact_person: contactPerson,
+        mobile,
+        email,
+        gstin,
+        credit_terms: creditTerms
     };
 
     try {
@@ -2351,15 +2780,16 @@ async function handleSaveClient(e) {
 
         const data = await res.json();
         if (!res.ok || !data.success) {
-            showToast(data.message || 'Client save error', 'error');
+            showToast(data.message || 'Error saving client profile.', 'error');
             return;
         }
 
-        showToast(isEdit ? `Client ${clientId} updated successfully!` : 'Client created successfully!', 'success');
+        showToast(isEdit ? `Client ${clientId} updated successfully!` : `Client "${name}" registered successfully!`, 'success');
         closeModal('modal-client');
         await fetchClientsData();
+        populateClientDropdowns();
     } catch (err) {
-        showToast('Network error saving client', 'error');
+        showToast('Network error while saving client account.', 'error');
     }
 }
 
@@ -2413,21 +2843,43 @@ function openVendorModal(vendorId = '') {
 }
 
 async function handleSaveVendor(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     const isEdit = document.getElementById('modal-vendor-is-edit')?.value === 'true';
-    const vendorId = document.getElementById('modal-vendor-id')?.value;
+    const vendorId = (document.getElementById('modal-vendor-id')?.value || '').trim();
+    const name = (document.getElementById('modal-vendor-name')?.value || '').trim();
+    const vendorType = document.getElementById('modal-vendor-type')?.value || 'General Vendor';
+    const contactPerson = (document.getElementById('modal-vendor-contact')?.value || '').trim();
+    const mobile = (document.getElementById('modal-vendor-mobile')?.value || '').trim();
+    const email = (document.getElementById('modal-vendor-email')?.value || '').trim();
+    const gstin = (document.getElementById('modal-vendor-gstin')?.value || '').trim().toUpperCase();
+    const creditTerms = document.getElementById('modal-vendor-credit')?.value || '15 Days';
+    const bankDetails = (document.getElementById('modal-vendor-bank')?.value || '').trim();
+    const remarks = (document.getElementById('modal-vendor-remarks')?.value || '').trim();
+
+    if (!name) {
+        showToast('Please enter the Vendor / Shipping Line Name.', 'warning');
+        return;
+    }
+    if (mobile && !/^\d{10}$/.test(mobile)) {
+        showToast('Please enter a valid 10-digit mobile number.', 'warning');
+        return;
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('Please enter a valid email address.', 'warning');
+        return;
+    }
 
     const payload = {
-        name: document.getElementById('modal-vendor-name')?.value,
-        vendor_type: document.getElementById('modal-vendor-type')?.value || 'General Vendor',
-        contact_person: document.getElementById('modal-vendor-contact')?.value || '',
-        mobile: document.getElementById('modal-vendor-mobile')?.value || '',
-        email: document.getElementById('modal-vendor-email')?.value || '',
-        gstin: document.getElementById('modal-vendor-gstin')?.value || '',
-        credit_terms: document.getElementById('modal-vendor-credit')?.value || '15 Days',
-        bank_details: document.getElementById('modal-vendor-bank')?.value || '',
-        remarks: document.getElementById('modal-vendor-remarks')?.value || ''
+        name,
+        vendor_type: vendorType,
+        contact_person: contactPerson,
+        mobile,
+        email,
+        gstin,
+        credit_terms: creditTerms,
+        bank_details: bankDetails,
+        remarks
     };
 
     try {
@@ -2441,15 +2893,16 @@ async function handleSaveVendor(e) {
 
         const data = await res.json();
         if (!res.ok || !data.success) {
-            showToast(data.message || 'Vendor save error', 'error');
+            showToast(data.message || 'Error saving vendor profile.', 'error');
             return;
         }
 
-        showToast(isEdit ? `Vendor ${vendorId} updated successfully!` : 'Vendor created successfully!', 'success');
+        showToast(isEdit ? `Vendor ${vendorId} updated successfully!` : `Vendor "${name}" registered successfully!`, 'success');
         closeModal('modal-vendor');
         await fetchVendorsData();
+        populateVendorDropdowns();
     } catch (err) {
-        showToast('Network error saving vendor', 'error');
+        showToast('Network error while saving vendor record.', 'error');
     }
 }
 
@@ -2462,13 +2915,13 @@ async function deleteVendor(vendorId) {
         });
         const data = await res.json();
         if (res.ok && data.success) {
-            showToast(`Vendor ${vendorId} deleted successfully`, 'success');
+            showToast(`Vendor ${vendorId} deleted successfully.`, 'success');
             await fetchVendorsData();
         } else {
-            showToast(data.message || 'Delete vendor error', 'error');
+            showToast(data.message || 'Error deleting vendor record.', 'error');
         }
     } catch (e) {
-        showToast('Error deleting vendor', 'error');
+        showToast('Error deleting vendor from registry.', 'error');
     }
 }
 
@@ -2507,12 +2960,25 @@ function openServiceModal() {
 }
 
 async function handleSaveService(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
+
+    const name = (document.getElementById('modal-service-name')?.value || '').trim();
+    const type = document.getElementById('modal-service-type')?.value || 'Freight Charges';
+    const gstPct = parseFloat(document.getElementById('modal-service-gst')?.value) || 18;
+
+    if (!name) {
+        showToast('Please enter the Service Name (e.g. Ocean Freight, THC).', 'warning');
+        return;
+    }
+    if (gstPct < 0 || isNaN(gstPct)) {
+        showToast('Please enter a valid GST percentage (e.g. 0, 5, 12, 18, 28).', 'warning');
+        return;
+    }
 
     const payload = {
-        service_name: document.getElementById('modal-service-name').value,
-        service_type: document.getElementById('modal-service-type').value,
-        default_gst_pct: parseFloat(document.getElementById('modal-service-gst').value) || 18
+        service_name: name,
+        service_type: type,
+        default_gst_pct: gstPct
     };
 
     try {
@@ -2523,14 +2989,16 @@ async function handleSaveService(e) {
 
         const data = await res.json();
         if (!res.ok || !data.success) {
-            showToast(data.message || 'Service save error', 'error');
+            showToast(data.message || 'Error creating service catalog item.', 'error');
             return;
         }
 
-        showToast(data.message || 'Service created successfully!', 'success');
+        showToast(`Service "${name}" registered successfully!`, 'success');
         closeModal('modal-service');
-        fetchServicesData();
-    } catch (e) {}
+        await fetchServicesData();
+    } catch (err) {
+        showToast('Network error while registering service item.', 'error');
+    }
 }
 
 async function deleteShipment(shpId) {
@@ -2543,6 +3011,8 @@ async function deleteShipment(shpId) {
             STATE.shipments = STATE.shipments.filter(s => s.id !== shpId);
             STATE.filteredShipments = STATE.filteredShipments.filter(s => s.id !== shpId);
             renderShipmentsTable();
+            renderSalesLedgerTable();
+            renderPurchaseLedgerTable();
             renderDashboardRecentShipments();
             recalculateKPIsFromState();
             showToast(`Shipment ${shpId} deleted successfully.`, 'success');
@@ -2691,6 +3161,29 @@ function resetShipmentFilters() {
     renderShipmentsTable();
 }
 
+// --- DUAL THEME ENGINE (4D LUMINESCENT DARK / STUDIO LIGHT) ---
+function initERPTheme() {
+    const savedTheme = localStorage.getItem('akasha_erp_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+}
+
+function toggleERPTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('akasha_erp_theme', next);
+    updateThemeIcon(next);
+    showToast(`Switched to ${next.toUpperCase()} mode`, 'info');
+}
+
+function updateThemeIcon(theme) {
+    const icon = document.getElementById('theme-toggle-icon');
+    if (icon) {
+        icon.className = theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    }
+}
+
 function toggleMobileSidebar() {
     const sidebar = document.querySelector('.sidebar') || document.querySelector('#app-sidebar');
     const overlay = document.getElementById('mobile-sidebar-overlay');
@@ -2704,6 +3197,13 @@ function toggleMobileSidebar() {
     } else {
         sidebar.classList.toggle('sidebar-collapsed');
     }
+}
+
+function closeMobileSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('mobile-sidebar-overlay');
+    if (sidebar) sidebar.classList.remove('open');
+    if (overlay) overlay.style.display = 'none';
 }
 
 function updateDateDisplay() {
@@ -2722,7 +3222,7 @@ function updateDateDisplay() {
         second: '2-digit',
         hour12: true
     });
-    el.innerHTML = `<span>${formattedDate} &nbsp;•&nbsp; <strong style="color: #1c2024; font-family: monospace; font-size: 13.5px;">${formattedTime}</strong></span>`;
+    el.innerHTML = `<span>${formattedDate} &nbsp;•&nbsp; <strong style="color: var(--text-primary); font-family: monospace; font-size: 12.5px;">${formattedTime}</strong></span>`;
 }
 
 if (!window._clockInterval) {
@@ -2730,37 +3230,79 @@ if (!window._clockInterval) {
 }
 
 function exportTableToCSV(tableId, filename) {
-    const table = document.getElementById(tableId);
-    if (!table) return;
+    let targetEl = document.getElementById(tableId);
+    if (!targetEl) return;
 
-    let csv = [];
-    const rows = table.querySelectorAll('tr');
-
-    for (let i = 0; i < rows.length; i++) {
-        const row = [], cols = rows[i].querySelectorAll('td, th');
-        for (let j = 0; j < cols.length; j++) {
-            row.push('"' + cols[j].innerText.replace(/"/g, '""') + '"');
-        }
-        csv.push(row.join(','));
+    // If target is tbody, get the closest parent table to include headers
+    if (targetEl.tagName === 'TBODY') {
+        targetEl = targetEl.closest('table') || targetEl;
     }
 
-    const csvFile = new Blob([csv.join('\n')], { type: 'text/csv' });
+    let csv = [];
+    const rows = targetEl.querySelectorAll('tr');
+
+    for (let i = 0; i < rows.length; i++) {
+        // Skip hidden detail rows
+        if (rows[i].style.display === 'none') continue;
+
+        const row = [], cols = rows[i].querySelectorAll('td, th');
+        // Exclude action column from export
+        for (let j = 0; j < cols.length; j++) {
+            if (cols[j].classList.contains('action-cell') || cols[j].classList.contains('action-col') || cols[j].innerText.trim() === 'Action') {
+                continue;
+            }
+            let cellText = cols[j].innerText.replace(/\n/g, ' ').replace(/"/g, '""').trim();
+            row.push('"' + cellText + '"');
+        }
+        if (row.length > 0) {
+            csv.push(row.join(','));
+        }
+    }
+
+    const csvFile = new Blob(['\uFEFF' + csv.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
     const downloadLink = document.createElement('a');
-    downloadLink.download = `${filename}.csv`;
+    downloadLink.download = `${filename || 'Export'}_${new Date().toISOString().slice(0,10)}.csv`;
     downloadLink.href = window.URL.createObjectURL(csvFile);
     downloadLink.style.display = 'none';
     document.body.appendChild(downloadLink);
     downloadLink.click();
+    setTimeout(() => {
+        downloadLink.remove();
+        window.URL.revokeObjectURL(downloadLink.href);
+    }, 200);
 }
 
 function showToast(message, type = 'info') {
-    Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: type === 'error' ? 'error' : (type === 'success' ? 'success' : 'info'),
-        title: message,
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true
-    });
+    let container = document.getElementById('erp-toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'erp-toast-container';
+        container.className = 'erp-toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `erp-toast erp-toast-${type}`;
+
+    let iconHtml = '<i class="fa-solid fa-circle-info"></i>';
+    if (type === 'success') iconHtml = '<i class="fa-solid fa-circle-check"></i>';
+    if (type === 'error') iconHtml = '<i class="fa-solid fa-triangle-exclamation"></i>';
+    if (type === 'warning') iconHtml = '<i class="fa-solid fa-circle-exclamation"></i>';
+
+    toast.innerHTML = `
+        <div class="erp-toast-icon">${iconHtml}</div>
+        <div class="erp-toast-msg">${message}</div>
+        <button class="erp-toast-close" onclick="this.parentElement.remove()">&times;</button>
+    `;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('erp-toast-show');
+    }, 10);
+
+    setTimeout(() => {
+        toast.classList.remove('erp-toast-show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3500);
 }

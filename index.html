@@ -1,17 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Akasha LogiTrans LLP | Freight Forwarding & Accounting ERP</title>
     
     <!-- Fonts & FontAwesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=10.4.0">
-    
-    <!-- SweetAlert2 & Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css?v=20.0.0">
 </head>
 <body>
 
@@ -89,107 +88,37 @@
             </div>
         </div>
 
-        <!-- 2. MAIN ERP APPLICATION SHELL -->
+        <!-- 2. MAIN ERP APPLICATION SHELL (FULL-WIDTH PORTAL) -->
         <div id="erp-shell" class="erp-shell" style="display: none;">
-            <div id="mobile-sidebar-overlay" class="mobile-sidebar-overlay" onclick="toggleMobileSidebar()"></div>
-
-            <!-- SIDEBAR NAVIGATION (Pure White + Red Active Pill) -->
-            <aside class="sidebar">
-                <div class="sidebar-header">
-                    <div class="sidebar-logo">
-                        <img src="https://www.akashalogitrans.com/logo.png" alt="Akasha LogiTrans" style="max-height: 38px; width: auto; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                        <span style="display:none; color:#1c2024; font-weight:800; font-size:15px; font-family:'Cairo',sans-serif;">AKASHA LOGITRANS</span>
-                    </div>
-                    <button class="sidebar-collapse-btn" title="Collapse Sidebar"><i class="fa-solid fa-chevron-left"></i></button>
-                </div>
-
-                <div class="sidebar-menu">
-                    <div class="menu-category">MAIN</div>
-                    <a class="menu-item active" href="/dashboard" data-view="dashboard" data-path="/dashboard">
-                        <div class="menu-item-left"><i class="fa-solid fa-table-cells-large"></i> <span>Dashboard</span></div>
-                    </a>
-                    <a class="menu-item" href="/shipment-entry" data-view="shipments" data-path="/shipment-entry">
-                        <div class="menu-item-left"><i class="fa-solid fa-boxes-packing"></i> <span>Shipment Register</span></div>
-                    </a>
-
-                    <div class="menu-category">TRANSACTIONS</div>
-                    <a class="menu-item" href="/sales-ledger" data-view="sales_ledger" data-path="/sales-ledger">
-                        <div class="menu-item-left"><i class="fa-solid fa-file-invoice-dollar"></i> <span>Sales Ledger</span></div>
-                    </a>
-                    <a class="menu-item" href="/purchase-ledger" data-view="purchase_ledger" data-path="/purchase-ledger">
-                        <div class="menu-item-left"><i class="fa-solid fa-file-contract"></i> <span>Purchase Ledger</span></div>
-                    </a>
-                    <a class="menu-item" href="/payment-received" data-view="payment_received" data-path="/payment-received">
-                        <div class="menu-item-left"><i class="fa-solid fa-hand-holding-dollar"></i> <span>Payment Received</span></div>
-                    </a>
-                    <a class="menu-item" href="/vendor-payment" data-view="vendor_payment" data-path="/vendor-payment">
-                        <div class="menu-item-left"><i class="fa-solid fa-money-bill-transfer"></i> <span>Vendor Payment</span></div>
-                    </a>
-                    <a class="menu-item" href="/expenses" data-view="expenses" data-path="/expenses">
-                        <div class="menu-item-left"><i class="fa-solid fa-receipt"></i> <span>Expense Register</span></div>
-                    </a>
-                    <a class="menu-item" href="/profit-ledger" data-view="profit_ledger" data-path="/profit-ledger">
-                        <div class="menu-item-left"><i class="fa-solid fa-scale-balanced"></i> <span>Profit & Margin</span></div>
-                    </a>
-
-                    <div class="menu-category">MASTERS</div>
-                    <a class="menu-item" href="/client-master" data-view="clients" data-path="/client-master">
-                        <div class="menu-item-left"><i class="fa-solid fa-building-user"></i> <span>Client Master</span></div>
-                    </a>
-                    <a class="menu-item" href="/vendor-master" data-view="vendors" data-path="/vendor-master">
-                        <div class="menu-item-left"><i class="fa-solid fa-truck-ramp-box"></i> <span>Vendor Master</span></div>
-                    </a>
-                    <a class="menu-item" href="/service-master" data-view="services" data-path="/service-master">
-                        <div class="menu-item-left"><i class="fa-solid fa-list-check"></i> <span>Service Master</span></div>
-                    </a>
-
-                    <div class="menu-category">REPORTS</div>
-                    <a class="menu-item" href="/report-receivable" data-view="report_receivable" data-path="/report-receivable">
-                        <div class="menu-item-left"><i class="fa-solid fa-file-circle-exclamation"></i> <span>Receivable Report</span></div>
-                    </a>
-                    <a class="menu-item" href="/report-payable" data-view="report_payable" data-path="/report-payable">
-                        <div class="menu-item-left"><i class="fa-solid fa-receipt"></i> <span>Payable Report</span></div>
-                    </a>
-                    <a class="menu-item" href="/report-profit" data-view="report_profit" data-path="/report-profit">
-                        <div class="menu-item-left"><i class="fa-solid fa-chart-pie"></i> <span>Profit Report</span></div>
-                    </a>
-                    <a class="menu-item" href="/report-gst" data-view="report_gst" data-path="/report-gst">
-                        <div class="menu-item-left"><i class="fa-solid fa-percent"></i> <span>GST Report</span></div>
-                    </a>
-                    <a class="menu-item" href="/report-monthly-ledger" data-view="report_monthly_ledger" data-path="/report-monthly-ledger">
-                        <div class="menu-item-left"><i class="fa-solid fa-calendar-days"></i> <span>Monthly Ledger</span></div>
-                    </a>
-
-                    <div class="menu-category">SYSTEM</div>
-                    <a class="menu-item" href="javascript:void(0)" onclick="handleLogout()">
-                        <div class="menu-item-left"><i class="fa-solid fa-right-from-bracket"></i> <span>Logout</span></div>
-                    </a>
-                </div>
-
-                <div class="sidebar-footer">
-                    <div class="user-card">
-                        <div class="topbar-user-avatar" id="sidebar-user-avatar" style="width: 32px; height: 32px; font-size: 12px;">KA</div>
-                        <div class="user-info">
-                            <h5 id="current-user-name">Khushal Patel</h5>
-                            <p id="current-user-role">CEO & Founder</p>
-                        </div>
-                    </div>
-                </div>
-            </aside>
 
             <!-- MAIN CONTENT WRAPPER -->
-            <div class="main-wrapper">
+            <div class="main-wrapper" style="width: 100%; margin: 0; padding: 0;">
 
-                <!-- TOP NAVBAR -->
+                <!-- TOP NAVBAR WITH BRAND LOGO & DIRECT NAVIGATION -->
                 <header class="topbar">
                     <div class="topbar-left">
+                        <a href="javascript:void(0)" onclick="navigateRoute('/dashboard')" class="topbar-brand-link" style="display: flex; align-items: center; gap: 8px; text-decoration: none; margin-right: 12px;">
+                            <img src="https://akashalogitrans.com/akasha-logo.png" alt="Akasha Logo" class="topbar-brand-logo" onerror="this.src='https://via.placeholder.com/130x34/ea3829/ffffff?text=AKASHA+ERP'" style="height: 32px; width: auto; object-fit: contain;">
+                        </a>
+                        <button class="topbar-home-btn" onclick="navigateRoute('/dashboard')" title="Go to Dashboard">
+                            <i class="fa-solid fa-house"></i> <span>Dashboard</span>
+                        </button>
                         <div class="topbar-live-clock" id="topbar-live-clock">
                             <i class="fa-regular fa-clock"></i>
                             <span id="topbar-current-datetime">Loading Date & Time...</span>
                         </div>
+                        <div class="topbar-fy-badge">
+                            <i class="fa-solid fa-shield-halved" style="color: var(--neon-green); font-size: 11px;"></i>
+                            <span>FY 2026-27</span>
+                        </div>
                     </div>
 
                     <div class="topbar-right">
+                        <!-- THEME TOGGLE BUTTON (DARK/LIGHT) -->
+                        <button class="theme-toggle-btn" id="theme-toggle-btn" onclick="toggleERPTheme()" title="Toggle Dark/Light Mode">
+                            <i class="fa-solid fa-sun" id="theme-toggle-icon"></i>
+                        </button>
+                        
                         <div class="topbar-user-profile">
                             <div class="topbar-user-meta">
                                 <div class="topbar-user-name" id="topbar-user-name">Khushal Patel</div>
@@ -197,7 +126,7 @@
                             </div>
                             <div class="topbar-user-avatar" id="topbar-user-avatar">KA</div>
                         </div>
-                        <button class="btn-action" onclick="handleLogout()" style="background: #fdf2f2; color: #c83228; border: 1px solid #fecaca; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;" title="Logout">
+                        <button class="btn-action" onclick="handleLogout()" style="background: rgba(255, 59, 48, 0.1); color: var(--brand-red); border-color: rgba(255, 59, 48, 0.3); font-weight: 700;" title="Logout">
                             <i class="fa-solid fa-right-from-bracket"></i> Logout
                         </button>
                     </div>
@@ -231,8 +160,8 @@
                             </div>
                         </div>
 
-                        <!-- 6 EXECUTIVE KPI CARDS (Divided 3-3 in 2 Rows) -->
-                        <div class="kpi-grid-3x2">
+                        <!-- 6 EXECUTIVE KPI CARDS -->
+                        <div class="kpi-grid">
                             <!-- Box 1: Total Sales -->
                             <div class="kpi-card col-blue">
                                 <div class="kpi-top">
@@ -289,36 +218,109 @@
                                     <span class="kpi-title">TOTAL EXPENSES (FY)</span>
                                     <div class="kpi-icon icon-purple"><i class="fa-solid fa-money-check-dollar"></i></div>
                                 </div>
-                                <div class="kpi-value" id="kpi-total-expense" style="color: #7c3aed;">₹0.00</div>
-                                <div class="kpi-trend"><i class="fa-solid fa-calendar-check" style="color: #7c3aed;"></i> <span id="kpi-expense-fy-label">FY 2026-27</span> Office & Operations</div>
+                                <div class="kpi-value" id="kpi-total-expense" style="color: var(--neon-purple);">₹0.00</div>
+                                <div class="kpi-trend"><i class="fa-solid fa-building-circle-check" style="color: var(--neon-purple);"></i> Office & Admin Costs</div>
                             </div>
                         </div>
 
-                        <!-- RECENT SHIPMENTS TABLE -->
+                        <!-- ENTERPRISE QUICK-ACCESS MODULE APP GRID -->
                         <div class="panel-card" style="margin-bottom: 20px;">
                             <div class="panel-header">
-                                <div class="panel-title" style="font-size: 15px; font-weight: 800; color: #1c2024;"><i class="fa-solid fa-boxes-packing" style="color: #c83228; margin-right: 6px;"></i> Recent Shipment Operations</div>
-                                <button class="btn-action" onclick="navigateRoute('/shipment-entry')" style="font-size: 12px; padding: 6px 12px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 700;">
-                                    View All Register &rarr;
-                                </button>
+                                <div class="panel-title"><i class="fa-solid fa-grip" style="color: var(--brand-red); margin-right: 6px;"></i> Enterprise Navigation & Modules</div>
+                                <span style="font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Direct App Launchpad</span>
                             </div>
-                            <div class="panel-body" style="padding: 0;">
-                                <table class="erp-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Shipment ID</th>
-                                            <th>Company / Client</th>
-                                            <th>Sales Amount</th>
-                                            <th>Purchase Amount</th>
-                                            <th>Net Profit</th>
-                                            <th>Margin %</th>
-                                            <th>Customer Status</th>
-                                            <th>Vendor Status</th>
-                                            <th style="text-align: center;">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="dash-recent-shipments-body"></tbody>
-                                </table>
+                            <div class="panel-body" style="padding: 16px;">
+                                <div class="app-module-grid">
+                                    <div class="app-module-card" onclick="navigateRoute('/shipment-entry')">
+                                        <div class="app-module-icon icon-blue"><i class="fa-solid fa-boxes-packing"></i></div>
+                                        <div class="app-module-info">
+                                            <h4>Shipment Register</h4>
+                                            <p>Export & Import Jobs, Line Bookings & SB/BE</p>
+                                        </div>
+                                        <div class="app-module-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                                    </div>
+
+                                    <div class="app-module-card" onclick="navigateRoute('/sales-ledger')">
+                                        <div class="app-module-icon icon-blue"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                                        <div class="app-module-info">
+                                            <h4>Sales Ledger</h4>
+                                            <p>Customer Billing, Invoicing & Receivables</p>
+                                        </div>
+                                        <div class="app-module-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                                    </div>
+
+                                    <div class="app-module-card" onclick="navigateRoute('/purchase-ledger')">
+                                        <div class="app-module-icon icon-red"><i class="fa-solid fa-file-contract"></i></div>
+                                        <div class="app-module-info">
+                                            <h4>Purchase Ledger</h4>
+                                            <p>Shipping Line Freight & Vendor Payables</p>
+                                        </div>
+                                        <div class="app-module-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                                    </div>
+
+                                    <div class="app-module-card" onclick="navigateRoute('/payment-received')">
+                                        <div class="app-module-icon icon-green"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                                        <div class="app-module-info">
+                                            <h4>Payment Received</h4>
+                                            <p>Customer Receipts, Bank Vouchers & UTR</p>
+                                        </div>
+                                        <div class="app-module-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                                    </div>
+
+                                    <div class="app-module-card" onclick="navigateRoute('/vendor-payment')">
+                                        <div class="app-module-icon icon-orange"><i class="fa-solid fa-money-bill-transfer"></i></div>
+                                        <div class="app-module-info">
+                                            <h4>Vendor Payments</h4>
+                                            <p>Disbursements to Shipping Lines & Transport</p>
+                                        </div>
+                                        <div class="app-module-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                                    </div>
+
+                                    <div class="app-module-card" onclick="navigateRoute('/expenses')">
+                                        <div class="app-module-icon icon-purple"><i class="fa-solid fa-receipt"></i></div>
+                                        <div class="app-module-info">
+                                            <h4>Expense Register</h4>
+                                            <p>Office Rent, Payroll, Port & Admin Expenses</p>
+                                        </div>
+                                        <div class="app-module-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                                    </div>
+
+                                    <div class="app-module-card" onclick="navigateRoute('/profit-ledger')">
+                                        <div class="app-module-icon icon-green"><i class="fa-solid fa-scale-balanced"></i></div>
+                                        <div class="app-module-info">
+                                            <h4>Profit & Margin</h4>
+                                            <p>Job Profitability, Margins & Net Audit</p>
+                                        </div>
+                                        <div class="app-module-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                                    </div>
+
+                                    <div class="app-module-card" onclick="navigateRoute('/client-master')">
+                                        <div class="app-module-icon icon-blue"><i class="fa-solid fa-building-user"></i></div>
+                                        <div class="app-module-info">
+                                            <h4>Client Master</h4>
+                                            <p>Customer Directory, GSTIN & Terms</p>
+                                        </div>
+                                        <div class="app-module-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                                    </div>
+
+                                    <div class="app-module-card" onclick="navigateRoute('/vendor-master')">
+                                        <div class="app-module-icon icon-orange"><i class="fa-solid fa-truck-ramp-box"></i></div>
+                                        <div class="app-module-info">
+                                            <h4>Vendor Master</h4>
+                                            <p>Shipping Lines, Transporters & CHA Directory</p>
+                                        </div>
+                                        <div class="app-module-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                                    </div>
+
+                                    <div class="app-module-card" onclick="navigateRoute('/service-master')">
+                                        <div class="app-module-icon icon-slate"><i class="fa-solid fa-list-check"></i></div>
+                                        <div class="app-module-info">
+                                            <h4>Service Master</h4>
+                                            <p>Ocean Freight, CHA & Service Rate Catalog</p>
+                                        </div>
+                                        <div class="app-module-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -382,6 +384,174 @@
                                     </table>
                                 </div>
                                 <div class="pagination-bar" id="shipments-pagination"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 2B: SALES LEDGER (Dedicated Customer Sales Flow) -->
+                    <div id="view-sales-ledger" class="view-section" style="display: none;">
+                        <div class="page-header">
+                            <div>
+                                <h2 class="page-title"><i class="fa-solid fa-file-invoice-dollar" style="color: #2563eb; margin-right: 8px;"></i> Sales Ledger</h2>
+                                <p class="page-subtitle">Customer sales invoices, receivables, collected payments & balance tracking</p>
+                            </div>
+                            <div class="page-header-actions">
+                                <button class="btn-action" onclick="fetchShipmentsData()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                                <button class="btn-action" onclick="exportTableToCSV('table-sales-ledger-body', 'Sales_Ledger')"><i class="fa-solid fa-file-excel" style="color: #059669;"></i> Export Excel</button>
+                                <button class="quick-add-btn" onclick="navigateRoute('/shipment-entry/new')">+ Create Sales Invoice</button>
+                            </div>
+                        </div>
+
+                        <!-- 3 SALES SUMMARY CARDS -->
+                        <div class="ledger-kpi-grid">
+                            <div class="panel-card" style="padding: 16px 20px; border-left: 4px solid var(--neon-blue);">
+                                <div style="font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">TOTAL INVOICED SALES</div>
+                                <div id="sales-kpi-total-sales" style="font-size: 22px; font-weight: 900; color: var(--neon-blue); margin-top: 4px;">₹0.00</div>
+                                <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">Customer Invoiced Value</div>
+                            </div>
+                            <div class="panel-card" style="padding: 16px 20px; border-left: 4px solid var(--neon-green);">
+                                <div style="font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">TOTAL COLLECTED</div>
+                                <div id="sales-kpi-total-received" style="font-size: 22px; font-weight: 900; color: var(--neon-green); margin-top: 4px;">₹0.00</div>
+                                <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">Total Bank & Cash Receipts</div>
+                            </div>
+                            <div class="panel-card" style="padding: 16px 20px; border-left: 4px solid var(--neon-amber);">
+                                <div style="font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">BALANCE RECEIVABLE</div>
+                                <div id="sales-kpi-balance-rec" style="font-size: 22px; font-weight: 900; color: var(--neon-amber); margin-top: 4px;">₹0.00</div>
+                                <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">Pending Customer Invoices</div>
+                            </div>
+                        </div>
+
+                        <!-- SALES FILTERS -->
+                        <div class="panel-card" style="margin-bottom: 20px;">
+                            <div class="panel-body" style="padding: 14px;">
+                                <div class="grid-12" style="align-items: center; gap: 10px;">
+                                    <div class="col-4">
+                                        <input type="text" id="sales-search-input" class="form-control" placeholder="Search Shipment ID, Client, Company Name..." onkeyup="filterSalesLedger()">
+                                    </div>
+                                    <div class="col-3">
+                                        <input type="month" id="sales-month-filter" class="form-control" onchange="filterSalesLedger()">
+                                    </div>
+                                    <div class="col-3">
+                                        <select id="sales-status-filter" class="form-control" onchange="filterSalesLedger()">
+                                            <option value="">All Customer Statuses</option>
+                                            <option value="UNPAID">UNPAID</option>
+                                            <option value="PARTIAL">PARTIAL</option>
+                                            <option value="PAID">PAID</option>
+                                            <option value="OVERDUE">OVERDUE</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-2" style="text-align: right;">
+                                        <button class="btn-action" onclick="resetSalesLedgerFilters()"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SALES TABLE -->
+                        <div class="panel-card">
+                            <div class="panel-body" style="padding: 0;">
+                                <div class="table-container">
+                                    <table class="erp-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 40px; text-align: center;">+</th>
+                                                <th>Shipment ID</th>
+                                                <th>Date</th>
+                                                <th>Client / Customer</th>
+                                                <th style="text-align: right;">Sales Amount (₹)</th>
+                                                <th style="text-align: right;">Received (₹)</th>
+                                                <th style="text-align: right;">Balance (₹)</th>
+                                                <th style="text-align: center;">Status</th>
+                                                <th class="action-col" style="width: 120px; text-align: right;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="table-sales-ledger-body"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 2C: PURCHASE LEDGER (Dedicated Vendor & Line Purchase Flow) -->
+                    <div id="view-purchase-ledger" class="view-section" style="display: none;">
+                        <div class="page-header">
+                            <div>
+                                <h2 class="page-title"><i class="fa-solid fa-file-contract" style="color: #c83228; margin-right: 8px;"></i> Purchase Ledger</h2>
+                                <p class="page-subtitle">Vendor procurement, shipping line / transport charges, payables & disbursements</p>
+                            </div>
+                            <div class="page-header-actions">
+                                <button class="btn-action" onclick="fetchShipmentsData()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                                <button class="btn-action" onclick="exportTableToCSV('table-purchase-ledger-body', 'Purchase_Ledger')"><i class="fa-solid fa-file-excel" style="color: #059669;"></i> Export Excel</button>
+                                <button class="quick-add-btn" onclick="openVendorPaymentModal()">+ Record Vendor Payment</button>
+                            </div>
+                        </div>
+
+                        <!-- 3 PURCHASE SUMMARY CARDS -->
+                        <div class="ledger-kpi-grid">
+                            <div class="panel-card" style="padding: 16px 20px; border-left: 4px solid #64748b;">
+                                <div style="font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">TOTAL PURCHASE COST</div>
+                                <div id="purchase-kpi-total-cost" style="font-size: 22px; font-weight: 900; color: var(--brand-red); margin-top: 4px;">₹0.00</div>
+                                <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">Total Line & Vendor Bills</div>
+                            </div>
+                            <div class="panel-card" style="padding: 16px 20px; border-left: 4px solid var(--neon-green);">
+                                <div style="font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">TOTAL PAID TO VENDORS</div>
+                                <div id="purchase-kpi-total-paid" style="font-size: 22px; font-weight: 900; color: var(--neon-green); margin-top: 4px;">₹0.00</div>
+                                <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">Disbursed Vendor Payments</div>
+                            </div>
+                            <div class="panel-card" style="padding: 16px 20px; border-left: 4px solid var(--neon-amber);">
+                                <div style="font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">OUTSTANDING PAYABLE</div>
+                                <div id="purchase-kpi-balance-pay" style="font-size: 22px; font-weight: 900; color: var(--neon-amber); margin-top: 4px;">₹0.00</div>
+                                <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">Pending Bills to be Cleared</div>
+                            </div>
+                        </div>
+
+                        <!-- PURCHASE FILTERS -->
+                        <div class="panel-card" style="margin-bottom: 20px;">
+                            <div class="panel-body" style="padding: 14px;">
+                                <div class="grid-12" style="align-items: center; gap: 10px;">
+                                    <div class="col-4">
+                                        <input type="text" id="purchase-search-input" class="form-control" placeholder="Search Shipment ID, Shipping Line, Vendor..." onkeyup="filterPurchaseLedger()">
+                                    </div>
+                                    <div class="col-3">
+                                        <input type="month" id="purchase-month-filter" class="form-control" onchange="filterPurchaseLedger()">
+                                    </div>
+                                    <div class="col-3">
+                                        <select id="purchase-status-filter" class="form-control" onchange="filterPurchaseLedger()">
+                                            <option value="">All Vendor Statuses</option>
+                                            <option value="UNPAID">UNPAID</option>
+                                            <option value="PARTIAL">PARTIAL</option>
+                                            <option value="PAID">PAID</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-2" style="text-align: right;">
+                                        <button class="btn-action" onclick="resetPurchaseLedgerFilters()"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PURCHASE TABLE -->
+                        <div class="panel-card">
+                            <div class="panel-body" style="padding: 0;">
+                                <div class="table-container">
+                                    <table class="erp-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 40px; text-align: center;">+</th>
+                                                <th>Shipment ID</th>
+                                                <th>Date</th>
+                                                <th>Shipping Line / Main Vendor</th>
+                                                <th>Client Account</th>
+                                                <th style="text-align: right;">Purchase Cost (₹)</th>
+                                                <th style="text-align: right;">Paid (₹)</th>
+                                                <th style="text-align: right;">Balance Payable (₹)</th>
+                                                <th style="text-align: center;">Status</th>
+                                                <th class="action-col" style="width: 120px; text-align: right;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="table-purchase-ledger-body"></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1404,6 +1574,6 @@
     </div>
 
     <!-- MAIN APP JAVASCRIPT ENGINE -->
-    <script src="app.js?v=10.4.0"></script>
+    <script src="app.js?v=20.0.0"></script>
 </body>
 </html>
