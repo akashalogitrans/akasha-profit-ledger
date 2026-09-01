@@ -1902,13 +1902,9 @@ function switchProfitTab(tabKey) {
         const container = document.getElementById(`container-profit-${t}`);
         if (btn) {
             if (t === tabKey) {
-                btn.style.background = '#0f172a';
-                btn.style.color = '#ffffff';
-                btn.style.borderColor = '#0f172a';
+                btn.classList.add('active');
             } else {
-                btn.style.background = '#f8fafc';
-                btn.style.color = '#475569';
-                btn.style.borderColor = '#cbd5e1';
+                btn.classList.remove('active');
             }
         }
         if (container) {
@@ -1934,14 +1930,14 @@ function renderProfitLedgerTable(list) {
 
     const dataList = list || STATE.shipments || [];
 
-    // Helper for margin badge
+    // Helper for theme-adaptive margin badge
     function getMarginBadge(margin) {
         if (margin > 0) {
-            return `<span class="status-pill" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 900; font-size: 12px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-arrow-trend-up"></i> +${margin.toFixed(2)}%</span>`;
+            return `<span class="status-pill" style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.35); font-weight: 900; font-size: 12px; padding: 4px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-arrow-trend-up"></i> +${margin.toFixed(2)}%</span>`;
         } else if (margin < 0) {
-            return `<span class="status-pill" style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 900; font-size: 12px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-arrow-trend-down"></i> ${margin.toFixed(2)}%</span>`;
+            return `<span class="status-pill" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.35); font-weight: 900; font-size: 12px; padding: 4px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-arrow-trend-down"></i> ${margin.toFixed(2)}%</span>`;
         } else {
-            return `<span class="status-pill" style="background: #f8fafc; color: #64748b; border: 1px solid #cbd5e1; font-weight: 800; font-size: 12px; padding: 4px 10px;">0.00%</span>`;
+            return `<span class="status-pill" style="background: var(--bg-surface-subtle); color: var(--text-muted); border: 1px solid var(--border-color); font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 4px;">0.00%</span>`;
         }
     }
 
@@ -1968,7 +1964,7 @@ function renderProfitLedgerTable(list) {
 
                 const isPositive = profit > 0;
                 const isNegative = profit < 0;
-                const profitColor = isNegative ? '#dc2626' : (isPositive ? '#16a34a' : '#64748b');
+                const profitColor = isNegative ? '#ef4444' : (isPositive ? '#22c55e' : 'var(--text-muted)');
                 const formattedProfit = (profit < 0 ? '-₹' : '₹') + Math.abs(profit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
                 return `
@@ -1976,7 +1972,7 @@ function renderProfitLedgerTable(list) {
                         <td><strong style="color: var(--neon-blue); font-size: 13px; font-weight: 800;">${r.shipment_id || r.id}</strong></td>
                         <td>${r.date || '-'}</td>
                         <td><strong style="color: var(--text-primary); font-size: 13px;">${r.company_name}</strong></td>
-                        <td style="text-align: right; font-weight: 700;">₹${sAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td style="text-align: right; font-weight: 700; color: var(--text-primary);">₹${sAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td style="text-align: right; font-weight: 700; color: var(--brand-red);">₹${pAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td style="text-align: right;"><strong style="color: ${profitColor}; font-weight: 900; font-size: 13px;">${formattedProfit}</strong></td>
                         <td style="text-align: center;">${getMarginBadge(margin)}</td>
@@ -2034,14 +2030,14 @@ function renderProfitLedgerTable(list) {
                 const margin = m.totalSales > 0 ? parseFloat(((m.netProfit / m.totalSales) * 100).toFixed(2)) : (m.totalPurchase > 0 ? -100.0 : 0);
                 const isPositive = m.netProfit > 0;
                 const isNegative = m.netProfit < 0;
-                const profitColor = isNegative ? '#dc2626' : (isPositive ? '#16a34a' : '#64748b');
+                const profitColor = isNegative ? '#ef4444' : (isPositive ? '#22c55e' : 'var(--text-muted)');
                 const formattedProfit = (m.netProfit < 0 ? '-₹' : '₹') + Math.abs(m.netProfit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
                 return `
                     <tr>
-                        <td><strong style="font-size: 13.5px; color: #0f172a;"><i class="fa-solid fa-calendar-check" style="color: var(--neon-blue); margin-right: 6px;"></i> ${m.displayName}</strong></td>
+                        <td><strong style="font-size: 13.5px; color: var(--text-primary);"><i class="fa-solid fa-calendar-check" style="color: var(--neon-blue); margin-right: 6px;"></i> ${m.displayName}</strong></td>
                         <td style="text-align: center;"><span class="status-pill status-paid" style="font-weight: 800;">${m.jobCount} Jobs</span></td>
-                        <td style="text-align: right; font-weight: 800; font-size: 13px; color: #0f172a;">₹${m.totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td style="text-align: right; font-weight: 800; font-size: 13px; color: var(--text-primary);">₹${m.totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td style="text-align: right; font-weight: 800; font-size: 13px; color: var(--brand-red);">₹${m.totalPurchase.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td style="text-align: right;"><strong style="color: ${profitColor}; font-weight: 900; font-size: 13.5px;">${formattedProfit}</strong></td>
                         <td style="text-align: center;">${getMarginBadge(margin)}</td>
@@ -2103,14 +2099,14 @@ function renderProfitLedgerTable(list) {
                 const margin = y.totalSales > 0 ? parseFloat(((y.netProfit / y.totalSales) * 100).toFixed(2)) : (y.totalPurchase > 0 ? -100.0 : 0);
                 const isPositive = y.netProfit > 0;
                 const isNegative = y.netProfit < 0;
-                const profitColor = isNegative ? '#dc2626' : (isPositive ? '#16a34a' : '#64748b');
+                const profitColor = isNegative ? '#ef4444' : (isPositive ? '#22c55e' : 'var(--text-muted)');
                 const formattedProfit = (y.netProfit < 0 ? '-₹' : '₹') + Math.abs(y.netProfit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
                 return `
                     <tr>
-                        <td><strong style="font-size: 14px; color: #1e3a8a;"><i class="fa-solid fa-chart-pie" style="color: var(--neon-blue); margin-right: 6px;"></i> ${y.fyKey}</strong></td>
+                        <td><strong style="font-size: 14px; color: var(--neon-blue);"><i class="fa-solid fa-chart-pie" style="color: var(--neon-blue); margin-right: 6px;"></i> ${y.fyKey}</strong></td>
                         <td style="text-align: center;"><span class="status-pill status-paid" style="font-weight: 800;">${y.jobCount} Total Jobs</span></td>
-                        <td style="text-align: right; font-weight: 800; font-size: 13.5px; color: #0f172a;">₹${y.totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td style="text-align: right; font-weight: 800; font-size: 13.5px; color: var(--text-primary);">₹${y.totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td style="text-align: right; font-weight: 800; font-size: 13.5px; color: var(--brand-red);">₹${y.totalPurchase.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td style="text-align: right;"><strong style="color: ${profitColor}; font-weight: 900; font-size: 14px;">${formattedProfit}</strong></td>
                         <td style="text-align: center;">${getMarginBadge(margin)}</td>

@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=26.0.0">
+    <link rel="stylesheet" href="styles.css?v=27.0.0">
 </head>
 <body>
 
@@ -789,14 +789,14 @@
                         </div>
 
                         <!-- 3-PART VIEW SWITCHER TABS -->
-                        <div style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; flex-wrap: wrap;">
-                            <button id="tab-btn-profit-shipment" class="btn-action" onclick="switchProfitTab('shipment')" style="font-weight: 800; font-size: 13px; padding: 8px 18px; border-radius: 6px; display: flex; align-items: center; gap: 8px; background: #0f172a; color: #ffffff; border: 1px solid #0f172a;">
+                        <div style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid var(--border-color); padding-bottom: 12px; flex-wrap: wrap;">
+                            <button id="tab-btn-profit-shipment" class="profit-tab-btn active" onclick="switchProfitTab('shipment')">
                                 <i class="fa-solid fa-ship"></i> 1. Shipment-Wise
                             </button>
-                            <button id="tab-btn-profit-month" class="btn-action" onclick="switchProfitTab('month')" style="font-weight: 800; font-size: 13px; padding: 8px 18px; border-radius: 6px; display: flex; align-items: center; gap: 8px; background: #f8fafc; color: #475569; border: 1px solid #cbd5e1;">
+                            <button id="tab-btn-profit-month" class="profit-tab-btn" onclick="switchProfitTab('month')">
                                 <i class="fa-solid fa-calendar-days"></i> 2. Month-Wise
                             </button>
-                            <button id="tab-btn-profit-year" class="btn-action" onclick="switchProfitTab('year')" style="font-weight: 800; font-size: 13px; padding: 8px 18px; border-radius: 6px; display: flex; align-items: center; gap: 8px; background: #f8fafc; color: #475569; border: 1px solid #cbd5e1;">
+                            <button id="tab-btn-profit-year" class="profit-tab-btn" onclick="switchProfitTab('year')">
                                 <i class="fa-solid fa-chart-line"></i> 3. Year-Wise (FY)
                             </button>
                         </div>
@@ -826,7 +826,7 @@
                             <div class="panel-body" style="padding: 0;">
                                 <table class="erp-table">
                                     <thead>
-                                        <tr style="background: #f8fafc;">
+                                        <tr>
                                             <th style="font-size: 13px;">Month & Year</th>
                                             <th style="text-align: center; width: 140px;">Total Shipments</th>
                                             <th style="text-align: right;">Taxable Sales (₹)</th>
@@ -845,7 +845,7 @@
                             <div class="panel-body" style="padding: 0;">
                                 <table class="erp-table">
                                     <thead>
-                                        <tr style="background: #f8fafc;">
+                                        <tr>
                                             <th style="font-size: 13px;">Financial Year</th>
                                             <th style="text-align: center; width: 140px;">Total Shipments</th>
                                             <th style="text-align: right;">Annual Sales (₹)</th>
@@ -1743,6 +1743,6 @@
     </div>
 
     <!-- MAIN APP JAVASCRIPT ENGINE -->
-    <script src="app.js?v=26.0.0"></script>
+    <script src="app.js?v=27.0.0"></script>
 </body>
 </html>
