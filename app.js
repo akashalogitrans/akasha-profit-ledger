@@ -1645,7 +1645,7 @@ function renderVendorsTable(list) {
     if (!tbody) return;
     const dataList = list || STATE.vendors;
     if (!dataList || dataList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 24px; color: var(--text-muted); font-weight: 600;">No Vendors Registered in Master Registry</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-muted); font-weight: 600;">No Vendors Registered in Master Registry</td></tr>`;
         return;
     }
 
@@ -1716,18 +1716,12 @@ function renderVendorsTable(list) {
                         <i id="expand-icon-vendor_${safeId}" class="fa-solid fa-circle-plus" style="font-size: 16px; color: #2563eb;"></i>
                     </button>
                 </td>
-                <td><strong style="color: var(--primary); font-size: 12px;">${v.id}</strong></td>
-                <td style="white-space: normal; word-break: break-word;"><strong style="color: #1c2024; font-size: 12.5px;">${v.name}</strong></td>
-                <td><span class="status-pill status-partial">${v.vendor_type || 'General'}</span></td>
-                <td style="text-align: center;">
-                    <span class="status-pill ${linkedJobs.length > 0 ? 'status-paid' : 'status-unpaid'}" style="font-weight: 800; cursor: pointer;" onclick="toggleMasterRowExpand('vendor_${safeId}')">
-                        ${linkedJobs.length} Jobs
-                    </span>
-                </td>
-                <td style="text-align: right; font-weight: 800;">₹${totalPur.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td style="text-align: right; font-weight: 800; color: var(--success);">₹${totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td style="text-align: right; font-weight: 800; color: ${balPay > 0 ? 'var(--danger)' : 'var(--success)'};">
-                    ₹${balPay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <td><strong style="color: var(--neon-blue); font-size: 13px; font-weight: 800;">${v.id}</strong></td>
+                <td style="white-space: normal; word-break: break-word;"><strong style="color: var(--text-primary); font-size: 13px;">${v.name}</strong></td>
+                <td style="text-align: right; font-weight: 800; font-size: 13px; color: var(--brand-red);">${formatCurrencyINR(totalPur)}</td>
+                <td style="text-align: right; font-weight: 800; font-size: 13px; color: var(--neon-green);">${formatCurrencyINR(totalPaid)}</td>
+                <td style="text-align: right; font-weight: 800; font-size: 13px; color: ${balPay > 0 ? 'var(--neon-amber)' : 'var(--neon-green)'};">
+                    ${formatCurrencyINR(balPay)}
                 </td>
                 <td style="text-align: center;"><span class="status-pill ${v.status === 'ACTIVE' ? 'status-paid' : 'status-unpaid'}">${v.status || 'ACTIVE'}</span></td>
                 <td class="action-cell">
@@ -1736,7 +1730,7 @@ function renderVendorsTable(list) {
                 </td>
             </tr>
             <tr id="sub-row-vendor_${safeId}" class="master-detail-subrow" style="display: none; background: #fbfaf7;">
-                <td colspan="10" style="padding: 10px 12px; border-bottom: 2px solid #e5e2da; white-space: normal;">
+                <td colspan="8" style="padding: 10px 12px; border-bottom: 2px solid #e5e2da; white-space: normal;">
                     <div style="background: #ffffff; border: 1px solid #e5e2da; border-radius: 8px; padding: 12px 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
                         <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #edebe6; padding-bottom: 8px; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
                             <div style="font-weight: 800; font-size: 14px; color: #1c2024;">
@@ -1748,8 +1742,7 @@ function renderVendorsTable(list) {
                             </div>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; font-size: 12px;">
-                            <div><strong style="color: #64748b; font-size: 10.5px; text-transform: uppercase;">Category:</strong><br><strong>${v.vendor_type || 'General'}</strong></div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 12px;">
                             <div><strong style="color: #64748b; font-size: 10.5px; text-transform: uppercase;">Contact & Phone:</strong><br><span>${v.contact_person || 'N/A'}${v.mobile ? ` (${v.mobile})` : ''}</span></div>
                             <div><strong style="color: #64748b; font-size: 10.5px; text-transform: uppercase;">GSTIN / PAN:</strong><br><span>${v.gstin || 'N/A'}${v.pan ? ` / ${v.pan}` : ''}</span></div>
                             <div><strong style="color: #64748b; font-size: 10.5px; text-transform: uppercase;">Credit Terms:</strong><br><strong>${v.credit_terms || '15 Days'}</strong></div>

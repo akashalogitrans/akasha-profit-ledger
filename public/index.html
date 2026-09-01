@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=24.0.0">
+    <link rel="stylesheet" href="styles.css?v=25.0.0">
 </head>
 <body>
 
@@ -939,7 +939,7 @@
                             <div class="panel-body" style="padding: 12px 14px;">
                                 <div style="display: flex; gap: 10px; align-items: center;">
                                     <div style="flex: 1; position: relative;">
-                                        <input type="text" id="vendor-search-input" class="form-control" placeholder="Search Vendor ID, Vendor Name, Category..." onkeyup="handleGlobalSearch(this.value)">
+                                        <input type="text" id="vendor-search-input" class="form-control" placeholder="Search Vendor ID, Vendor Name..." onkeyup="handleGlobalSearch(this.value)">
                                     </div>
                                     <button class="btn-action" onclick="handleGlobalSearch(document.getElementById('vendor-search-input').value)" style="background: #0f172a; color: #ffffff; padding: 0 16px; font-weight: 700; height: 38px;">
                                         <i class="fa-solid fa-magnifying-glass"></i> Search
@@ -955,14 +955,12 @@
                                         <thead>
                                             <tr>
                                                 <th style="width: 32px; text-align: center; padding: 8px 4px;">+</th>
-                                                <th style="width: 78px;">Vendor ID</th>
-                                                <th style="width: 20%;">Vendor Name</th>
-                                                <th style="width: 13%;">Category</th>
-                                                <th style="text-align: center; width: 10%;">Linked Jobs</th>
-                                                <th style="text-align: right; width: 14%;">Total Purchases</th>
-                                                <th style="text-align: right; width: 13%;">Total Paid</th>
-                                                <th style="text-align: right; width: 14%;">Balance Payable</th>
-                                                <th style="text-align: center; width: 66px;">Status</th>
+                                                <th style="width: 80px;">Vendor ID</th>
+                                                <th>Vendor Name</th>
+                                                <th style="text-align: right; width: 16%;">Total Purchases</th>
+                                                <th style="text-align: right; width: 16%;">Total Paid</th>
+                                                <th style="text-align: right; width: 16%;">Balance Payable</th>
+                                                <th style="text-align: center; width: 75px;">Status</th>
                                                 <th class="action-col" style="text-align: right; width: 75px;">Action</th>
                                             </tr>
                                         </thead>
@@ -1493,19 +1491,6 @@
                         <input type="text" id="modal-vendor-name" class="form-control" required placeholder="e.g. MAERSK LINE">
                     </div>
                     <div class="form-group" style="margin-bottom: 14px;">
-                        <label class="form-label">Vendor Type / Category *</label>
-                        <select id="modal-vendor-type" class="form-control" required>
-                            <option value="Shipping Line">Shipping Line</option>
-                            <option value="Transporter">Transporter</option>
-                            <option value="CHA">CHA</option>
-                            <option value="Agent">Agent</option>
-                            <option value="Port">Port</option>
-                            <option value="Documentation Vendor">Documentation Vendor</option>
-                            <option value="General Vendor">General Vendor</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 14px;">
                         <label class="form-label">Contact Person</label>
                         <input type="text" id="modal-vendor-contact" class="form-control" placeholder="Contact person name">
                     </div>
@@ -1706,6 +1691,6 @@
     </div>
 
     <!-- MAIN APP JAVASCRIPT ENGINE -->
-    <script src="app.js?v=24.0.0"></script>
+    <script src="app.js?v=25.0.0"></script>
 </body>
 </html>
