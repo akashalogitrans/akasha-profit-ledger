@@ -429,7 +429,10 @@ function switchView(viewId) {
         if (overlay) overlay.style.display = 'none';
     }
 
-    if (viewId === 'dashboard') fetchDashboardKPIs();
+    if (viewId === 'dashboard') {
+        fetchDashboardKPIs();
+        renderMonthlyAnalyticsChart();
+    }
     if (viewId === 'shipments') renderShipmentsTable();
     if (viewId === 'sales-ledger' || viewId === 'sales_ledger') renderSalesLedgerTable();
     if (viewId === 'purchase-ledger' || viewId === 'purchase_ledger') renderPurchaseLedgerTable();
@@ -508,6 +511,7 @@ async function fetchDashboardKPIs() {
         recalculateKPIsFromState();
     }
     renderDashboardRecentShipments();
+    renderMonthlyAnalyticsChart();
 }
 
 function recalculateKPIsFromState() {
@@ -553,6 +557,7 @@ function recalculateKPIsFromState() {
     if (document.getElementById('kpi-margin-pct')) document.getElementById('kpi-margin-pct').innerText = `${margin}%`;
 
     renderDashboardRecentShipments();
+    renderMonthlyAnalyticsChart();
 }
 
 async function fetchClientsData() {
@@ -608,6 +613,7 @@ async function fetchShipmentsData() {
                 renderSalesLedgerTable();
                 renderPurchaseLedgerTable();
                 renderDashboardRecentShipments();
+                renderMonthlyAnalyticsChart();
                 recalculateKPIsFromState();
             }
         }
@@ -1055,6 +1061,253 @@ function renderDashboardRecentShipments() {
             </tr>
         `;
     }).join('');
+}
+
+let monthlyChartInstance = null;
+
+function renderMonthlyAnalyticsChart() {
+    const canvas = document.getElementById('dashboardMonthlyAnalyticsChart');
+    if (!canvas) return;
+
+    if (typeof Chart === 'undefined') {
+        setTimeout(renderMonthlyAnalyticsChart, 250);
+        return;
+    }
+
+    const list = STATE.shipments || [];
+    const monthMap = {};
+
+    list.forEach(r => {
+        const rawDate = r.date || r.purchase_date || '';
+        const ym = rawDate.length >= 7 ? rawDate.substring(0, 7) : 'Unspecified';
+        if (ym === 'Unspecified') return;
+
+        const [yearStr, monthStr] = ym.split('-');
+        const monthIndex = parseInt(monthStr, 10) - 1;
+        const monthNamesShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const shortName = monthNamesShort[monthIndex] ? `${monthNamesShort[monthIndex]} ${yearStr}` : ym;
+
+        if (!monthMap[ym]) {
+            monthMap[ym] = {
+                key: ym,
+                label: shortName,
+                totalSales: 0,
+                totalPurchase: 0,
+                netProfit: 0,
+                jobCount: 0
+            };
+        }
+
+        const sAmt = parseFloat(r.sales_amount || r.sale_amount) || 0;
+        const pAmt = parseFloat(r.purchase_amount) || 0;
+        const profit = r.net_profit !== undefined ? parseFloat(r.net_profit) : (sAmt - pAmt);
+
+        monthMap[ym].totalSales += sAmt;
+        monthMap[ym].totalPurchase += pAmt;
+        monthMap[ym].netProfit += profit;
+        monthMap[ym].jobCount += 1;
+    });
+
+    // Chronological order (oldest to newest) for smooth time-series progression
+    const sortedMonths = Object.values(monthMap).sort((a, b) => a.key.localeCompare(b.key));
+
+    const labels = sortedMonths.map(m => m.label);
+    const profitData = sortedMonths.map(m => Math.round(m.netProfit));
+    const shipmentData = sortedMonths.map(m => m.jobCount);
+    const marginData = sortedMonths.map(m => m.totalSales > 0 ? parseFloat(((m.netProfit / m.totalSales) * 100).toFixed(2)) : 0);
+
+    // Mini KPI Stats Calculation
+    let bestMonth = null;
+    let maxProfit = -Infinity;
+    let grandSales = 0;
+    let grandProfit = 0;
+    let grandJobs = 0;
+
+    sortedMonths.forEach(m => {
+        grandSales += m.totalSales;
+        grandProfit += m.netProfit;
+        grandJobs += m.jobCount;
+        if (m.netProfit > maxProfit) {
+            maxProfit = m.netProfit;
+            bestMonth = m;
+        }
+    });
+
+    if (bestMonth && document.getElementById('chart-stat-best-month')) {
+        document.getElementById('chart-stat-best-month').innerText = bestMonth.label;
+        if (document.getElementById('chart-stat-best-profit')) {
+            document.getElementById('chart-stat-best-profit').innerText = `Profit: ₹${bestMonth.netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        }
+    }
+    if (document.getElementById('chart-stat-avg-margin')) {
+        const avgMargin = grandSales > 0 ? ((grandProfit / grandSales) * 100).toFixed(2) : "0.00";
+        document.getElementById('chart-stat-avg-margin').innerText = `+${avgMargin}%`;
+    }
+    if (document.getElementById('chart-stat-total-jobs')) {
+        document.getElementById('chart-stat-total-jobs').innerText = `${grandJobs} Jobs`;
+    }
+
+    // Dynamic Theme Palettes
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || document.body.classList.contains('dark-theme');
+    const textColor = isDark ? '#cbd5e1' : '#334155';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+
+    if (monthlyChartInstance) {
+        monthlyChartInstance.destroy();
+    }
+
+    const ctx = canvas.getContext('2d');
+    monthlyChartInstance = new Chart(ctx, {
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'Net Profit (₹)',
+                    data: profitData,
+                    backgroundColor: profitData.map(p => p >= 0 ? 'rgba(16, 185, 129, 0.85)' : 'rgba(239, 68, 68, 0.85)'),
+                    borderColor: profitData.map(p => p >= 0 ? '#10b981' : '#ef4444'),
+                    borderWidth: 1.5,
+                    borderRadius: 6,
+                    yAxisID: 'yProfit',
+                    order: 3
+                },
+                {
+                    type: 'line',
+                    label: 'Margin %',
+                    data: marginData,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#f59e0b',
+                    pointBorderColor: '#ffffff',
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    tension: 0.35,
+                    yAxisID: 'yMargin',
+                    order: 1
+                },
+                {
+                    type: 'line',
+                    label: 'Shipments (Jobs)',
+                    data: shipmentData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                    borderWidth: 2.5,
+                    borderDash: [5, 5],
+                    pointBackgroundColor: '#3b82f6',
+                    pointBorderColor: '#ffffff',
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0.2,
+                    yAxisID: 'yJobs',
+                    order: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: textColor,
+                        font: { family: 'Plus Jakarta Sans, Inter, sans-serif', weight: '700', size: 12 },
+                        usePointStyle: true,
+                        padding: 16
+                    }
+                },
+                tooltip: {
+                    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+                    titleColor: isDark ? '#ffffff' : '#0f172a',
+                    bodyColor: isDark ? '#cbd5e1' : '#334155',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
+                    borderWidth: 1,
+                    padding: 12,
+                    boxPadding: 6,
+                    usePointStyle: true,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) label += ': ';
+                            if (context.dataset.yAxisID === 'yProfit') {
+                                label += '₹' + (context.parsed.y || 0).toLocaleString('en-IN');
+                            } else if (context.dataset.yAxisID === 'yMargin') {
+                                label += (context.parsed.y || 0).toFixed(2) + '%';
+                            } else if (context.dataset.yAxisID === 'yJobs') {
+                                label += (context.parsed.y || 0) + ' Jobs';
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: gridColor },
+                    ticks: {
+                        color: textColor,
+                        font: { family: 'Plus Jakarta Sans, Inter, sans-serif', weight: '700', size: 11.5 }
+                    }
+                },
+                yProfit: {
+                    type: 'linear',
+                    position: 'left',
+                    grid: { color: gridColor },
+                    ticks: {
+                        color: textColor,
+                        font: { family: 'Plus Jakarta Sans, Inter, sans-serif', size: 11 },
+                        callback: function(val) {
+                            if (Math.abs(val) >= 100000) return '₹' + (val / 100000).toFixed(1) + 'L';
+                            if (Math.abs(val) >= 1000) return '₹' + (val / 1000).toFixed(0) + 'k';
+                            return '₹' + val;
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Net Profit (₹)',
+                        color: '#10b981',
+                        font: { weight: '800', size: 11 }
+                    }
+                },
+                yMargin: {
+                    type: 'linear',
+                    position: 'right',
+                    grid: { drawOnChartArea: false },
+                    ticks: {
+                        color: '#f59e0b',
+                        font: { family: 'Plus Jakarta Sans, Inter, sans-serif', size: 11 },
+                        callback: function(val) { return val + '%'; }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Margin %',
+                        color: '#f59e0b',
+                        font: { weight: '800', size: 11 }
+                    }
+                },
+                yJobs: {
+                    type: 'linear',
+                    position: 'right',
+                    grid: { drawOnChartArea: false },
+                    ticks: {
+                        color: '#3b82f6',
+                        font: { family: 'Plus Jakarta Sans, Inter, sans-serif', size: 11 },
+                        stepSize: 1,
+                        callback: function(val) { return val + ' Jobs'; }
+                    },
+                    title: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
 }
 
 function renderShipmentsTable() {
@@ -3873,6 +4126,7 @@ function toggleERPTheme() {
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('akasha_erp_theme', next);
     updateThemeIcon(next);
+    renderMonthlyAnalyticsChart();
     showToast(`Switched to ${next.toUpperCase()} mode`, 'info');
 }
 
