@@ -1396,6 +1396,7 @@ function renderPurchaseLedgerTable(customList = null) {
                         <th style="padding: 5px 8px; text-align: right;">Foreign Amt</th>
                         <th style="padding: 5px 8px; text-align: center;">Ex. Rate</th>
                         <th style="padding: 5px 8px; text-align: right;">Total INR (₹)</th>
+                        <th style="padding: 5px 8px; text-align: right; width: 80px;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1407,6 +1408,9 @@ function renderPurchaseLedgerTable(customList = null) {
                             <td style="padding: 5px 8px; text-align: right;">${(parseFloat(it.foreign_amount) || 0).toLocaleString('en-IN')}</td>
                             <td style="padding: 5px 8px; text-align: center;">${it.ex_rate || 1}</td>
                             <td style="padding: 5px 8px; text-align: right; font-weight: 800; color: #b91c1c;">${formatCurrencyINR(it.amount || 0)}</td>
+                            <td style="padding: 5px 8px; text-align: right;">
+                                <button type="button" class="btn-action" onclick="openVendorPaymentForShipment('${(it.vendor_name || '').replace(/'/g, "\\'")}', '${s.id}', ${parseFloat(it.amount) || 0})" style="padding: 3px 8px; font-size: 11px; background: rgba(255, 59, 48, 0.1); color: var(--brand-red); border-color: rgba(255, 59, 48, 0.3); font-weight: 700;" title="Disburse Payment for ${it.vendor_name || 'Vendor'}"><i class="fa-solid fa-credit-card"></i> Pay</button>
+                            </td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -1431,7 +1435,7 @@ function renderPurchaseLedgerTable(customList = null) {
                 <td class="action-cell">
                     <button type="button" class="btn-icon-action btn-icon-edit" onclick="navigateRoute('/shipment-entry/edit/${encodeURIComponent(s.id)}')" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
                     <button type="button" class="btn-icon-action btn-icon-delete" onclick="deleteShipment('${s.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
-                    <button type="button" class="btn-action" onclick="openVendorPaymentForShipment('', '${s.id}', ${purAmt})" style="background: rgba(255, 59, 48, 0.1); color: var(--brand-red); border-color: rgba(255, 59, 48, 0.3); font-weight: 700;" title="Pay Vendor Bill for ${s.id}"><i class="fa-solid fa-money-bill-transfer"></i> Pay Vendor</button>
+                    <button type="button" class="btn-action" onclick="openVendorPaymentForShipment('', '${s.id}', 0)" style="background: rgba(255, 59, 48, 0.1); color: var(--brand-red); border-color: rgba(255, 59, 48, 0.3); font-weight: 700;" title="Pay Vendor Bill for ${s.id}"><i class="fa-solid fa-money-bill-transfer"></i> Pay Vendor</button>
                 </td>
             </tr>
             <tr id="pur-sub-row-${safeId}" style="display: none; background: #fbfaf7;">
@@ -1499,8 +1503,78 @@ function renderClientsTable(list) {
         tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--text-muted); font-weight: 600;">No Clients Registered</td></tr>`;
         return;
     }
+
     tbody.innerHTML = dataList.map(c => {
         const safeId = String(c.id).replace(/[^a-zA-Z0-9]/g, '_');
+        
+        // Find all shipments belonging to this client
+        const linkedShipments = (STATE.shipments || []).filter(s => 
+            (s.client_id && String(s.client_id).trim() === String(c.id).trim()) ||
+            (s.company_name && s.company_name.trim().toLowerCase() === (c.name || '').trim().toLowerCase())
+        );
+
+        let totalSales = 0;
+        let totalRec = 0;
+        linkedShipments.forEach(s => {
+            const sale = parseFloat(s.sale_amount) || 0;
+            const rec = parseFloat(s.received_amount) || 0;
+            totalSales += sale;
+            totalRec += rec;
+        });
+        const totalDue = Math.max(0, totalSales - totalRec);
+
+        let shipmentsTableHtml = '';
+        if (linkedShipments.length > 0) {
+            shipmentsTableHtml = `
+                <div style="margin-top: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 12px; font-weight: 800; color: #1e3a8a;"><i class="fa-solid fa-ship"></i> Linked Invoices & Outstation Shipments (${linkedShipments.length})</span>
+                        <span style="font-size: 11.5px; color: var(--text-muted);">FIFO payment settles older shipments first</span>
+                    </div>
+                    <div style="border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden;">
+                        <table class="erp-table" style="font-size: 11.5px; margin: 0;">
+                            <thead>
+                                <tr style="background: #eff6ff; color: #1e40af;">
+                                    <th style="padding: 6px 8px;">Shipment ID</th>
+                                    <th style="padding: 6px 8px;">Invoice Date</th>
+                                    <th style="padding: 6px 8px; text-align: right;">Billed Sales (₹)</th>
+                                    <th style="padding: 6px 8px; text-align: right;">Received (₹)</th>
+                                    <th style="padding: 6px 8px; text-align: right;">Outstanding (₹)</th>
+                                    <th style="padding: 6px 8px; text-align: center;">Status</th>
+                                    <th style="padding: 6px 8px; text-align: right; width: 110px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${linkedShipments.map(s => {
+                                    const sAmt = parseFloat(s.sale_amount) || 0;
+                                    const rAmt = parseFloat(s.received_amount) || 0;
+                                    const bAmt = Math.max(0, sAmt - rAmt);
+                                    const st = s.sale_status || (bAmt <= 0 && sAmt > 0 ? 'PAID' : (rAmt > 0 ? 'PARTIAL' : 'UNPAID'));
+                                    const badgeCls = st === 'PAID' ? 'status-paid' : (st === 'PARTIAL' ? 'status-partial' : 'status-unpaid');
+
+                                    return `
+                                        <tr>
+                                            <td style="padding: 6px 8px;"><strong style="color: var(--neon-blue);">${s.id}</strong></td>
+                                            <td style="padding: 6px 8px;">${s.date}</td>
+                                            <td style="padding: 6px 8px; text-align: right; font-weight: 700;">${formatCurrencyINR(sAmt)}</td>
+                                            <td style="padding: 6px 8px; text-align: right; color: #15803d; font-weight: 700;">${formatCurrencyINR(rAmt)}</td>
+                                            <td style="padding: 6px 8px; text-align: right; color: ${bAmt > 0 ? '#c2410c' : '#15803d'}; font-weight: 800;">${formatCurrencyINR(bAmt)}</td>
+                                            <td style="padding: 6px 8px; text-align: center;"><span class="status-pill ${badgeCls}">${st}</span></td>
+                                            <td style="padding: 6px 8px; text-align: right;">
+                                                <button type="button" class="btn-action" onclick="openReceivePaymentModal('${s.id}')" style="padding: 3px 8px; font-size: 11px; background: #ecfdf5; color: #15803d; border-color: #a7f3d0; font-weight: 700;" title="Receive Payment for ${s.id}"><i class="fa-solid fa-hand-holding-dollar"></i> Pay Job</button>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        } else {
+            shipmentsTableHtml = `<div style="font-size: 12px; color: var(--text-muted); font-style: italic; margin-top: 10px;">No shipments linked to this client yet.</div>`;
+        }
+
         return `
             <tr>
                 <td style="text-align: center; white-space: nowrap;">
@@ -1508,8 +1582,8 @@ function renderClientsTable(list) {
                         <i id="expand-icon-client_${safeId}" class="fa-solid fa-circle-plus" style="font-size: 18px; color: #2563eb;"></i>
                     </button>
                 </td>
-                <td><strong style="color: var(--primary);">${c.id}</strong></td>
-                <td><strong>${c.name}</strong></td>
+                <td><strong style="color: var(--neon-blue); font-size: 13px; font-weight: 800;">${c.id}</strong></td>
+                <td><strong style="color: var(--text-primary); font-size: 13px;">${c.name}</strong></td>
                 <td>${c.contact_person || '-'}</td>
                 <td>${c.mobile || ''} <br><small style="color: var(--text-muted);">${c.email || ''}</small></td>
                 <td>${c.gstin || '-'}</td>
@@ -1521,16 +1595,35 @@ function renderClientsTable(list) {
                 </td>
             </tr>
             <tr id="sub-row-client_${safeId}" class="master-detail-subrow" style="display: none; background: #f8fafc;">
-                <td colspan="9" style="padding: 10px 14px; border-bottom: 2px solid #cbd5e1;">
-                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 12px 14px; font-size: 13px;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                            <div style="font-weight: 700; font-size: 14px; color: #0f172a;"><i class="fa-solid fa-building"></i> Client Details (${c.id})</div>
-                            <div style="display: flex; gap: 6px;">
-                                <button class="btn-action" onclick="openClientModal('${c.id}')" style="color: #2563eb; font-weight: 700; padding: 4px 8px;"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                <button class="btn-action" onclick="deleteClient('${c.id}')" style="color: #c83228; font-weight: 700; padding: 4px 8px;"><i class="fa-solid fa-trash"></i> Delete</button>
+                <td colspan="9" style="padding: 12px 18px; border-bottom: 2px solid #cbd5e1;">
+                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 18px; font-size: 13px;">
+                        <!-- Header with Actions & Lump-Sum Button -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                            <div style="font-weight: 800; font-size: 15px; color: #0f172a;"><i class="fa-solid fa-building-user" style="color: var(--neon-blue); margin-right: 6px;"></i> Client Details & Accounting Ledger (${c.id})</div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button class="btn-action" onclick="openClientLumpSumModal('${c.id}')" style="background: #15803d; color: #ffffff; font-weight: 800; border: none; padding: 6px 14px; border-radius: 6px;" title="Receive lump sum payment and auto-adjust across shipments"><i class="fa-solid fa-hand-holding-dollar"></i> + Receive Client Payment (Auto-Adjust FIFO)</button>
+                                <button class="btn-action" onclick="openClientModal('${c.id}')" style="color: #2563eb; font-weight: 700; padding: 5px 10px;"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                                <button class="btn-action" onclick="deleteClient('${c.id}')" style="color: #c83228; font-weight: 700; padding: 5px 10px;"><i class="fa-solid fa-trash"></i> Delete</button>
                             </div>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+
+                        <!-- 3 Client Accounting Balance Badges -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 14px;">
+                            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px 12px;">
+                                <div style="font-size: 10.5px; font-weight: 800; color: #1e40af; text-transform: uppercase;">Total Billed Sales</div>
+                                <div style="font-size: 16px; font-weight: 900; color: #1e3a8a; margin-top: 2px;">${formatCurrencyINR(totalSales)}</div>
+                            </div>
+                            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 8px 12px;">
+                                <div style="font-size: 10.5px; font-weight: 800; color: #15803d; text-transform: uppercase;">Total Received</div>
+                                <div style="font-size: 16px; font-weight: 900; color: #166534; margin-top: 2px;">${formatCurrencyINR(totalRec)}</div>
+                            </div>
+                            <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 6px; padding: 8px 12px;">
+                                <div style="font-size: 10.5px; font-weight: 800; color: #c2410c; text-transform: uppercase;">Outstanding Due (Baki)</div>
+                                <div style="font-size: 16px; font-weight: 900; color: ${totalDue > 0 ? '#ea580c' : '#15803d'}; margin-top: 2px;">${formatCurrencyINR(totalDue)}</div>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12.5px; background: #fafafa; border: 1px solid #f1f5f9; border-radius: 6px; padding: 10px 12px;">
                             <div><strong>Company Name:</strong> ${c.name}</div>
                             <div><strong>Contact Person:</strong> ${c.contact_person || 'N/A'}</div>
                             <div><strong>Mobile:</strong> ${c.mobile || 'N/A'}</div>
@@ -1538,6 +1631,8 @@ function renderClientsTable(list) {
                             <div><strong>GSTIN:</strong> ${c.gstin || 'N/A'}</div>
                             <div><strong>Credit Terms:</strong> ${c.credit_terms || '30 Days'}</div>
                         </div>
+
+                        ${shipmentsTableHtml}
                     </div>
                 </td>
             </tr>
@@ -2524,7 +2619,81 @@ async function handleSaveCustomerPayment(e) {
     }
 }
 
-async function openVendorPaymentModal() {
+function getShipmentVendorBreakdown(shpId) {
+    const s = (STATE.shipments || []).find(item => item.id === shpId);
+    if (!s) return [];
+
+    let purItems = [];
+    try {
+        purItems = typeof s.purchase_items === 'string' ? JSON.parse(s.purchase_items) : (s.purchase_items || []);
+    } catch (e) { purItems = []; }
+
+    const vendorMap = {}; // vendor_name -> { vendor_name, totalBill: 0, paid: 0 }
+
+    if (Array.isArray(purItems) && purItems.length > 0) {
+        purItems.forEach(it => {
+            const vName = (it.vendor_name || it.name || s.line_name || '').trim();
+            if (!vName) return;
+            const amt = parseFloat(it.amount) || 0;
+            if (!vendorMap[vName]) {
+                vendorMap[vName] = { vendor_name: vName, totalBill: 0, paid: 0 };
+            }
+            vendorMap[vName].totalBill += amt;
+        });
+    }
+
+    // Also include line_name and transport_name if present
+    if (s.line_name && s.line_name.trim()) {
+        const ln = s.line_name.trim();
+        if (!vendorMap[ln]) {
+            vendorMap[ln] = { vendor_name: ln, totalBill: Object.keys(vendorMap).length === 0 ? (parseFloat(s.purchase_amount) || 0) : 0, paid: 0 };
+        }
+    }
+    if (s.transport_name && s.transport_name.trim()) {
+        const tn = s.transport_name.trim();
+        if (!vendorMap[tn]) {
+            vendorMap[tn] = { vendor_name: tn, totalBill: 0, paid: 0 };
+        }
+    }
+
+    // Fallback if no specific vendor items found
+    if (Object.keys(vendorMap).length === 0) {
+        const defVendor = 'General Vendor';
+        vendorMap[defVendor] = { vendor_name: defVendor, totalBill: parseFloat(s.purchase_amount) || 0, paid: 0 };
+    }
+
+    // Calculate previously paid amounts for this shipment and each vendor
+    const paymentsForShipment = (STATE.vendorPayments || []).filter(vp => String(vp.shipment_id).trim() === String(shpId).trim());
+    paymentsForShipment.forEach(vp => {
+        const vpName = (vp.vendor_name || '').trim();
+        const vpAmt = parseFloat(vp.amount) || 0;
+        if (vendorMap[vpName]) {
+            vendorMap[vpName].paid += vpAmt;
+        } else {
+            // Check case-insensitive match
+            const matchedKey = Object.keys(vendorMap).find(k => k.toLowerCase() === vpName.toLowerCase());
+            if (matchedKey) {
+                vendorMap[matchedKey].paid += vpAmt;
+            } else if (Object.keys(vendorMap).length === 1) {
+                // If there's only 1 vendor for this shipment, attribute payment to it
+                const firstKey = Object.keys(vendorMap)[0];
+                vendorMap[firstKey].paid += vpAmt;
+            }
+        }
+    });
+
+    return Object.values(vendorMap).map(v => {
+        const balance = Math.max(0, v.totalBill - v.paid);
+        return {
+            vendor_name: v.vendor_name,
+            totalBill: v.totalBill,
+            paid: v.paid,
+            balance: balance
+        };
+    });
+}
+
+async function openVendorPaymentModal(prefillShipmentId = '') {
     if (!STATE.shipments || STATE.shipments.length === 0) {
         await fetchShipmentsData();
     }
@@ -2532,79 +2701,109 @@ async function openVendorPaymentModal() {
     if (shpSelect) {
         shpSelect.innerHTML = '<option value="">-- Select Shipment --</option>' + 
             (STATE.shipments || []).map(s => `<option value="${s.id}">${s.id} (${s.company_name})</option>`).join('');
+        if (prefillShipmentId) {
+            shpSelect.value = prefillShipmentId;
+        } else if (shpSelect.options.length > 1) {
+            shpSelect.selectedIndex = 1;
+        }
     }
-    populateVendorDropdowns();
-    if (shpSelect && shpSelect.options.length > 1) {
-        shpSelect.selectedIndex = 1;
-        onVendorPaymentShipmentChange();
-    }
-    const txtInput = document.getElementById('modal-vp-vendor-text');
-    if (txtInput) txtInput.style.display = 'none';
 
-    document.getElementById('modal-vp-date').value = new Date().toISOString().split('T')[0];
-    document.getElementById('modal-vendor-payment').style.display = 'flex';
+    onVendorPaymentShipmentChange();
+
+    const dateInput = document.getElementById('modal-vp-date');
+    if (dateInput) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    const modal = document.getElementById('modal-vendor-payment');
+    if (modal) modal.style.display = 'flex';
 }
 
 function onVendorPaymentShipmentChange() {
-    const shpId = document.getElementById('modal-vp-shipment-select')?.value;
+    const shpSelect = document.getElementById('modal-vp-shipment-select');
+    const shpId = shpSelect?.value;
     const vendorSelect = document.getElementById('modal-vp-vendor-select');
     const txtInput = document.getElementById('modal-vp-vendor-text');
     const amtInput = document.getElementById('modal-vp-amount');
+    const summaryBox = document.getElementById('modal-vp-vendor-summary');
     if (!vendorSelect) return;
 
     if (!shpId) {
-        populateVendorDropdowns();
+        vendorSelect.innerHTML = '<option value="">-- Please Select a Shipment First --</option>';
+        if (txtInput) txtInput.style.display = 'none';
+        if (amtInput) amtInput.value = '';
+        if (summaryBox) summaryBox.style.display = 'none';
         return;
     }
 
-    const s = STATE.shipments.find(item => item.id === shpId);
-    let vendorOptionsHtml = '<option value="">-- Select Vendor --</option>';
-    let purTotal = 0;
-
-    if (s) {
-        purTotal = parseFloat(s.purchase_amount) || 0;
-        let purItems = [];
-        try {
-            purItems = typeof s.purchase_items === 'string' ? JSON.parse(s.purchase_items) : s.purchase_items;
-        } catch (e) {}
-
-        const vendorSet = new Set();
-        if (Array.isArray(purItems) && purItems.length > 0) {
-            purItems.forEach(item => {
-                const vName = (item.vendor_name || item.name || '').trim();
-                if (vName) vendorSet.add(vName);
-            });
-        }
-        if (s.line_name) vendorSet.add(s.line_name.trim());
-        if (s.transport_name) vendorSet.add(s.transport_name.trim());
-
-        (STATE.vendors || []).forEach(v => {
-            if (v.name) vendorSet.add(v.name.trim());
-        });
-
-        vendorSet.forEach(vName => {
-            vendorOptionsHtml += `<option value="${vName}">${vName}</option>`;
-        });
-    } else {
-        (STATE.vendors || []).forEach(v => {
-            vendorOptionsHtml += `<option value="${v.id}">${v.name}</option>`;
-        });
+    const vendorsInShipment = getShipmentVendorBreakdown(shpId);
+    if (!vendorsInShipment || vendorsInShipment.length === 0) {
+        vendorSelect.innerHTML = '<option value="">-- No Vendors Found in Shipment --</option>';
+        if (txtInput) txtInput.style.display = 'block';
+        if (summaryBox) summaryBox.style.display = 'none';
+        return;
     }
+
+    let vendorOptionsHtml = '<option value="">-- Select Vendor from Shipment --</option>';
+    vendorsInShipment.forEach((v) => {
+        const billStr = v.totalBill > 0 ? ` (Bill: ₹${v.totalBill.toLocaleString('en-IN')})` : '';
+        const balStr = v.totalBill > 0 ? ` [Due: ₹${v.balance.toLocaleString('en-IN')}]` : '';
+        vendorOptionsHtml += `<option value="${v.vendor_name}" data-bill="${v.totalBill}" data-paid="${v.paid}" data-bal="${v.balance}">${v.vendor_name}${billStr}${balStr}</option>`;
+    });
 
     vendorSelect.innerHTML = vendorOptionsHtml;
-    if (vendorSelect.options.length > 1) {
+    if (txtInput) txtInput.style.display = 'none';
+
+    // Auto-select first vendor in shipment
+    if (vendorsInShipment.length > 0) {
         vendorSelect.selectedIndex = 1;
-        if (txtInput) txtInput.style.display = 'none';
-    } else {
-        if (txtInput) {
-            txtInput.style.display = 'block';
-            if (s && s.line_name) txtInput.value = s.line_name;
-        }
+        onVendorPaymentVendorSelectChange();
+    }
+}
+
+function onVendorPaymentVendorSelectChange() {
+    const vendorSelect = document.getElementById('modal-vp-vendor-select');
+    const amtInput = document.getElementById('modal-vp-amount');
+    const summaryBox = document.getElementById('modal-vp-vendor-summary');
+    const billEl = document.getElementById('modal-vp-info-bill');
+    const paidEl = document.getElementById('modal-vp-info-paid');
+    const balEl = document.getElementById('modal-vp-info-bal');
+    if (!vendorSelect || !amtInput) return;
+
+    const selectedOpt = vendorSelect.options[vendorSelect.selectedIndex];
+    if (!selectedOpt || !selectedOpt.value) {
+        if (summaryBox) summaryBox.style.display = 'none';
+        amtInput.value = '';
+        return;
     }
 
-    const remainingVendorBal = s ? (s.balance_payable !== undefined ? parseFloat(s.balance_payable) : Math.max(0, (parseFloat(s.purchase_amount) || 0) - (parseFloat(s.paid_amount) || 0))) : 0;
-    if (amtInput) {
-        amtInput.value = remainingVendorBal > 0 ? remainingVendorBal.toFixed(2) : (purTotal > 0 ? purTotal.toFixed(2) : '0.00');
+    const bill = parseFloat(selectedOpt.getAttribute('data-bill')) || 0;
+    const paid = parseFloat(selectedOpt.getAttribute('data-paid')) || 0;
+    const bal = parseFloat(selectedOpt.getAttribute('data-bal'));
+
+    const shpId = document.getElementById('modal-vp-shipment-select')?.value;
+    const s = (STATE.shipments || []).find(item => item.id === shpId);
+    const overallPurAmt = s ? (parseFloat(s.purchase_amount) || 0) : 0;
+    const overallBal = s ? (s.balance_payable !== undefined ? parseFloat(s.balance_payable) : Math.max(0, overallPurAmt - (parseFloat(s.paid_amount) || 0))) : 0;
+
+    let defaultAmt = 0;
+    if (!isNaN(bal) && bal > 0) {
+        defaultAmt = bal;
+    } else if (bill > 0) {
+        defaultAmt = Math.max(0, bill - paid);
+    } else if (overallBal > 0) {
+        defaultAmt = overallBal;
+    } else {
+        defaultAmt = overallPurAmt;
+    }
+
+    amtInput.value = defaultAmt.toFixed(2);
+
+    if (summaryBox) {
+        summaryBox.style.display = 'block';
+        if (billEl) billEl.innerText = formatCurrencyINR(bill > 0 ? bill : overallPurAmt);
+        if (paidEl) paidEl.innerText = formatCurrencyINR(paid);
+        if (balEl) balEl.innerText = formatCurrencyINR(defaultAmt);
     }
 }
 
@@ -2672,7 +2871,7 @@ async function handleSaveVendorPayment(e) {
     }
 }
 
-function openVendorPaymentForShipment(vendorId, shipmentId, amount) {
+function openVendorPaymentForShipment(vendorName, shipmentId, amount) {
     const modal = document.getElementById('modal-vendor-payment');
     if (!modal) return;
     const form = modal.querySelector('form');
@@ -2688,27 +2887,20 @@ function openVendorPaymentForShipment(vendorId, shipmentId, amount) {
     onVendorPaymentShipmentChange();
 
     const vendorSelect = document.getElementById('modal-vp-vendor-select');
-    const vObj = (STATE.vendors || []).find(item => item.id === vendorId);
-    const vName = vObj ? vObj.name : vendorId;
-
-    if (vendorSelect) {
-        let matched = false;
+    if (vendorSelect && vendorName) {
         for (let i = 0; i < vendorSelect.options.length; i++) {
             const optVal = vendorSelect.options[i].value;
             const optText = vendorSelect.options[i].text;
-            if (optVal === vendorId || optVal === vName || optText.includes(vName)) {
+            if (optVal.toLowerCase() === vendorName.toLowerCase() || optText.toLowerCase().includes(vendorName.toLowerCase())) {
                 vendorSelect.selectedIndex = i;
-                matched = true;
+                onVendorPaymentVendorSelectChange();
                 break;
             }
-        }
-        if (!matched) {
-            vendorSelect.innerHTML += `<option value="${vName}" selected>${vName}</option>`;
         }
     }
 
     const amtInput = document.getElementById('modal-vp-amount');
-    if (amtInput && amount) {
+    if (amtInput && amount && parseFloat(amount) > 0) {
         amtInput.value = parseFloat(amount).toFixed(2);
     }
 
@@ -2828,6 +3020,214 @@ async function handleSaveClient(e) {
         populateClientDropdowns();
     } catch (err) {
         showToast('Network error while saving client account.', 'error');
+    }
+}
+
+async function deleteClient(clientId) {
+    if (!clientId) return;
+    const c = (STATE.clients || []).find(item => item.id === clientId);
+    const cName = c ? c.name : clientId;
+
+    if (!confirm(`Are you sure you want to delete client "${cName}" (${clientId})?`)) return;
+
+    try {
+        const res = await fetchWithAuth(`${API_BASE_URL}/clients/${encodeURIComponent(clientId)}`, {
+            method: 'DELETE'
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(`Client "${cName}" deleted successfully.`, 'success');
+            await fetchClientsData();
+        } else {
+            showToast(data.message || 'Error deleting client record.', 'error');
+        }
+    } catch (err) {
+        showToast('Error deleting client from registry.', 'error');
+    }
+}
+
+function openClientLumpSumModal(clientId = '') {
+    const modal = document.getElementById('modal-client-lump-sum');
+    if (!modal) return;
+    const form = document.getElementById('form-client-lump-sum') || modal.querySelector('form');
+    if (form) form.reset();
+
+    const c = (STATE.clients || []).find(item => item.id === clientId);
+    if (!c) {
+        showToast('Client account not found.', 'warning');
+        return;
+    }
+
+    // Set hidden & display fields
+    document.getElementById('modal-cls-client-id').value = c.id;
+    document.getElementById('modal-cls-client-name').value = c.name;
+    document.getElementById('modal-cls-display-name').innerText = `${c.name} (${c.id})`;
+
+    // Compute client's total outstanding due across all shipments
+    const linkedShipments = (STATE.shipments || []).filter(s => 
+        (s.client_id && String(s.client_id).trim() === String(c.id).trim()) ||
+        (s.company_name && s.company_name.trim().toLowerCase() === (c.name || '').trim().toLowerCase())
+    );
+
+    let totalSales = 0, totalRec = 0;
+    linkedShipments.forEach(s => {
+        totalSales += parseFloat(s.sale_amount) || 0;
+        totalRec += parseFloat(s.received_amount) || 0;
+    });
+    const totalDue = Math.max(0, totalSales - totalRec);
+
+    document.getElementById('modal-cls-display-due').innerText = formatCurrencyINR(totalDue);
+    document.getElementById('modal-cls-date').value = new Date().toISOString().split('T')[0];
+    
+    const amtInput = document.getElementById('modal-cls-amount');
+    amtInput.value = totalDue > 0 ? totalDue.toFixed(2) : '';
+
+    renderClientLumpSumPreview();
+
+    modal.style.display = 'flex';
+}
+
+function renderClientLumpSumPreview() {
+    const cId = document.getElementById('modal-cls-client-id')?.value;
+    const cName = document.getElementById('modal-cls-client-name')?.value;
+    const amtInput = document.getElementById('modal-cls-amount');
+    const tbody = document.getElementById('modal-cls-preview-tbody');
+    const badge = document.getElementById('modal-cls-preview-summary-badge');
+    if (!tbody) return;
+
+    const totalPayment = parseFloat(amtInput?.value) || 0;
+
+    // Get linked shipments sorted by date ASC, id ASC (FIFO order)
+    const linkedShipments = (STATE.shipments || [])
+        .filter(s => 
+            (s.client_id && String(s.client_id).trim() === String(cId).trim()) ||
+            (s.company_name && s.company_name.trim().toLowerCase() === (cName || '').trim().toLowerCase())
+        )
+        .sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.id || '').localeCompare(b.id || ''));
+
+    if (linkedShipments.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 12px; color: var(--text-muted);">No shipments found for this client.</td></tr>`;
+        if (badge) badge.innerText = 'No shipments found';
+        return;
+    }
+
+    let unadjusted = totalPayment;
+    let totalApplied = 0;
+    let previewHtml = '';
+
+    linkedShipments.forEach(s => {
+        const saleAmt = parseFloat(s.sale_amount) || 0;
+        const currentRec = parseFloat(s.received_amount) || 0;
+        const currentDue = Math.max(0, saleAmt - currentRec);
+
+        let applied = 0;
+        if (unadjusted > 0 && currentDue > 0) {
+            applied = Math.min(unadjusted, currentDue);
+            unadjusted -= applied;
+            totalApplied += applied;
+        }
+
+        const newBal = Math.max(0, currentDue - applied);
+        const newTotalRec = currentRec + applied;
+        let newStatus = 'UNPAID';
+        if (newBal <= 0 && saleAmt > 0) newStatus = 'PAID';
+        else if (newTotalRec > 0) newStatus = 'PARTIAL';
+
+        const statusCls = newStatus === 'PAID' ? 'status-paid' : (newStatus === 'PARTIAL' ? 'status-partial' : 'status-unpaid');
+
+        previewHtml += `
+            <tr style="${applied > 0 ? 'background: #f0fdf4;' : ''}">
+                <td style="padding: 6px 8px;"><strong style="color: var(--neon-blue);">${s.id}</strong></td>
+                <td style="padding: 6px 8px;">${s.date}</td>
+                <td style="padding: 6px 8px; text-align: right;">${formatCurrencyINR(saleAmt)}</td>
+                <td style="padding: 6px 8px; text-align: right; color: ${currentDue > 0 ? '#c2410c' : '#15803d'}; font-weight: 700;">${formatCurrencyINR(currentDue)}</td>
+                <td style="padding: 6px 8px; text-align: right; color: #15803d; font-weight: 800;">${applied > 0 ? '+' + formatCurrencyINR(applied) : '₹0.00'}</td>
+                <td style="padding: 6px 8px; text-align: right; font-weight: 800; color: ${newBal > 0 ? '#c2410c' : '#15803d'};">${formatCurrencyINR(newBal)}</td>
+                <td style="padding: 6px 8px; text-align: center;"><span class="status-pill ${statusCls}">${newStatus}</span></td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = previewHtml;
+
+    if (badge) {
+        if (totalPayment <= 0) {
+            badge.innerText = 'Enter payment amount above to view adjustment';
+            badge.style.color = '#475569';
+            badge.style.background = '#f1f5f9';
+            badge.style.borderColor = '#cbd5e1';
+        } else if (unadjusted > 0) {
+            badge.innerHTML = `<strong>Applied: ${formatCurrencyINR(totalApplied)}</strong> | <span style="color: #b45309;">Advance / Excess: ${formatCurrencyINR(unadjusted)}</span>`;
+            badge.style.color = '#15803d';
+            badge.style.background = '#ecfdf5';
+            badge.style.borderColor = '#a7f3d0';
+        } else {
+            badge.innerHTML = `<strong>100% Payment Distributed (Applied: ${formatCurrencyINR(totalApplied)})</strong>`;
+            badge.style.color = '#15803d';
+            badge.style.background = '#ecfdf5';
+            badge.style.borderColor = '#a7f3d0';
+        }
+    }
+}
+
+async function handleSaveClientLumpSumPayment(e) {
+    if (e) e.preventDefault();
+
+    const clientId = document.getElementById('modal-cls-client-id')?.value;
+    const companyName = document.getElementById('modal-cls-client-name')?.value;
+    const paymentDate = document.getElementById('modal-cls-date')?.value;
+    const amount = parseFloat(document.getElementById('modal-cls-amount')?.value) || 0;
+    const paymentMode = document.getElementById('modal-cls-mode')?.value || 'Bank Transfer';
+    const bank = (document.getElementById('modal-cls-bank')?.value || '').trim();
+    const utr = (document.getElementById('modal-cls-utr')?.value || '').trim();
+    const remarks = (document.getElementById('modal-cls-remarks')?.value || '').trim();
+
+    if (!clientId && !companyName) {
+        showToast('Please select a valid Client Account.', 'warning');
+        return;
+    }
+    if (!paymentDate) {
+        showToast('Please select the Payment Receipt Date.', 'warning');
+        return;
+    }
+    if (amount < 0 || isNaN(amount)) {
+        showToast('Please enter a valid payment amount (₹0 or greater).', 'warning');
+        return;
+    }
+
+    const payload = {
+        client_id: clientId,
+        company_name: companyName,
+        payment_date: paymentDate,
+        amount,
+        payment_mode: paymentMode,
+        bank,
+        utr,
+        remarks
+    };
+
+    try {
+        const res = await fetchWithAuth(`${API_BASE_URL}/payments/client-lump-sum`, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            showToast(data.message || 'Error recording client payment.', 'error');
+            return;
+        }
+
+        showToast(data.message || `Client lump-sum payment of ₹${amount.toLocaleString('en-IN')} auto-adjusted successfully!`, 'success');
+        closeModal('modal-client-lump-sum');
+
+        await fetchShipmentsData();
+        await fetchClientsData();
+        await fetchDashboardKPIs();
+        await fetchPaymentReceivedData();
+    } catch (err) {
+        showToast('Network error while processing client payment.', 'error');
     }
 }
 

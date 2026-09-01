@@ -185,10 +185,99 @@ async function deletePaymentTransaction(req, res) {
     }
 }
 
+// 5. RECORD CLIENT LUMP-SUM PAYMENT WITH FIFO AUTO-ADJUSTMENT ACROSS OUTSTANDING SHIPMENTS
+async function recordClientLumpSumPayment(req, res) {
+    try {
+        const { client_id, company_name, payment_date, amount, payment_mode, bank, utr, remarks } = req.body;
+        const cId = (client_id || '').trim();
+        const cName = (company_name || '').trim();
+
+        if (!cId && !cName) {
+            return res.status(400).json({ success: false, message: 'Client ID or Company Name is required.' });
+        }
+
+        const totalPayment = parseFloat(amount);
+        if (isNaN(totalPayment) || totalPayment < 0) {
+            return res.status(400).json({ success: false, message: 'Received amount must be a valid number (₹0 or greater).' });
+        }
+
+        const payDate = formatDate(payment_date);
+        const createdBy = req.user ? req.user.name : 'Director';
+
+        // Fetch all shipments for this client ordered chronologically (FIFO: date ASC, id ASC)
+        let query = `SELECT id, date, sale_amount, received_amount, remaining_balance, sale_status 
+                     FROM shipments 
+                     WHERE (client_id = ? OR LOWER(company_name) = LOWER(?))
+                     ORDER BY date ASC, id ASC`;
+        const [shpRows] = await pool.execute(query, [cId, cName]);
+
+        if (!shpRows || shpRows.length === 0) {
+            return res.status(404).json({ success: false, message: `No shipments found for client ${cId || cName}.` });
+        }
+
+        let unadjustedAmount = totalPayment;
+        const adjustments = [];
+
+        for (const s of shpRows) {
+            if (unadjustedAmount <= 0) break;
+
+            const saleAmt = parseFloat(s.sale_amount) || 0;
+            // Get actual received amount from payment_transactions
+            const [txRows] = await pool.execute(
+                `SELECT COALESCE(SUM(amount), 0) AS total_rec FROM payment_transactions WHERE shipment_id = ?`,
+                [s.id]
+            );
+            const currentRec = txRows ? parseFloat(txRows[0].total_rec) || 0 : 0;
+            const dueBal = Math.max(0, saleAmt - currentRec);
+
+            if (dueBal <= 0) continue; // Already fully paid
+
+            // Amount to apply to this shipment
+            const appliedAmt = Math.min(unadjustedAmount, dueBal);
+            unadjustedAmount -= appliedAmt;
+
+            // Insert transaction
+            await pool.execute(
+                `INSERT INTO payment_transactions (shipment_id, payment_date, amount, payment_mode, bank, utr, remarks, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [s.id, payDate, appliedAmt, payment_mode || 'Bank Transfer', bank || 'HDFC Bank', utr || '', remarks ? `${remarks} (Client Lump-sum Auto-adjusted)` : 'Client Lump-sum Auto-adjusted', createdBy]
+            );
+
+            // Sync shipment payment status & balance
+            const syncResult = await syncShipmentPaymentTotals(s.id);
+
+            adjustments.push({
+                shipment_id: s.id,
+                date: s.date,
+                sale_amount: saleAmt,
+                previous_received: currentRec,
+                applied_payment: appliedAmt,
+                new_balance: syncResult.remaining_balance,
+                new_status: syncResult.sale_status
+            });
+        }
+
+        let unappliedBalance = unadjustedAmount;
+
+        return res.status(201).json({
+            success: true,
+            message: `Lump-sum payment of ₹${totalPayment.toLocaleString('en-IN')} auto-adjusted across ${adjustments.length} shipment(s) successfully!`,
+            total_received: totalPayment,
+            total_applied: totalPayment - unappliedBalance,
+            unapplied_balance: unappliedBalance,
+            adjustments
+        });
+
+    } catch (err) {
+        console.error('Client Lump-Sum Payment Error:', err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+}
+
 module.exports = {
     getPaymentsReceived,
     getPaymentTransactions,
     recordPayment,
+    recordClientLumpSumPayment,
     deletePaymentTransaction,
     syncShipmentPaymentTotals
 };

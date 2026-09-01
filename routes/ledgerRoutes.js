@@ -8,6 +8,7 @@ const {
     getPaymentsReceived, 
     getPaymentTransactions,
     recordPayment,
+    recordClientLumpSumPayment,
     deletePaymentTransaction
 } = require('../controllers/ledgerController');
 const { authenticateJWT } = require('../middleware/authMiddleware');
@@ -17,6 +18,7 @@ router.use(authenticateJWT);
 router.get('/payments-received', getPaymentsReceived);
 router.get('/payments', getPaymentsReceived);
 router.post('/payments', recordPayment);
+router.post('/payments/client-lump-sum', recordClientLumpSumPayment);
 router.get('/payment-transactions/:id', getPaymentTransactions);
 router.delete('/payment-transactions/:id', deletePaymentTransaction);
 
