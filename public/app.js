@@ -1892,59 +1892,233 @@ function renderVendorPaymentsTable(list) {
     `).join('');
 }
 
-function renderProfitLedgerTable(list) {
-    const tbody = document.getElementById('table-profit-body');
-    if (!tbody) return;
+let CURRENT_PROFIT_TAB = 'shipment';
 
-    const dataList = list || STATE.shipments;
-    if (!dataList || dataList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px;">No Profit Data</td></tr>`;
-        return;
+function switchProfitTab(tabKey) {
+    CURRENT_PROFIT_TAB = tabKey;
+    const tabs = ['shipment', 'month', 'year'];
+    tabs.forEach(t => {
+        const btn = document.getElementById(`tab-btn-profit-${t}`);
+        const container = document.getElementById(`container-profit-${t}`);
+        if (btn) {
+            if (t === tabKey) {
+                btn.style.background = '#0f172a';
+                btn.style.color = '#ffffff';
+                btn.style.borderColor = '#0f172a';
+            } else {
+                btn.style.background = '#f8fafc';
+                btn.style.color = '#475569';
+                btn.style.borderColor = '#cbd5e1';
+            }
+        }
+        if (container) {
+            container.style.display = (t === tabKey) ? 'block' : 'none';
+        }
+    });
+}
+
+function exportProfitLedgerExcel() {
+    if (CURRENT_PROFIT_TAB === 'month') {
+        exportTableToCSV('table-profit-month-body', 'Profit_Ledger_Month_Wise');
+    } else if (CURRENT_PROFIT_TAB === 'year') {
+        exportTableToCSV('table-profit-year-body', 'Profit_Ledger_Year_Wise');
+    } else {
+        exportTableToCSV('table-profit-body', 'Profit_Ledger_Shipment_Wise');
+    }
+}
+
+function renderProfitLedgerTable(list) {
+    const shipmentTbody = document.getElementById('table-profit-body');
+    const monthTbody = document.getElementById('table-profit-month-body');
+    const yearTbody = document.getElementById('table-profit-year-body');
+
+    const dataList = list || STATE.shipments || [];
+
+    // Helper for margin badge
+    function getMarginBadge(margin) {
+        if (margin > 0) {
+            return `<span class="status-pill" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 900; font-size: 12px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-arrow-trend-up"></i> +${margin.toFixed(2)}%</span>`;
+        } else if (margin < 0) {
+            return `<span class="status-pill" style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 900; font-size: 12px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-arrow-trend-down"></i> ${margin.toFixed(2)}%</span>`;
+        } else {
+            return `<span class="status-pill" style="background: #f8fafc; color: #64748b; border: 1px solid #cbd5e1; font-weight: 800; font-size: 12px; padding: 4px 10px;">0.00%</span>`;
+        }
     }
 
-    tbody.innerHTML = dataList.map(r => {
-        const sAmt = parseFloat(r.sales_amount || r.sale_amount) || 0;
-        const pAmt = parseFloat(r.purchase_amount) || 0;
-        const profit = r.net_profit !== undefined ? parseFloat(r.net_profit) : (sAmt - pAmt);
+    // 1. PART 1: SHIPMENT-WISE LISTING
+    if (shipmentTbody) {
+        if (dataList.length === 0) {
+            shipmentTbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-muted); font-weight: 600;">No Shipment Profit Records Available</td></tr>`;
+        } else {
+            shipmentTbody.innerHTML = dataList.map(r => {
+                const sAmt = parseFloat(r.sales_amount || r.sale_amount) || 0;
+                const pAmt = parseFloat(r.purchase_amount) || 0;
+                const profit = r.net_profit !== undefined ? parseFloat(r.net_profit) : (sAmt - pAmt);
+
+                let margin = 0;
+                if (r.margin_pct !== undefined && !isNaN(parseFloat(r.margin_pct))) {
+                    margin = parseFloat(r.margin_pct);
+                } else if (sAmt > 0) {
+                    margin = parseFloat(((profit / sAmt) * 100).toFixed(2));
+                } else if (pAmt > 0) {
+                    margin = -100.0;
+                } else {
+                    margin = 0.0;
+                }
+
+                const isPositive = profit > 0;
+                const isNegative = profit < 0;
+                const profitColor = isNegative ? '#dc2626' : (isPositive ? '#16a34a' : '#64748b');
+                const formattedProfit = (profit < 0 ? '-₹' : '₹') + Math.abs(profit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                return `
+                    <tr>
+                        <td><strong style="color: var(--neon-blue); font-size: 13px; font-weight: 800;">${r.shipment_id || r.id}</strong></td>
+                        <td>${r.date || '-'}</td>
+                        <td><strong style="color: var(--text-primary); font-size: 13px;">${r.company_name}</strong></td>
+                        <td style="text-align: right; font-weight: 700;">₹${sAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td style="text-align: right; font-weight: 700; color: var(--brand-red);">₹${pAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td style="text-align: right;"><strong style="color: ${profitColor}; font-weight: 900; font-size: 13px;">${formattedProfit}</strong></td>
+                        <td style="text-align: center;">${getMarginBadge(margin)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+
+    // 2. PART 2: MONTH-WISE AGGREGATED LISTING
+    if (monthTbody) {
+        const monthMap = {}; // 'YYYY-MM' -> { monthKey, monthName, jobCount, totalSales, totalPurchase, netProfit }
         
-        let margin = 0;
-        if (r.margin_pct !== undefined && !isNaN(parseFloat(r.margin_pct))) {
-            margin = parseFloat(r.margin_pct);
-        } else if (sAmt > 0) {
-            margin = parseFloat(((profit / sAmt) * 100).toFixed(2));
-        } else if (pAmt > 0) {
-            margin = -100.0;
+        dataList.forEach(r => {
+            const rawDate = r.date || r.purchase_date || '';
+            const ym = rawDate.length >= 7 ? rawDate.substring(0, 7) : 'Unspecified';
+            
+            let monthName = ym;
+            if (ym !== 'Unspecified') {
+                const [yearStr, monthStr] = ym.split('-');
+                const monthIndex = parseInt(monthStr, 10) - 1;
+                const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                if (monthNames[monthIndex]) {
+                    monthName = `${monthNames[monthIndex]} ${yearStr}`;
+                }
+            }
+
+            if (!monthMap[ym]) {
+                monthMap[ym] = {
+                    key: ym,
+                    displayName: monthName,
+                    jobCount: 0,
+                    totalSales: 0,
+                    totalPurchase: 0,
+                    netProfit: 0
+                };
+            }
+
+            const sAmt = parseFloat(r.sales_amount || r.sale_amount) || 0;
+            const pAmt = parseFloat(r.purchase_amount) || 0;
+            const profit = r.net_profit !== undefined ? parseFloat(r.net_profit) : (sAmt - pAmt);
+
+            monthMap[ym].jobCount += 1;
+            monthMap[ym].totalSales += sAmt;
+            monthMap[ym].totalPurchase += pAmt;
+            monthMap[ym].netProfit += profit;
+        });
+
+        const sortedMonths = Object.values(monthMap).sort((a, b) => b.key.localeCompare(a.key));
+
+        if (sortedMonths.length === 0) {
+            monthTbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted); font-weight: 600;">No Monthly Profit Records Available</td></tr>`;
         } else {
-            margin = 0.0;
+            monthTbody.innerHTML = sortedMonths.map(m => {
+                const margin = m.totalSales > 0 ? parseFloat(((m.netProfit / m.totalSales) * 100).toFixed(2)) : (m.totalPurchase > 0 ? -100.0 : 0);
+                const isPositive = m.netProfit > 0;
+                const isNegative = m.netProfit < 0;
+                const profitColor = isNegative ? '#dc2626' : (isPositive ? '#16a34a' : '#64748b');
+                const formattedProfit = (m.netProfit < 0 ? '-₹' : '₹') + Math.abs(m.netProfit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                return `
+                    <tr>
+                        <td><strong style="font-size: 13.5px; color: #0f172a;"><i class="fa-solid fa-calendar-check" style="color: var(--neon-blue); margin-right: 6px;"></i> ${m.displayName}</strong></td>
+                        <td style="text-align: center;"><span class="status-pill status-paid" style="font-weight: 800;">${m.jobCount} Jobs</span></td>
+                        <td style="text-align: right; font-weight: 800; font-size: 13px; color: #0f172a;">₹${m.totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td style="text-align: right; font-weight: 800; font-size: 13px; color: var(--brand-red);">₹${m.totalPurchase.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td style="text-align: right;"><strong style="color: ${profitColor}; font-weight: 900; font-size: 13.5px;">${formattedProfit}</strong></td>
+                        <td style="text-align: center;">${getMarginBadge(margin)}</td>
+                    </tr>
+                `;
+            }).join('');
         }
+    }
 
-        const isPositive = profit > 0;
-        const isNegative = profit < 0;
-        const profitColor = isNegative ? '#dc2626' : (isPositive ? '#16a34a' : '#64748b');
+    // 3. PART 3: YEAR-WISE (FINANCIAL YEAR) AGGREGATED LISTING
+    if (yearTbody) {
+        const yearMap = {}; // 'FY 2026-27' -> { fyKey, jobCount, totalSales, totalPurchase, netProfit }
 
-        let marginBadge = '';
-        if (margin > 0) {
-            marginBadge = `<span class="status-pill" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 900; font-size: 12.5px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-arrow-trend-up"></i> +${margin.toFixed(2)}%</span>`;
-        } else if (margin < 0) {
-            marginBadge = `<span class="status-pill" style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 900; font-size: 12.5px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-arrow-trend-down"></i> ${margin.toFixed(2)}%</span>`;
+        dataList.forEach(r => {
+            const rawDate = r.date || r.purchase_date || '';
+            let fyName = 'General FY';
+            
+            if (rawDate.length >= 7) {
+                const parts = rawDate.split('-');
+                const y = parseInt(parts[0], 10);
+                const m = parseInt(parts[1], 10);
+                if (!isNaN(y) && !isNaN(m)) {
+                    if (m >= 4) {
+                        const nextY = String(y + 1).slice(-2);
+                        fyName = `FY ${y}-${nextY}`;
+                    } else {
+                        const curY = String(y).slice(-2);
+                        fyName = `FY ${y - 1}-${curY}`;
+                    }
+                }
+            }
+
+            if (!yearMap[fyName]) {
+                yearMap[fyName] = {
+                    fyKey: fyName,
+                    jobCount: 0,
+                    totalSales: 0,
+                    totalPurchase: 0,
+                    netProfit: 0
+                };
+            }
+
+            const sAmt = parseFloat(r.sales_amount || r.sale_amount) || 0;
+            const pAmt = parseFloat(r.purchase_amount) || 0;
+            const profit = r.net_profit !== undefined ? parseFloat(r.net_profit) : (sAmt - pAmt);
+
+            yearMap[fyName].jobCount += 1;
+            yearMap[fyName].totalSales += sAmt;
+            yearMap[fyName].totalPurchase += pAmt;
+            yearMap[fyName].netProfit += profit;
+        });
+
+        const sortedYears = Object.values(yearMap).sort((a, b) => b.fyKey.localeCompare(a.fyKey));
+
+        if (sortedYears.length === 0) {
+            yearTbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted); font-weight: 600;">No Annual Profit Records Available</td></tr>`;
         } else {
-            marginBadge = `<span class="status-pill" style="background: #f8fafc; color: #64748b; border: 1px solid #cbd5e1; font-weight: 800; font-size: 12.5px; padding: 4px 10px;">0.00%</span>`;
+            yearTbody.innerHTML = sortedYears.map(y => {
+                const margin = y.totalSales > 0 ? parseFloat(((y.netProfit / y.totalSales) * 100).toFixed(2)) : (y.totalPurchase > 0 ? -100.0 : 0);
+                const isPositive = y.netProfit > 0;
+                const isNegative = y.netProfit < 0;
+                const profitColor = isNegative ? '#dc2626' : (isPositive ? '#16a34a' : '#64748b');
+                const formattedProfit = (y.netProfit < 0 ? '-₹' : '₹') + Math.abs(y.netProfit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                return `
+                    <tr>
+                        <td><strong style="font-size: 14px; color: #1e3a8a;"><i class="fa-solid fa-chart-pie" style="color: var(--neon-blue); margin-right: 6px;"></i> ${y.fyKey}</strong></td>
+                        <td style="text-align: center;"><span class="status-pill status-paid" style="font-weight: 800;">${y.jobCount} Total Jobs</span></td>
+                        <td style="text-align: right; font-weight: 800; font-size: 13.5px; color: #0f172a;">₹${y.totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td style="text-align: right; font-weight: 800; font-size: 13.5px; color: var(--brand-red);">₹${y.totalPurchase.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td style="text-align: right;"><strong style="color: ${profitColor}; font-weight: 900; font-size: 14px;">${formattedProfit}</strong></td>
+                        <td style="text-align: center;">${getMarginBadge(margin)}</td>
+                    </tr>
+                `;
+            }).join('');
         }
-
-        const formattedProfit = (profit < 0 ? '-₹' : '₹') + Math.abs(profit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-        return `
-            <tr>
-                <td><strong>${r.shipment_id || r.id}</strong></td>
-                <td>${r.date}</td>
-                <td><strong>${r.company_name}</strong></td>
-                <td>₹${sAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>₹${pAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td><strong style="color: ${profitColor}; font-weight: 900; font-size: 13px;">${formattedProfit}</strong></td>
-                <td>${marginBadge}</td>
-            </tr>
-        `;
-    }).join('');
+    }
 }
 
 function renderReceivableReport(list) {
