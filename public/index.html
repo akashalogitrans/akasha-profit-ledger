@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="styles.css?v=28.0.0">
+    <link rel="stylesheet" href="styles.css?v=29.0.0">
 </head>
 <body>
 
@@ -624,25 +624,49 @@
                                 </div>
                                 <div class="panel-body">
                                     <div class="grid-12" style="gap: 16px;">
-                                        <div class="col-4">
+                                        <!-- ROW 1: CLIENT SELECTION & CLIENT ID + AUTO SHIPMENT ID -->
+                                        <div class="col-6">
                                             <label class="form-label">Client Company *</label>
                                             <select id="form-shipment-client-select" class="form-control" required onchange="handleShipmentClientSelectChange(this)">
                                                 <option value="">-- Select Client --</option>
                                             </select>
                                         </div>
-                                        <div class="col-3">
+                                        <div class="col-6">
                                             <label class="form-label">Client ID (Auto)</label>
-                                            <input type="text" id="form-shipment-client-id" class="form-control" readonly placeholder="Auto populated" style="background: var(--bg-surface-elevated); font-weight: 700;">
+                                            <input type="text" id="form-shipment-client-id" class="form-control" readonly placeholder="Auto populated on Client select" style="background: var(--bg-surface-elevated); font-weight: 700;">
+                                            
+                                            <!-- Auto-Fetched Shipment ID Box -->
+                                            <div style="margin-top: 8px; padding: 8px 14px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 6px; display: flex; align-items: center; justify-content: space-between;">
+                                                <span style="font-size: 12.5px; font-weight: 700; color: var(--text-secondary);"><i class="fa-solid fa-barcode" style="color: var(--neon-blue); margin-right: 6px;"></i> Shipment ID:</span>
+                                                <strong id="display-shipment-id" style="font-size: 14px; font-weight: 900; color: var(--neon-blue); letter-spacing: 0.5px;">Auto Generated on Client Select</strong>
+                                            </div>
+                                            <input type="hidden" id="form-shipment-id" value="">
                                         </div>
-                                        <div class="col-5">
-                                            <label class="form-label">Shipment ID (Parent Transaction) *</label>
-                                            <input type="text" id="form-shipment-id" class="form-control" readonly placeholder="AKASHA/CLI-101/001" style="background: var(--bg-surface-elevated); font-weight: 800; color: var(--neon-blue);">
+
+                                        <!-- ROW 2: AKASHA INVOICE NO, COMPACT INVOICE DATE, DUE DAYS, INVOICE DUE DATE, SHIPMENT DATE -->
+                                        <div class="col-3">
+                                            <label class="form-label">Akasha Invoice No.</label>
+                                            <input type="text" id="form-shipment-invoice-no" class="form-control" placeholder="e.g. AKASHA/INV/26-27/001">
+                                        </div>
+                                        <div class="col-2">
+                                            <label class="form-label">Invoice Date</label>
+                                            <input type="date" id="form-shipment-invoice-date" class="form-control" onchange="onInvoiceDateOrTermsChange()">
+                                        </div>
+                                        <div class="col-2">
+                                            <label class="form-label">Due Days</label>
+                                            <input type="number" id="form-shipment-due-days" class="form-control" min="0" placeholder="e.g. 30" oninput="onInvoiceDateOrTermsChange()">
+                                        </div>
+                                        <div class="col-2">
+                                            <label class="form-label">Invoice Due Date</label>
+                                            <input type="date" id="form-shipment-due-date" class="form-control" onchange="onManualDueDateChange()">
                                         </div>
                                         <div class="col-3">
                                             <label class="form-label">Shipment Date *</label>
                                             <input type="date" id="form-shipment-date" class="form-control" required>
                                         </div>
-                                        <div class="col-3">
+
+                                        <!-- ROW 3: SHIPMENT TYPE, SB/BE NO, SHIPPING LINE -->
+                                        <div class="col-4">
                                             <label class="form-label">Shipment Type *</label>
                                             <select id="form-shipment-type" class="form-control" required>
                                                 <option value="EXPORT FCL">EXPORT FCL</option>
@@ -654,11 +678,11 @@
                                                 <option value="OTHER">OTHER</option>
                                             </select>
                                         </div>
-                                        <div class="col-3">
+                                        <div class="col-4">
                                             <label class="form-label">SB / BE Number</label>
                                             <input type="text" id="form-shipment-sb-be" class="form-control" placeholder="e.g. SB-8829102">
                                         </div>
-                                        <div class="col-3">
+                                        <div class="col-4">
                                             <label class="form-label">Shipping Line</label>
                                             <input type="text" id="form-shipment-line" class="form-control" placeholder="e.g. MAERSK LINE">
                                         </div>
@@ -1789,6 +1813,6 @@
     </div>
 
     <!-- MAIN APP JAVASCRIPT ENGINE -->
-    <script src="app.js?v=28.0.0"></script>
+    <script src="app.js?v=29.0.0"></script>
 </body>
 </html>

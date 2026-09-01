@@ -2526,18 +2526,60 @@ function populateVendorDropdowns() {
     }
 }
 
+function onInvoiceDateOrTermsChange() {
+    const invDateStr = document.getElementById('form-shipment-invoice-date')?.value;
+    const dueDays = parseInt(document.getElementById('form-shipment-due-days')?.value, 10);
+    const dueDateEl = document.getElementById('form-shipment-due-date');
+    if (!dueDateEl) return;
+
+    if (invDateStr && !isNaN(dueDays) && dueDays >= 0) {
+        const invDate = new Date(invDateStr);
+        invDate.setDate(invDate.getDate() + dueDays);
+        dueDateEl.value = invDate.toISOString().split('T')[0];
+    }
+}
+
+function onManualDueDateChange() {
+    const invDateStr = document.getElementById('form-shipment-invoice-date')?.value;
+    const dueDateStr = document.getElementById('form-shipment-due-date')?.value;
+    const dueDaysEl = document.getElementById('form-shipment-due-days');
+    if (!dueDaysEl) return;
+
+    if (invDateStr && dueDateStr) {
+        const invDate = new Date(invDateStr);
+        const dueDate = new Date(dueDateStr);
+        const diffTime = dueDate.getTime() - invDate.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        if (!isNaN(diffDays)) {
+            dueDaysEl.value = diffDays >= 0 ? diffDays : 0;
+        }
+    }
+}
+
 function handleShipmentClientSelectChange(el) {
     const selectedId = el.value;
     const client = STATE.clients.find(c => c.id === selectedId);
     const clientIdEl = document.getElementById('form-shipment-client-id');
     const shpIdEl = document.getElementById('form-shipment-id');
+    const displayShpIdEl = document.getElementById('display-shipment-id');
 
     if (client) {
         if (clientIdEl) clientIdEl.value = client.id;
+        if (displayShpIdEl) displayShpIdEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="color: var(--neon-blue);"></i> Fetching next ID...`;
+        
+        // Auto-fill credit terms / due days from client master if available
+        const creditDays = parseInt(client.credit_days || client.credit_terms, 10) || 30;
+        const dueDaysEl = document.getElementById('form-shipment-due-days');
+        if (dueDaysEl && !dueDaysEl.value) {
+            dueDaysEl.value = creditDays;
+            onInvoiceDateOrTermsChange();
+        }
+
         fetchNextShipmentId(client.id);
     } else {
         if (clientIdEl) clientIdEl.value = '';
         if (shpIdEl) shpIdEl.value = '';
+        if (displayShpIdEl) displayShpIdEl.innerText = 'Auto Generated on Client Select';
     }
 }
 
@@ -2547,7 +2589,12 @@ async function fetchNextShipmentId(clientId) {
         if (res.ok) {
             const data = await res.json();
             if (data.next_shipment_id) {
-                document.getElementById('form-shipment-id').value = data.next_shipment_id;
+                if (document.getElementById('form-shipment-id')) {
+                    document.getElementById('form-shipment-id').value = data.next_shipment_id;
+                }
+                if (document.getElementById('display-shipment-id')) {
+                    document.getElementById('display-shipment-id').innerText = data.next_shipment_id;
+                }
             }
         }
     } catch (e) {}
@@ -2738,7 +2785,19 @@ function openFullAddShipmentPage() {
     document.getElementById('form-shipment-master').reset();
     document.getElementById('form-sales-rows-body').innerHTML = '';
     document.getElementById('form-purchase-rows-body').innerHTML = '';
-    document.getElementById('form-shipment-date').value = new Date().toISOString().split('T')[0];
+    
+    const today = new Date().toISOString().split('T')[0];
+    if (document.getElementById('form-shipment-date')) document.getElementById('form-shipment-date').value = today;
+    if (document.getElementById('form-shipment-invoice-date')) document.getElementById('form-shipment-invoice-date').value = today;
+    if (document.getElementById('form-shipment-invoice-no')) document.getElementById('form-shipment-invoice-no').value = '';
+    if (document.getElementById('form-shipment-due-days')) document.getElementById('form-shipment-due-days').value = '30';
+    if (document.getElementById('form-shipment-due-date')) {
+        const due = new Date();
+        due.setDate(due.getDate() + 30);
+        document.getElementById('form-shipment-due-date').value = due.toISOString().split('T')[0];
+    }
+    if (document.getElementById('form-shipment-id')) document.getElementById('form-shipment-id').value = '';
+    if (document.getElementById('display-shipment-id')) document.getElementById('display-shipment-id').innerText = 'Auto Generated on Client Select';
 
     // Clean single blank rows for fresh entry
     addSalesFormRow();
@@ -2759,8 +2818,13 @@ function openFullEditShipmentPage(shipmentId) {
     document.getElementById('shipment-form-title').innerText = `Edit Shipment ${s.id}`;
     document.getElementById('form-shipment-is-edit').value = 'true';
     document.getElementById('form-shipment-id').value = s.id;
+    if (document.getElementById('display-shipment-id')) document.getElementById('display-shipment-id').innerText = s.id;
     document.getElementById('form-shipment-client-id').value = s.client_id;
     document.getElementById('form-shipment-date').value = s.date;
+    if (document.getElementById('form-shipment-invoice-no')) document.getElementById('form-shipment-invoice-no').value = s.invoice_no || '';
+    if (document.getElementById('form-shipment-invoice-date')) document.getElementById('form-shipment-invoice-date').value = s.invoice_date || s.date || '';
+    if (document.getElementById('form-shipment-due-days')) document.getElementById('form-shipment-due-days').value = s.due_days !== undefined ? s.due_days : (s.credit_days || '30');
+    if (document.getElementById('form-shipment-due-date')) document.getElementById('form-shipment-due-date').value = s.due_date || s.invoice_due_date || '';
     document.getElementById('form-shipment-type').value = s.shipment_type || 'EXPORT FCL';
     document.getElementById('form-shipment-sb-be').value = s.sb_be_no || '';
     document.getElementById('form-shipment-line').value = s.line_name || '';
@@ -2808,9 +2872,13 @@ async function handleSaveShipment(e) {
     const selectedText = clientSelect && clientSelect.selectedIndex >= 0 ? clientSelect.options[clientSelect.selectedIndex]?.text : '';
     const companyName = (selectedText.split('(')[0] || '').trim();
     const shipmentDate = document.getElementById('form-shipment-date')?.value;
+    const invoiceNo = (document.getElementById('form-shipment-invoice-no')?.value || '').trim();
+    const invoiceDate = document.getElementById('form-shipment-invoice-date')?.value || shipmentDate;
+    const dueDays = parseInt(document.getElementById('form-shipment-due-days')?.value, 10) || 0;
+    const dueDate = document.getElementById('form-shipment-due-date')?.value || '';
 
     if (!shpId) {
-        showToast('Please enter a valid Shipment ID (e.g. AKASHA/CLI-101/001).', 'warning');
+        showToast('Please select a client to auto-generate a valid Shipment ID.', 'warning');
         return;
     }
     if (!clientId || !companyName || companyName === '-- Select Client --' || companyName === 'Select Client') {
@@ -2877,6 +2945,10 @@ async function handleSaveShipment(e) {
     const payload = {
         id: shpId,
         date: shipmentDate,
+        invoice_no: invoiceNo,
+        invoice_date: invoiceDate,
+        due_days: dueDays,
+        due_date: dueDate,
         client_id: clientId,
         company_name: companyName,
         line_name: (document.getElementById('form-shipment-line')?.value || '').trim(),
