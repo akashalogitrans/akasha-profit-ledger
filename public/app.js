@@ -1699,17 +1699,20 @@ function toggleMasterRowExpand(targetId) {
 function renderServicesTable() {
     const tbody = document.getElementById('table-services-body');
     if (!tbody) return;
-    if (STATE.services.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px;">No Services Registered</td></tr>`;
+    if (!STATE.services || STATE.services.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 25px; color: var(--text-muted); font-weight: 600;">No Services Registered</td></tr>`;
         return;
     }
     tbody.innerHTML = STATE.services.map(s => `
         <tr>
-            <td><strong>${s.id}</strong></td>
-            <td><strong>${s.service_name}</strong></td>
-            <td>${s.service_type || 'General'}</td>
-            <td><strong>${s.default_gst_pct}%</strong></td>
-            <td><span class="status-pill status-paid">${s.status || 'ACTIVE'}</span></td>
+            <td><strong style="color: var(--neon-blue); font-size: 13px; font-weight: 800;">${s.id}</strong></td>
+            <td><strong style="color: var(--text-primary); font-size: 13px;">${s.service_name}</strong></td>
+            <td><span class="status-pill status-partial">${s.service_type || 'General'}</span></td>
+            <td style="text-align: right;"><strong style="color: var(--neon-purple); font-size: 13px; font-weight: 800;">${(parseFloat(s.default_gst_pct) || 0).toFixed(2)}%</strong></td>
+            <td class="action-cell" style="text-align: right;">
+                <button type="button" class="btn-icon-action btn-icon-edit" onclick="openServiceModal('${s.id}')" title="Edit Service"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button type="button" class="btn-icon-action btn-icon-delete" onclick="deleteService('${s.id}')" title="Delete Service"><i class="fa-solid fa-trash"></i></button>
+            </td>
         </tr>
     `).join('');
 }
@@ -2990,23 +2993,94 @@ async function toggleVendorStatus(vendorId, status) {
     } catch (e) {}
 }
 
-function openServiceModal() {
-    document.getElementById('modal-service').style.display = 'flex';
+function handleServiceGstPresetChange(selectEl) {
+    const customGroup = document.getElementById('modal-service-custom-gst-group');
+    const gstInput = document.getElementById('modal-service-gst');
+    if (!customGroup || !gstInput) return;
+
+    if (selectEl.value === 'custom') {
+        customGroup.style.display = 'block';
+        gstInput.focus();
+    } else {
+        customGroup.style.display = 'none';
+        gstInput.value = selectEl.value;
+    }
+}
+
+function openServiceModal(serviceId = '') {
+    const modal = document.getElementById('modal-service');
+    if (!modal) return;
+    const form = document.getElementById('form-service') || modal.querySelector('form');
+    if (form) form.reset();
+
+    const titleEl = document.getElementById('modal-service-title');
+    const isEditEl = document.getElementById('modal-service-is-edit');
+    const idEl = document.getElementById('modal-service-id');
+    const btnTextEl = document.getElementById('modal-service-btn-text');
+    const gstSelect = document.getElementById('modal-service-gst-select');
+    const customGroup = document.getElementById('modal-service-custom-gst-group');
+    const gstInput = document.getElementById('modal-service-gst');
+
+    if (serviceId) {
+        const s = (STATE.services || []).find(item => item.id === serviceId);
+        if (s) {
+            if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Edit Service (${s.id})`;
+            if (isEditEl) isEditEl.value = 'true';
+            if (idEl) idEl.value = s.id;
+            if (btnTextEl) btnTextEl.innerText = 'Update Service';
+
+            if (document.getElementById('modal-service-name')) document.getElementById('modal-service-name').value = s.service_name || '';
+            if (document.getElementById('modal-service-type')) document.getElementById('modal-service-type').value = s.service_type || '';
+
+            const gstVal = parseFloat(s.default_gst_pct || 18);
+            const standardGst = ['0', '5', '12', '18', '28'];
+            const gstStr = String(Math.round(gstVal) === gstVal ? Math.round(gstVal) : gstVal);
+
+            if (standardGst.includes(gstStr) && gstSelect) {
+                gstSelect.value = gstStr;
+                if (customGroup) customGroup.style.display = 'none';
+                if (gstInput) gstInput.value = gstStr;
+            } else {
+                if (gstSelect) gstSelect.value = 'custom';
+                if (customGroup) customGroup.style.display = 'block';
+                if (gstInput) gstInput.value = gstVal;
+            }
+        }
+    } else {
+        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-list-check"></i> Add Service Charge`;
+        if (isEditEl) isEditEl.value = 'false';
+        if (idEl) idEl.value = '';
+        if (btnTextEl) btnTextEl.innerText = 'Save Service';
+        if (gstSelect) gstSelect.value = '18';
+        if (customGroup) customGroup.style.display = 'none';
+        if (gstInput) gstInput.value = '18';
+    }
+
+    modal.style.display = 'flex';
 }
 
 async function handleSaveService(e) {
     if (e) e.preventDefault();
 
+    const isEdit = document.getElementById('modal-service-is-edit')?.value === 'true';
+    const srvId = (document.getElementById('modal-service-id')?.value || '').trim();
     const name = (document.getElementById('modal-service-name')?.value || '').trim();
-    const type = document.getElementById('modal-service-type')?.value || 'Freight Charges';
-    const gstPct = parseFloat(document.getElementById('modal-service-gst')?.value) || 18;
+    const type = document.getElementById('modal-service-type')?.value || 'General';
+    const gstSelect = document.getElementById('modal-service-gst-select')?.value;
+    
+    let gstPct = 18;
+    if (gstSelect === 'custom') {
+        gstPct = parseFloat(document.getElementById('modal-service-gst')?.value);
+    } else {
+        gstPct = parseFloat(gstSelect);
+    }
 
     if (!name) {
         showToast('Please enter the Service Name (e.g. Ocean Freight, THC).', 'warning');
         return;
     }
-    if (gstPct < 0 || isNaN(gstPct)) {
-        showToast('Please enter a valid GST percentage (e.g. 0, 5, 12, 18, 28).', 'warning');
+    if (isNaN(gstPct) || gstPct < 0 || gstPct > 100) {
+        showToast('Please enter a valid GST percentage between 0% and 100%.', 'warning');
         return;
     }
 
@@ -3017,22 +3091,49 @@ async function handleSaveService(e) {
     };
 
     try {
-        const res = await fetchWithAuth(`${API_BASE_URL}/services`, {
-            method: 'POST',
+        const url = isEdit ? `${API_BASE_URL}/services/${encodeURIComponent(srvId)}` : `${API_BASE_URL}/services`;
+        const method = isEdit ? 'PUT' : 'POST';
+
+        const res = await fetchWithAuth(url, {
+            method,
             body: JSON.stringify(payload)
         });
 
         const data = await res.json();
         if (!res.ok || !data.success) {
-            showToast(data.message || 'Error creating service catalog item.', 'error');
+            showToast(data.message || 'Error saving service item.', 'error');
             return;
         }
 
-        showToast(`Service "${name}" registered successfully!`, 'success');
+        showToast(isEdit ? `Service ${srvId} updated successfully!` : `Service "${name}" registered successfully!`, 'success');
         closeModal('modal-service');
         await fetchServicesData();
     } catch (err) {
-        showToast('Network error while registering service item.', 'error');
+        showToast('Network error while saving service item.', 'error');
+    }
+}
+
+async function deleteService(serviceId) {
+    if (!serviceId) return;
+    const s = (STATE.services || []).find(item => item.id === serviceId);
+    const sName = s ? s.service_name : serviceId;
+
+    if (!confirm(`Are you sure you want to delete service "${sName}" (${serviceId})?`)) return;
+
+    try {
+        const res = await fetchWithAuth(`${API_BASE_URL}/services/${encodeURIComponent(serviceId)}`, {
+            method: 'DELETE'
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(`Service "${sName}" deleted successfully.`, 'success');
+            await fetchServicesData();
+        } else {
+            showToast(data.message || 'Error deleting service item.', 'error');
+        }
+    } catch (err) {
+        showToast('Error deleting service from catalog.', 'error');
     }
 }
 

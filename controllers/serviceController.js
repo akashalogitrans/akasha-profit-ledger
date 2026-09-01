@@ -49,9 +49,13 @@ async function updateService(req, res) {
         const srvId = req.params.id;
         const { service_name, service_type, default_gst_pct, status } = req.body;
 
+        if (!service_name || !service_name.trim()) {
+            return res.status(400).json({ success: false, message: 'Service Name is required' });
+        }
+
         await pool.execute(
             `UPDATE services SET service_name = ?, service_type = ?, default_gst_pct = ?, status = ? WHERE id = ?`,
-            [service_name, service_type, parseFloat(default_gst_pct) || 18.00, status || 'ACTIVE', srvId]
+            [service_name.trim(), service_type || 'General', parseFloat(default_gst_pct) || 0.00, status || 'ACTIVE', srvId]
         );
 
         return res.json({ success: true, message: `Service updated successfully` });
@@ -60,8 +64,22 @@ async function updateService(req, res) {
     }
 }
 
+// 4. DELETE SERVICE
+async function deleteService(req, res) {
+    try {
+        const srvId = req.params.id;
+        if (!srvId) return res.status(400).json({ success: false, message: 'Service ID is required' });
+
+        await pool.execute(`DELETE FROM services WHERE id = ?`, [srvId]);
+        return res.json({ success: true, message: `Service ${srvId} deleted successfully` });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+}
+
 module.exports = {
     getServices,
     createService,
-    updateService
+    updateService,
+    deleteService
 };

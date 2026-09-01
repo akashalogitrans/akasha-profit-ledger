@@ -990,11 +990,11 @@
                                 <table class="erp-table">
                                     <thead>
                                         <tr>
-                                            <th>Service ID</th>
+                                            <th style="width: 120px;">Service ID</th>
                                             <th>Service Name</th>
-                                            <th>Category</th>
-                                            <th>Default GST %</th>
-                                            <th>Status</th>
+                                            <th style="width: 25%;">Category / Type</th>
+                                            <th style="width: 140px; text-align: right;">Default GST %</th>
+                                            <th class="action-col" style="text-align: right; width: 90px;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="table-services-body"></tbody>
@@ -1431,29 +1431,42 @@
 
     <!-- MODAL 5: SERVICE MASTER MODAL -->
     <div id="modal-service" class="modal-overlay" style="display: none;">
-        <div class="modal-card" style="max-width: 450px;">
+        <div class="modal-card" style="max-width: 480px;">
             <div class="modal-header">
-                <div class="modal-title"><i class="fa-solid fa-list-check"></i> Add Service Charge</div>
+                <div class="modal-title" id="modal-service-title"><i class="fa-solid fa-list-check"></i> Add Service Charge</div>
                 <button type="button" class="close-btn" onclick="closeModal('modal-service')">&times;</button>
             </div>
-            <form onsubmit="handleSaveService(event)" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+            <form id="form-service" onsubmit="handleSaveService(event)" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+                <input type="hidden" id="modal-service-id" value="">
+                <input type="hidden" id="modal-service-is-edit" value="false">
                 <div class="modal-body">
                     <div class="form-group" style="margin-bottom: 14px;">
                         <label class="form-label">Service Name *</label>
-                        <input type="text" id="modal-service-name" class="form-control" required placeholder="e.g. Terminal Handling Charges">
+                        <input type="text" id="modal-service-name" class="form-control" required placeholder="e.g. Ocean Freight / Documentation">
                     </div>
                     <div class="form-group" style="margin-bottom: 14px;">
-                        <label class="form-label">Category</label>
-                        <input type="text" id="modal-service-type" class="form-control" placeholder="e.g. Port Charges">
+                        <label class="form-label">Category / Service Type</label>
+                        <input type="text" id="modal-service-type" class="form-control" placeholder="e.g. Freight Charges / CHA / Port Charges">
                     </div>
                     <div class="form-group" style="margin-bottom: 14px;">
-                        <label class="form-label">Default GST %</label>
-                        <input type="number" step="0.01" id="modal-service-gst" class="form-control" value="18">
+                        <label class="form-label">GST Rate Selection *</label>
+                        <select id="modal-service-gst-select" class="form-control" onchange="handleServiceGstPresetChange(this)">
+                            <option value="18">18% (Standard Services)</option>
+                            <option value="12">12% (Logistics & Transport)</option>
+                            <option value="5">5% (Ocean / Air Freight)</option>
+                            <option value="0">0% (Nil / Exempted)</option>
+                            <option value="28">28% (Special Port & Luxury)</option>
+                            <option value="custom">Custom GST % (Enter below)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="modal-service-custom-gst-group" style="margin-bottom: 14px; display: none;">
+                        <label class="form-label">Custom GST Rate (%) *</label>
+                        <input type="number" step="0.01" min="0" max="100" id="modal-service-gst" class="form-control" placeholder="e.g. 18.00" value="18">
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn-action" onclick="closeModal('modal-service')">Cancel</button>
-                    <button type="submit" class="btn-primary" style="background: #0f172a; color: #ffffff;"><i class="fa-solid fa-floppy-disk"></i> Save Service</button>
+                    <button type="submit" class="btn-primary" style="background: #0f172a; color: #ffffff;"><i class="fa-solid fa-floppy-disk"></i> <span id="modal-service-btn-text">Save Service</span></button>
                 </div>
             </form>
         </div>
