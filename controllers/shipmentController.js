@@ -28,36 +28,54 @@ async function getShipments(req, res) {
         const { month, year, client_id, status, search, page = 1, limit = 200 } = req.query;
         const offset = (Math.max(1, parseInt(page)) - 1) * parseInt(limit);
 
-        let sql = `SELECT * FROM shipments WHERE 1=1`;
+        let sql = `
+            SELECT 
+                s.*,
+                COALESCE(vp.total_vendor_paid, 0) AS paid_amount,
+                GREATEST(0, s.purchase_amount - COALESCE(vp.total_vendor_paid, 0)) AS balance_payable,
+                COALESCE(pt.total_cust_rec, 0) AS total_customer_received
+            FROM shipments s
+            LEFT JOIN (
+                SELECT shipment_id, SUM(amount) AS total_vendor_paid 
+                FROM vendor_payments 
+                GROUP BY shipment_id
+            ) vp ON (s.id COLLATE utf8mb4_general_ci) = (vp.shipment_id COLLATE utf8mb4_general_ci)
+            LEFT JOIN (
+                SELECT shipment_id, SUM(amount) AS total_cust_rec 
+                FROM payment_transactions 
+                GROUP BY shipment_id
+            ) pt ON (s.id COLLATE utf8mb4_general_ci) = (pt.shipment_id COLLATE utf8mb4_general_ci)
+            WHERE 1=1
+        `;
         const params = [];
 
         if (month) {
-            sql += ` AND DATE_FORMAT(date, '%Y-%m') = ?`;
+            sql += ` AND DATE_FORMAT(s.date, '%Y-%m') = ?`;
             params.push(month);
         }
 
         if (year) {
-            sql += ` AND DATE_FORMAT(date, '%Y') = ?`;
+            sql += ` AND DATE_FORMAT(s.date, '%Y') = ?`;
             params.push(year);
         }
 
         if (client_id) {
-            sql += ` AND client_id = ?`;
+            sql += ` AND s.client_id = ?`;
             params.push(client_id);
         }
 
         if (status) {
-            sql += ` AND sale_status = ?`;
+            sql += ` AND s.sale_status = ?`;
             params.push(status);
         }
 
         if (search) {
-            sql += ` AND (id LIKE ? OR company_name LIKE ? OR sb_be_no LIKE ? OR client_id LIKE ? OR line_name LIKE ? OR transport_name LIKE ?)`;
+            sql += ` AND (s.id LIKE ? OR s.company_name LIKE ? OR s.sb_be_no LIKE ? OR s.client_id LIKE ? OR s.line_name LIKE ? OR s.transport_name LIKE ?)`;
             const q = `%${search.trim()}%`;
             params.push(q, q, q, q, q, q);
         }
 
-        sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        sql += ` ORDER BY s.created_at DESC LIMIT ? OFFSET ?`;
         params.push(parseInt(limit), parseInt(offset));
 
         const [rows] = await pool.execute(sql, params);
@@ -65,17 +83,34 @@ async function getShipments(req, res) {
         const sanitizedRows = (rows || []).map(r => {
             const saleAmt = parseFloat(r.sale_amount) || 0;
             const purAmt = parseFloat(r.purchase_amount) || 0;
-            const recAmt = Math.min(saleAmt, Math.max(0, parseFloat(r.received_amount) || 0));
+            
+            // Exact Customer Received & Balance
+            const recAmt = Math.min(saleAmt, Math.max(parseFloat(r.total_customer_received) || 0, parseFloat(r.received_amount) || 0));
             const remBal = Math.max(0, saleAmt - recAmt);
+            const custStatus = r.sale_status || (recAmt >= saleAmt && saleAmt > 0 ? 'PAID' : (recAmt > 0 ? 'PARTIAL' : 'UNPAID'));
+
+            // Exact Vendor Paid & Balance Payable
+            const paidAmt = Math.min(purAmt, Math.max(0, parseFloat(r.paid_amount) || 0));
+            const balPay = Math.max(0, purAmt - paidAmt);
+            const vendStatus = r.purchase_status || (paidAmt >= purAmt && purAmt > 0 ? 'PAID' : (paidAmt > 0 ? 'PARTIAL' : 'UNPAID'));
+
             const profit = saleAmt - purAmt;
             const margin = saleAmt > 0 ? ((profit / saleAmt) * 100).toFixed(2) : 0;
-            const statusStr = r.sale_status || (recAmt >= saleAmt && saleAmt > 0 ? 'PAID' : (recAmt > 0 ? 'PARTIAL' : 'UNPAID'));
 
             return {
                 ...r,
+                sale_amount: saleAmt,
+                sales_amount: saleAmt,
+                purchase_amount: purAmt,
                 received_amount: recAmt,
                 remaining_balance: remBal,
-                sale_status: statusStr,
+                balance_amount: remBal,
+                sale_status: custStatus,
+                customer_status: custStatus,
+                paid_amount: paidAmt,
+                balance_payable: balPay,
+                purchase_status: vendStatus,
+                vendor_status: vendStatus,
                 net_profit: profit,
                 margin_pct: parseFloat(margin)
             };

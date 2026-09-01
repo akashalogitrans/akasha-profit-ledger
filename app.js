@@ -481,7 +481,11 @@ async function fetchDashboardKPIs() {
             const data = await res.json();
             if (data) {
                 STATE.kpis = data;
-                if (document.getElementById('kpi-monthly-revenue')) document.getElementById('kpi-monthly-revenue').innerText = formatCurrencyINR(data.monthly_revenue);
+                // Total Sales Invoiced (Jitna Sale Kiya)
+                if (document.getElementById('kpi-monthly-revenue')) document.getElementById('kpi-monthly-revenue').innerText = formatCurrencyINR(data.total_sale_billed);
+                if (document.getElementById('kpi-sales-collected')) document.getElementById('kpi-sales-collected').innerText = formatCurrencyINR(data.monthly_revenue);
+                if (document.getElementById('kpi-sales-pending')) document.getElementById('kpi-sales-pending').innerText = formatCurrencyINR(data.pending_payment);
+
                 if (document.getElementById('kpi-total-purchase')) document.getElementById('kpi-total-purchase').innerText = formatCurrencyINR(data.total_purchase);
                 if (document.getElementById('kpi-net-profit')) document.getElementById('kpi-net-profit').innerText = formatCurrencyINR(data.net_profit);
                 if (document.getElementById('kpi-pending-payment')) document.getElementById('kpi-pending-payment').innerText = formatCurrencyINR(data.pending_payment);
@@ -494,7 +498,7 @@ async function fetchDashboardKPIs() {
                 if (document.getElementById('kpi-expense-fy-label') && data.fy_label) {
                     document.getElementById('kpi-expense-fy-label').innerText = data.fy_label;
                 }
-                const margin = data.monthly_revenue > 0 ? ((data.net_profit / data.monthly_revenue) * 100).toFixed(2) : "0.00";
+                const margin = data.total_sale_billed > 0 ? ((data.net_profit / data.total_sale_billed) * 100).toFixed(2) : "0.00";
                 if (document.getElementById('kpi-margin-pct')) {
                     document.getElementById('kpi-margin-pct').innerText = `${margin}%`;
                 }
@@ -507,31 +511,45 @@ async function fetchDashboardKPIs() {
 }
 
 function recalculateKPIsFromState() {
-    let rev = 0, pur = 0, pft = 0, pend = 0, vPay = 0;
+    let recRevenue = 0, pur = 0, pft = 0, pend = 0, vPay = 0, totalBilled = 0;
 
     (STATE.shipments || []).forEach(s => {
         const sAmt = parseFloat(s.sale_amount) || 0;
         const pAmt = parseFloat(s.purchase_amount) || 0;
         const recAmt = Math.min(sAmt, Math.max(0, parseFloat(s.received_amount) || 0));
         const balAmt = Math.max(0, sAmt - recAmt);
+        const paidToVendor = parseFloat(s.paid_amount) || (s.purchase_status === 'PAID' ? pAmt : 0);
+        const balPayable = s.balance_payable !== undefined ? parseFloat(s.balance_payable) : Math.max(0, pAmt - paidToVendor);
 
-        rev += sAmt;
+        totalBilled += sAmt;
+        recRevenue += recAmt;
         pur += pAmt;
         pft += (sAmt - pAmt);
         pend += balAmt;
-        if (s.purchase_status !== 'PAID') vPay += pAmt;
+        vPay += balPayable;
     });
 
-    STATE.kpis = { monthly_revenue: rev, total_purchase: pur, net_profit: pft, pending_payment: pend, vendor_payable: vPay };
+    STATE.kpis = { 
+        ...STATE.kpis,
+        monthly_revenue: recRevenue, 
+        total_sale_billed: totalBilled, 
+        total_purchase: pur, 
+        net_profit: pft, 
+        pending_payment: pend, 
+        vendor_payable: vPay
+    };
 
-    if (document.getElementById('kpi-monthly-revenue')) document.getElementById('kpi-monthly-revenue').innerText = formatCurrencyINR(rev);
+    // Total Sales Invoiced (Jitna Sale Kiya)
+    if (document.getElementById('kpi-monthly-revenue')) document.getElementById('kpi-monthly-revenue').innerText = formatCurrencyINR(totalBilled);
+    if (document.getElementById('kpi-sales-collected')) document.getElementById('kpi-sales-collected').innerText = formatCurrencyINR(recRevenue);
+    if (document.getElementById('kpi-sales-pending')) document.getElementById('kpi-sales-pending').innerText = formatCurrencyINR(pend);
+
     if (document.getElementById('kpi-total-purchase')) document.getElementById('kpi-total-purchase').innerText = formatCurrencyINR(pur);
     if (document.getElementById('kpi-net-profit')) document.getElementById('kpi-net-profit').innerText = formatCurrencyINR(pft);
     if (document.getElementById('kpi-pending-payment')) document.getElementById('kpi-pending-payment').innerText = formatCurrencyINR(pend);
     if (document.getElementById('kpi-vendor-payable')) document.getElementById('kpi-vendor-payable').innerText = formatCurrencyINR(vPay);
-    if (document.getElementById('kpi-total-expense')) document.getElementById('kpi-total-expense').innerText = formatCurrencyINR(pur);
     
-    const margin = rev > 0 ? ((pft / rev) * 100).toFixed(2) : "0.00";
+    const margin = totalBilled > 0 ? ((pft / totalBilled) * 100).toFixed(2) : "0.00";
     if (document.getElementById('kpi-margin-pct')) document.getElementById('kpi-margin-pct').innerText = `${margin}%`;
 
     renderDashboardRecentShipments();
@@ -1331,7 +1349,7 @@ function renderPurchaseLedgerTable(customList = null) {
     let totalPaid = 0;
     list.forEach(s => {
         const pur = parseFloat(s.purchase_amount) || 0;
-        const paid = s.purchase_status === 'PAID' ? pur : (s.purchase_status === 'PARTIAL' ? pur * 0.5 : 0);
+        const paid = parseFloat(s.paid_amount) || (s.purchase_status === 'PAID' ? pur : 0);
         totalPur += pur;
         totalPaid += paid;
     });
@@ -1356,8 +1374,8 @@ function renderPurchaseLedgerTable(customList = null) {
         const safeId = String(s.id).replace(/[^a-zA-Z0-9]/g, '_');
         const purAmt = parseFloat(s.purchase_amount) || 0;
         const vendStatus = s.purchase_status || 'UNPAID';
-        const paidAmt = vendStatus === 'PAID' ? purAmt : (vendStatus === 'PARTIAL' ? purAmt * 0.5 : 0);
-        const balPay = Math.max(0, purAmt - paidAmt);
+        const paidAmt = parseFloat(s.paid_amount) || (vendStatus === 'PAID' ? purAmt : 0);
+        const balPay = s.balance_payable !== undefined ? parseFloat(s.balance_payable) : Math.max(0, purAmt - paidAmt);
 
         let vendBadge = 'status-unpaid';
         if (vendStatus === 'PAID') vendBadge = 'status-paid';
@@ -1811,10 +1829,18 @@ function renderProfitLedgerTable(list) {
 
         const isPositive = profit > 0;
         const isNegative = profit < 0;
-        const profitColor = isNegative ? 'var(--danger)' : (isPositive ? 'var(--success)' : '#64748b');
-        const marginColor = margin < 0 ? 'var(--danger)' : (margin > 0 ? 'var(--success)' : '#64748b');
+        const profitColor = isNegative ? '#dc2626' : (isPositive ? '#16a34a' : '#64748b');
+
+        let marginBadge = '';
+        if (margin > 0) {
+            marginBadge = `<span class="status-pill" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 900; font-size: 12.5px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-arrow-trend-up"></i> +${margin.toFixed(2)}%</span>`;
+        } else if (margin < 0) {
+            marginBadge = `<span class="status-pill" style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 900; font-size: 12.5px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-arrow-trend-down"></i> ${margin.toFixed(2)}%</span>`;
+        } else {
+            marginBadge = `<span class="status-pill" style="background: #f8fafc; color: #64748b; border: 1px solid #cbd5e1; font-weight: 800; font-size: 12.5px; padding: 4px 10px;">0.00%</span>`;
+        }
+
         const formattedProfit = (profit < 0 ? '-₹' : '₹') + Math.abs(profit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const formattedMargin = (margin > 0 ? '+' : '') + margin.toFixed(2) + '%';
 
         return `
             <tr>
@@ -1823,8 +1849,8 @@ function renderProfitLedgerTable(list) {
                 <td><strong>${r.company_name}</strong></td>
                 <td>₹${sAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td>₹${pAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td><strong style="color: ${profitColor}; font-weight: 800; font-size: 13px;">${formattedProfit}</strong></td>
-                <td><strong style="color: ${marginColor}; font-weight: 800; font-size: 13px;">${formattedMargin}</strong></td>
+                <td><strong style="color: ${profitColor}; font-weight: 900; font-size: 13px;">${formattedProfit}</strong></td>
+                <td>${marginBadge}</td>
             </tr>
         `;
     }).join('');
@@ -1898,10 +1924,18 @@ function renderProfitReport(list) {
 
         const isPositive = profit > 0;
         const isNegative = profit < 0;
-        const profitColor = isNegative ? 'var(--danger)' : (isPositive ? 'var(--success)' : '#64748b');
-        const marginColor = margin < 0 ? 'var(--danger)' : (margin > 0 ? 'var(--success)' : '#64748b');
+        const profitColor = isNegative ? '#dc2626' : (isPositive ? '#16a34a' : '#64748b');
+
+        let marginBadge = '';
+        if (margin > 0) {
+            marginBadge = `<span class="status-pill" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 900; font-size: 12.5px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-arrow-trend-up"></i> +${margin.toFixed(2)}%</span>`;
+        } else if (margin < 0) {
+            marginBadge = `<span class="status-pill" style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 900; font-size: 12.5px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-arrow-trend-down"></i> ${margin.toFixed(2)}%</span>`;
+        } else {
+            marginBadge = `<span class="status-pill" style="background: #f8fafc; color: #64748b; border: 1px solid #cbd5e1; font-weight: 800; font-size: 12.5px; padding: 4px 10px;">0.00%</span>`;
+        }
+
         const formattedProfit = (profit < 0 ? '-₹' : '₹') + Math.abs(profit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const formattedMargin = (margin > 0 ? '+' : '') + margin.toFixed(2) + '%';
 
         return `
             <tr>
@@ -1910,8 +1944,8 @@ function renderProfitReport(list) {
                 <td><strong>${r.company_name}</strong></td>
                 <td>₹${sAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td>₹${pAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td><strong style="color: ${profitColor}; font-weight: 800; font-size: 13px;">${formattedProfit}</strong></td>
-                <td><strong style="color: ${marginColor}; font-weight: 800; font-size: 13px;">${formattedMargin}</strong></td>
+                <td><strong style="color: ${profitColor}; font-weight: 900; font-size: 13px;">${formattedProfit}</strong></td>
+                <td>${marginBadge}</td>
             </tr>
         `;
     }).join('');
@@ -2451,8 +2485,8 @@ async function handleSaveCustomerPayment(e) {
         showToast('Please specify the Payment Receipt Date.', 'warning');
         return;
     }
-    if (amount <= 0 || isNaN(amount)) {
-        showToast('Please enter a valid positive payment amount.', 'warning');
+    if (amount < 0 || isNaN(amount)) {
+        showToast('Please enter a valid payment amount (₹0 or greater).', 'warning');
         return;
     }
 
@@ -2565,8 +2599,9 @@ function onVendorPaymentShipmentChange() {
         }
     }
 
-    if (amtInput && purTotal > 0) {
-        amtInput.value = purTotal.toFixed(2);
+    const remainingVendorBal = s ? (s.balance_payable !== undefined ? parseFloat(s.balance_payable) : Math.max(0, (parseFloat(s.purchase_amount) || 0) - (parseFloat(s.paid_amount) || 0))) : 0;
+    if (amtInput) {
+        amtInput.value = remainingVendorBal > 0 ? remainingVendorBal.toFixed(2) : (purTotal > 0 ? purTotal.toFixed(2) : '0.00');
     }
 }
 
@@ -2596,8 +2631,8 @@ async function handleSaveVendorPayment(e) {
         showToast('Please specify the Vendor Payment Date.', 'warning');
         return;
     }
-    if (amount <= 0 || isNaN(amount)) {
-        showToast('Please enter a valid positive disbursement amount.', 'warning');
+    if (amount < 0 || isNaN(amount)) {
+        showToast('Please enter a valid disbursement amount (₹0 or greater).', 'warning');
         return;
     }
 

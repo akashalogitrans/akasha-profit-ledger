@@ -13,17 +13,25 @@ async function getKPIs(req, res) {
         // 1. Overall Financial & Shipment Metrics
         const kpiSql = `
             SELECT 
-                COALESCE(SUM(LEAST(sale_amount, COALESCE(received_amount, 0))), 0) AS total_revenue,
-                COALESCE(SUM(sale_amount), 0) AS total_sale_billed,
-                COALESCE(SUM(purchase_amount), 0) AS total_purchase,
-                COALESCE(SUM(net_profit), 0) AS net_profit,
+                COALESCE(SUM(LEAST(s.sale_amount, COALESCE(s.received_amount, 0))), 0) AS total_revenue,
+                COALESCE(SUM(s.sale_amount), 0) AS total_sale_billed,
+                COALESCE(SUM(s.purchase_amount), 0) AS total_purchase,
+                COALESCE(SUM(s.net_profit), 0) AS net_profit,
                 COALESCE(SUM(
-                    GREATEST(0, sale_amount - LEAST(sale_amount, COALESCE(received_amount, 0)))
+                    GREATEST(0, s.sale_amount - LEAST(s.sale_amount, COALESCE(s.received_amount, 0)))
                 ), 0) AS pending_payment,
-                COUNT(id) AS total_shipments,
-                SUM(CASE WHEN sale_status = 'Completed' OR (received_amount >= sale_amount AND sale_amount > 0) THEN 1 ELSE 0 END) AS completed_shipments,
-                SUM(CASE WHEN sale_status != 'Completed' AND (received_amount < sale_amount OR sale_amount = 0) THEN 1 ELSE 0 END) AS pending_shipments
-            FROM shipments
+                COALESCE(SUM(
+                    GREATEST(0, s.purchase_amount - COALESCE(vp.paid, 0))
+                ), 0) AS vendor_payable,
+                COUNT(s.id) AS total_shipments,
+                SUM(CASE WHEN s.sale_status = 'PAID' OR (s.received_amount >= s.sale_amount AND s.sale_amount > 0) THEN 1 ELSE 0 END) AS completed_shipments,
+                SUM(CASE WHEN s.sale_status != 'PAID' AND (s.received_amount < s.sale_amount OR s.sale_amount = 0) THEN 1 ELSE 0 END) AS pending_shipments
+            FROM shipments s
+            LEFT JOIN (
+                SELECT shipment_id, SUM(amount) AS paid 
+                FROM vendor_payments 
+                GROUP BY shipment_id
+            ) vp ON (s.id COLLATE utf8mb4_general_ci) = (vp.shipment_id COLLATE utf8mb4_general_ci)
         `;
         const [kpiRows] = await pool.execute(kpiSql);
         const kpi = kpiRows[0] || {};
@@ -88,6 +96,7 @@ async function getKPIs(req, res) {
             total_purchase: parseFloat(kpi.total_purchase) || 0,
             net_profit: parseFloat(kpi.net_profit) || 0,
             pending_payment: parseFloat(kpi.pending_payment) || 0,
+            vendor_payable: parseFloat(kpi.vendor_payable) || 0,
             total_shipments: parseInt(kpi.total_shipments) || 0,
             completed_shipments: parseInt(kpi.completed_shipments) || 0,
             pending_shipments: parseInt(kpi.pending_shipments) || 0,

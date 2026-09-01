@@ -114,8 +114,8 @@ async function recordPayment(req, res) {
         }
 
         const pAmt = parseFloat(amount);
-        if (isNaN(pAmt) || pAmt <= 0) {
-            return res.status(400).json({ success: false, message: 'Payment Amount must be a positive number greater than ₹0.' });
+        if (isNaN(pAmt) || pAmt < 0) {
+            return res.status(400).json({ success: false, message: 'Payment Amount must be a valid number greater than or equal to ₹0.' });
         }
 
         const [shpRows] = await pool.execute(`SELECT sale_amount, received_amount FROM shipments WHERE id = ?`, [shpId]);
@@ -132,7 +132,7 @@ async function recordPayment(req, res) {
         const currentRec = txRows ? parseFloat(txRows[0].total_rec) || 0 : 0;
         const remainingBal = Math.max(0, saleAmt - currentRec);
 
-        if (pAmt > remainingBal && remainingBal > 0) {
+        if (pAmt > (remainingBal + 5.0) && remainingBal > 0) {
             return res.status(400).json({
                 success: false,
                 message: `Payment amount (₹${pAmt.toLocaleString('en-IN')}) exceeds remaining customer receivable balance (₹${remainingBal.toLocaleString('en-IN')}).`

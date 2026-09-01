@@ -23,8 +23,10 @@ const dbConfig = {
     password,
     database,
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: 25,
     queueLimit: 0,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10000,
     dateStrings: true
 };
 
@@ -33,89 +35,36 @@ console.log(`[MySQL Config] Connecting to Hostinger Database: ${dbConfig.databas
 let mysqlPool = mysql.createPool(dbConfig);
 let isDbConnected = false;
 
-// Local Mock Store (Fallback when offline or running locally without MySQL daemon)
-const hash077760 = bcrypt.hashSync('077760', 10);
-const hash077170 = bcrypt.hashSync('077170', 10);
-const hash088660 = bcrypt.hashSync('088660', 10);
-
-const localStore = {
-    directors: [
-        { id: 'dir_1', name: 'Khushal Patel', email: 'khushal@akashalogitrans.com', pin_hash: hash077760, role: 'CEO & Founder', avatar: 'https://akashalogitrans.com/khushal.png', status: 'Active' },
-        { id: 'dir_2', name: 'Dhruv Patel', email: 'dhruv@akashalogitrans.com', pin_hash: hash077170, role: 'Director - Rates & Procurement', avatar: 'https://akashalogitrans.com/dhruv_patel.png', status: 'Active' },
-        { id: 'dir_3', name: 'Yagnik Patel', email: 'info@akashalogitrans.com', pin_hash: hash088660, role: 'Director - Finance & Audit', avatar: 'https://akashalogitrans.com/yagnik.jpeg', status: 'Active' }
-    ],
-    clients: [
-        { id: 'CLI-101', name: 'Morbi Ceramic Tiles Ltd', contact_person: 'Khushal Patel', mobile: '9876543210', email: 'info@morbiceramics.com', gstin: '24AAACM1234F1Z1', pan: 'AAACM1234F', address: '8-A National Highway, Morbi, Gujarat', credit_terms: '30 Days', opening_balance: 0, status: 'ACTIVE', owner: 'Khushal Patel', created_at: new Date().toISOString() },
-        { id: 'CLI-102', name: 'Zecca Spices Exports', contact_person: 'Dhruv Patel', mobile: '9898989898', email: 'exports@zecca.com', gstin: '24BBBCZ5678G1Z2', pan: 'BBBCZ5678G', address: 'Unjha Ganj Bazar, Gujarat', credit_terms: '15 Days', opening_balance: 0, status: 'ACTIVE', owner: 'Dhruv Patel', created_at: new Date().toISOString() },
-        { id: 'CLI-103', name: 'Infinity Hub Exim', contact_person: 'Yagnik Patel', mobile: '9797979797', email: 'contact@infinityhub.com', gstin: '24CCCII9012H1Z3', pan: 'CCCII9012H', address: 'Ring Road, Surat, Gujarat', credit_terms: '30 Days', opening_balance: 0, status: 'ACTIVE', owner: 'Yagnik Patel', created_at: new Date().toISOString() }
-    ],
-    vendors: [
-        { id: 'VND-001', name: 'MAERSK LINE', vendor_type: 'Shipping Line', contact_person: 'Rajesh Kumar', mobile: '9825001122', email: 'support@maersk.com', gstin: '24AAACM9999M1Z9', address: 'Mundra Port Office, Gujarat', bank_details: 'HDFC Bank - A/C 502000112233 - HDFC0000123', credit_terms: '15 Days', status: 'ACTIVE', created_at: new Date().toISOString() },
-        { id: 'VND-002', name: 'VRL Logistics Ltd', vendor_type: 'Transporter', contact_person: 'Suresh Verma', mobile: '9825112233', email: 'ops@vrllogistics.com', gstin: '24AAACV8888V1Z8', address: 'Gandhidham Transporter Hub, Gujarat', bank_details: 'ICICI Bank - A/C 001105001234 - ICIC0000011', credit_terms: '7 Days', status: 'ACTIVE', created_at: new Date().toISOString() },
-        { id: 'VND-003', name: 'ABC Documentation & CHA Services', vendor_type: 'CHA', contact_person: 'Amit Shah', mobile: '9825223344', email: 'cha@abcservices.com', gstin: '24AAACA7777A1Z7', address: 'Kandla Customs Enclave, Gujarat', bank_details: 'SBI - A/C 30112233445 - SBIN0001234', credit_terms: '30 Days', status: 'ACTIVE', created_at: new Date().toISOString() }
-    ],
-    services: [
-        { id: 'SRV-001', service_name: 'Ocean Freight', service_type: 'Freight Charges', default_gst_pct: 18, status: 'ACTIVE' },
-        { id: 'SRV-002', service_name: 'Air Freight', service_type: 'Freight Charges', default_gst_pct: 18, status: 'ACTIVE' },
-        { id: 'SRV-003', service_name: 'Transportation', service_type: 'Logistics', default_gst_pct: 12, status: 'ACTIVE' },
-        { id: 'SRV-004', service_name: 'Documentation', service_type: 'CHA Charges', default_gst_pct: 18, status: 'ACTIVE' },
-        { id: 'SRV-005', service_name: 'THC (Terminal Handling)', service_type: 'Port Charges', default_gst_pct: 18, status: 'ACTIVE' },
-        { id: 'SRV-006', service_name: 'Port Charges', service_type: 'Port Charges', default_gst_pct: 18, status: 'ACTIVE' },
-        { id: 'SRV-007', service_name: 'Custom Clearance', service_type: 'CHA Charges', default_gst_pct: 18, status: 'ACTIVE' },
-        { id: 'SRV-008', service_name: 'Handling Charges', service_type: 'CHA Charges', default_gst_pct: 18, status: 'ACTIVE' },
-        { id: 'SRV-009', service_name: 'Certificate of Origin', service_type: 'Documentation', default_gst_pct: 18, status: 'ACTIVE' },
-        { id: 'SRV-010', service_name: 'Local Charges', service_type: 'Local Charges', default_gst_pct: 18, status: 'ACTIVE' },
-        { id: 'SRV-011', service_name: 'Other Charges', service_type: 'Miscellaneous', default_gst_pct: 18, status: 'ACTIVE' }
-    ],
-    shipments: [
-        {
-            id: 'AKASHA/CLI-101/001',
-            date: '2026-08-01',
-            client_id: 'CLI-101',
-            company_name: 'Morbi Ceramic Tiles Ltd',
-            line_name: 'MAERSK LINE',
-            transport_name: 'VRL Logistics',
-            sb_be_no: 'SB-8829102',
-            shipment_type: 'Export FCL',
-            purchase_date: '2026-08-01',
-            purchase_amount: 51000.00,
-            purchase_status: 'PAID',
-            purchase_items: '[{"vendor_name":"MAERSK LINE","expense_name":"Ocean Freight","amount":30000},{"vendor_name":"VRL Logistics Ltd","expense_name":"Transportation","amount":12000},{"vendor_name":"ABC Documentation & CHA Services","expense_name":"Documentation","amount":9000}]',
-            payment_receive_date: '2026-08-02',
-            sale_amount: 54000.00,
-            received_amount: 54000.00,
-            remaining_balance: 0.00,
-            sale_status: 'PAID',
-            sale_items: '[{"item_name":"Ocean Freight","qty":1,"rate":40000,"amount":40000},{"item_name":"Documentation","qty":1,"rate":5000,"amount":5000},{"item_name":"Transportation","qty":1,"rate":9000,"amount":9000}]',
-            net_profit: 3000.00,
-            created_at: new Date().toISOString()
-        }
-    ],
-    payment_transactions: [],
-    vendor_payments: [],
-    login_logs: [],
-    activity_logs: [],
-    settings: []
-};
-
-// Safe Proxy Object wrapping pool.execute and pool.query
+// Safe Proxy Object wrapping pool.execute and pool.query with Auto-Reconnect & Retry
 const pool = {
     async query(sql, params = []) {
         return this.execute(sql, params);
     },
-    async execute(sql, params = []) {
+    async execute(sql, params = [], retries = 3) {
         const safeParams = (params || []).map(p => (p === undefined ? null : p));
-        try {
-            return await mysqlPool.execute(sql, safeParams);
-        } catch (err) {
-            console.error('[MySQL Query Error]:', err.message, '| Query:', sql);
-            if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'PROTOCOL_CONNECTION_LOST') {
-                isDbConnected = false;
-                if (process.env.NODE_ENV !== 'production') {
-                    return handleLocalFallbackQuery(sql, safeParams);
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+                return await mysqlPool.execute(sql, safeParams);
+            } catch (err) {
+                const isConnErr = err.code === 'ECONNRESET' || 
+                                  err.code === 'PROTOCOL_CONNECTION_LOST' || 
+                                  err.code === 'ETIMEDOUT' || 
+                                  err.code === 'ECONNREFUSED' ||
+                                  err.code === 'EHOSTUNREACH' ||
+                                  (err.message && (err.message.includes('closed state') || err.message.includes('Connection lost')));
+
+                if (isConnErr && attempt < retries) {
+                    console.warn(`[MySQL Reconnect] Hostinger DB connection glitch (${err.code || err.message}). Auto-retrying query attempt ${attempt}/${retries}...`);
+                    try {
+                        mysqlPool = mysql.createPool(dbConfig);
+                    } catch (pErr) {}
+                    await new Promise(res => setTimeout(res, 400 * attempt));
+                    continue;
                 }
+
+                console.error('[MySQL Query Error]:', err.message, '| Query:', sql);
+                throw err;
             }
-            throw err;
         }
     }
 };

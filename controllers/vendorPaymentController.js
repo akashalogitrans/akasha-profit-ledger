@@ -70,8 +70,8 @@ async function recordVendorPayment(req, res) {
         if (!shpId) return res.status(400).json({ success: false, message: 'Shipment ID is required.' });
 
         const pAmt = parseFloat(amount);
-        if (isNaN(pAmt) || pAmt <= 0) {
-            return res.status(400).json({ success: false, message: 'Payment Amount must be a positive number greater than ₹0.' });
+        if (isNaN(pAmt) || pAmt < 0) {
+            return res.status(400).json({ success: false, message: 'Payment Amount must be a valid number greater than or equal to ₹0.' });
         }
 
         // Fetch Shipment purchase total and current paid
