@@ -1,42 +1,44 @@
 /* ==========================================================================
    AKASHA LOGITRANS LLP - LEDGER & MULTI-INSTALLMENT PAYMENTS CONTROLLER
    Customer Payments Ledger, Auto Status Transitions & Transaction Audit Trail
+   Hardened with Atomic Transactions & Strict Date Normalization
    ========================================================================== */
 
 const pool = require('../config/db');
+const { safeNumber } = require('../utils/financialUtils');
+const { normalizeDateOnly } = require('../utils/dateUtils');
 
 function cleanId(param) {
     if (!param) return '';
-    return decodeURIComponent(param).replace(/^\//, '');
+    return decodeURIComponent(param).replace(/^\//, '').trim();
 }
 
-function formatDate(d) {
-    if (!d || typeof d !== 'string' || !d.trim() || d === 'null' || d === 'undefined') {
-        return new Date().toISOString().split('T')[0];
-    }
-    return d.trim();
-}
+/**
+ * Recalculates and updates shipment customer payment totals atomically.
+ * @param {Object} conn - MySQL connection (or pool).
+ * @param {string} shipmentId - Target shipment ID.
+ * @returns {Promise<Object>} Updated payment totals and status.
+ */
+async function syncShipmentPaymentTotals(conn, shipmentId) {
+    const db = conn || pool;
+    const [shpRows] = await db.execute(`SELECT sale_amount FROM shipments WHERE id = ?`, [shipmentId]);
+    if (!shpRows || shpRows.length === 0) return { received_amount: 0, remaining_balance: 0, sale_status: 'UNPAID' };
 
-// Recalculates shipment customer payment totals atomically
-async function syncShipmentPaymentTotals(shipmentId) {
-    const [shpRows] = await pool.execute(`SELECT sale_amount FROM shipments WHERE id = ?`, [shipmentId]);
-    if (!shpRows || shpRows.length === 0) return;
+    const saleAmt = safeNumber(shpRows[0].sale_amount, 0);
 
-    const saleAmt = parseFloat(shpRows[0].sale_amount) || 0;
-
-    const [txRows] = await pool.execute(
+    const [txRows] = await db.execute(
         `SELECT COALESCE(SUM(amount), 0) AS total_rec, MAX(payment_date) AS last_date FROM payment_transactions WHERE shipment_id = ?`,
         [shipmentId]
     );
 
-    const rawTotalRec = txRows ? parseFloat(txRows[0].total_rec) || 0 : 0;
-    const lastDate = txRows && txRows[0].last_date ? txRows[0].last_date : new Date().toISOString().split('T')[0];
+    const rawTotalRec = txRows ? safeNumber(txRows[0].total_rec, 0) : 0;
+    const lastDate = txRows && txRows[0].last_date ? normalizeDateOnly(txRows[0].last_date) : normalizeDateOnly(new Date());
     
     const cappedRecAmt = Math.min(saleAmt, Math.max(0, rawTotalRec));
     const remBal = Math.max(0, saleAmt - cappedRecAmt);
     const status = cappedRecAmt >= saleAmt && saleAmt > 0 ? 'PAID' : (cappedRecAmt > 0 ? 'PARTIAL' : 'UNPAID');
 
-    await pool.execute(
+    await db.execute(
         `UPDATE shipments SET received_amount = ?, remaining_balance = ?, sale_status = ?, payment_receive_date = ? WHERE id = ?`,
         [cappedRecAmt, remBal, status, lastDate, shipmentId]
     );
@@ -66,12 +68,13 @@ async function getPaymentsReceived(req, res) {
                      
         const [rows] = await pool.execute(sql);
         const sanitized = (rows || []).map(p => {
-            const saleAmt = parseFloat(p.sale_amount) || 0;
-            const recAmt = Math.min(saleAmt, Math.max(0, parseFloat(p.received_amount) || 0));
+            const saleAmt = safeNumber(p.sale_amount, 0);
+            const recAmt = Math.min(saleAmt, Math.max(0, safeNumber(p.received_amount, 0)));
             const balAmt = Math.max(0, saleAmt - recAmt);
             const status = recAmt >= saleAmt && saleAmt > 0 ? 'PAID' : (recAmt > 0 ? 'PARTIAL' : 'UNPAID');
             return {
                 ...p,
+                payment_receive_date: p.payment_receive_date ? normalizeDateOnly(p.payment_receive_date) : null,
                 sale_amount: saleAmt,
                 received_amount: recAmt,
                 balance_amount: balAmt,
@@ -97,13 +100,20 @@ async function getPaymentTransactions(req, res) {
             [shpId]
         );
 
-        return res.json(txs || []);
+        const sanitized = (txs || []).map(t => ({
+            ...t,
+            payment_date: normalizeDateOnly(t.payment_date),
+            amount: safeNumber(t.amount, 0)
+        }));
+
+        return res.json(sanitized);
     } catch (err) {
+        console.error('Get Payment Transactions Error:', err);
         return res.status(500).json({ success: false, message: err.message });
     }
 }
 
-// 3. RECORD NEW CUSTOMER PAYMENT
+// 3. RECORD NEW CUSTOMER PAYMENT (Atomic Transaction)
 async function recordPayment(req, res) {
     try {
         const { shipment_id, payment_date, amount, payment_mode, bank, utr, remarks } = req.body;
@@ -113,8 +123,8 @@ async function recordPayment(req, res) {
             return res.status(400).json({ success: false, message: 'Shipment ID is required.' });
         }
 
-        const pAmt = parseFloat(amount);
-        if (isNaN(pAmt) || pAmt < 0) {
+        const pAmt = safeNumber(amount, -1);
+        if (pAmt < 0) {
             return res.status(400).json({ success: false, message: 'Payment Amount must be a valid number greater than or equal to ₹0.' });
         }
 
@@ -123,16 +133,23 @@ async function recordPayment(req, res) {
             return res.status(404).json({ success: false, message: `Shipment ${shpId} not found.` });
         }
 
-        const saleAmt = parseFloat(shpRows[0].sale_amount) || 0;
+        const saleAmt = safeNumber(shpRows[0].sale_amount, 0);
 
         const [txRows] = await pool.execute(
             `SELECT COALESCE(SUM(amount), 0) AS total_rec FROM payment_transactions WHERE shipment_id = ?`,
             [shpId]
         );
-        const currentRec = txRows ? parseFloat(txRows[0].total_rec) || 0 : 0;
+        const currentRec = txRows ? safeNumber(txRows[0].total_rec, 0) : 0;
         const remainingBal = Math.max(0, saleAmt - currentRec);
 
-        if (pAmt > (remainingBal + 5.0) && remainingBal > 0) {
+        if (remainingBal <= 0 && pAmt > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Shipment ${shpId} is already fully settled (Receivable Balance is ₹0.00). Overpayment is not permitted.`
+            });
+        }
+
+        if (pAmt > (remainingBal + 5.0)) {
             return res.status(400).json({
                 success: false,
                 message: `Payment amount (₹${pAmt.toLocaleString('en-IN')}) exceeds remaining customer receivable balance (₹${remainingBal.toLocaleString('en-IN')}).`
@@ -140,14 +157,17 @@ async function recordPayment(req, res) {
         }
 
         const createdBy = req.user ? req.user.name : 'Director';
-        const payDate = formatDate(payment_date);
+        const payDate = normalizeDateOnly(payment_date);
 
-        await pool.execute(
-            `INSERT INTO payment_transactions (shipment_id, payment_date, amount, payment_mode, bank, utr, remarks, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [shpId, payDate, pAmt, payment_mode || 'Bank Transfer', bank || 'HDFC Bank', utr || '', remarks || '', createdBy]
-        );
+        let syncResult;
+        await pool.transaction(async (conn) => {
+            await conn.execute(
+                `INSERT INTO payment_transactions (shipment_id, payment_date, amount, payment_mode, bank, utr, remarks, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [shpId, payDate, pAmt, payment_mode || 'Bank Transfer', bank || 'HDFC Bank', utr || '', remarks || '', createdBy]
+            );
 
-        const syncResult = await syncShipmentPaymentTotals(shpId);
+            syncResult = await syncShipmentPaymentTotals(conn, shpId);
+        });
 
         return res.status(201).json({
             success: true,
@@ -161,7 +181,7 @@ async function recordPayment(req, res) {
     }
 }
 
-// 4. DELETE CUSTOMER PAYMENT
+// 4. DELETE CUSTOMER PAYMENT (Atomic Transaction)
 async function deletePaymentTransaction(req, res) {
     try {
         const txId = req.params.id;
@@ -171,9 +191,12 @@ async function deletePaymentTransaction(req, res) {
         }
 
         const shpId = txRows[0].shipment_id;
-        await pool.execute(`DELETE FROM payment_transactions WHERE id = ?`, [txId]);
+        let syncResult;
 
-        const syncResult = await syncShipmentPaymentTotals(shpId);
+        await pool.transaction(async (conn) => {
+            await conn.execute(`DELETE FROM payment_transactions WHERE id = ?`, [txId]);
+            syncResult = await syncShipmentPaymentTotals(conn, shpId);
+        });
 
         return res.json({
             success: true,
@@ -181,11 +204,12 @@ async function deletePaymentTransaction(req, res) {
             totals: syncResult
         });
     } catch (err) {
+        console.error('Delete Payment Transaction Error:', err);
         return res.status(500).json({ success: false, message: err.message });
     }
 }
 
-// 5. RECORD CLIENT LUMP-SUM PAYMENT WITH FIFO AUTO-ADJUSTMENT ACROSS OUTSTANDING SHIPMENTS
+// 5. RECORD CLIENT LUMP-SUM PAYMENT WITH FIFO AUTO-ADJUSTMENT ACROSS OUTSTANDING SHIPMENTS (Atomic Transaction)
 async function recordClientLumpSumPayment(req, res) {
     try {
         const { client_id, company_name, payment_date, amount, payment_mode, bank, utr, remarks } = req.body;
@@ -196,12 +220,12 @@ async function recordClientLumpSumPayment(req, res) {
             return res.status(400).json({ success: false, message: 'Client ID or Company Name is required.' });
         }
 
-        const totalPayment = parseFloat(amount);
-        if (isNaN(totalPayment) || totalPayment < 0) {
+        const totalPayment = safeNumber(amount, -1);
+        if (totalPayment < 0) {
             return res.status(400).json({ success: false, message: 'Received amount must be a valid number (₹0 or greater).' });
         }
 
-        const payDate = formatDate(payment_date);
+        const payDate = normalizeDateOnly(payment_date);
         const createdBy = req.user ? req.user.name : 'Director';
 
         // Fetch all shipments for this client ordered chronologically (FIFO: date ASC, id ASC)
@@ -218,45 +242,43 @@ async function recordClientLumpSumPayment(req, res) {
         let unadjustedAmount = totalPayment;
         const adjustments = [];
 
-        for (const s of shpRows) {
-            if (unadjustedAmount <= 0) break;
+        await pool.transaction(async (conn) => {
+            for (const s of shpRows) {
+                if (unadjustedAmount <= 0) break;
 
-            const saleAmt = parseFloat(s.sale_amount) || 0;
-            // Get actual received amount from payment_transactions
-            const [txRows] = await pool.execute(
-                `SELECT COALESCE(SUM(amount), 0) AS total_rec FROM payment_transactions WHERE shipment_id = ?`,
-                [s.id]
-            );
-            const currentRec = txRows ? parseFloat(txRows[0].total_rec) || 0 : 0;
-            const dueBal = Math.max(0, saleAmt - currentRec);
+                const saleAmt = safeNumber(s.sale_amount, 0);
+                const [txRows] = await conn.execute(
+                    `SELECT COALESCE(SUM(amount), 0) AS total_rec FROM payment_transactions WHERE shipment_id = ?`,
+                    [s.id]
+                );
+                const currentRec = txRows ? safeNumber(txRows[0].total_rec, 0) : 0;
+                const dueBal = Math.max(0, saleAmt - currentRec);
 
-            if (dueBal <= 0) continue; // Already fully paid
+                if (dueBal <= 0) continue; // Already fully paid
 
-            // Amount to apply to this shipment
-            const appliedAmt = Math.min(unadjustedAmount, dueBal);
-            unadjustedAmount -= appliedAmt;
+                const appliedAmt = Math.min(unadjustedAmount, dueBal);
+                unadjustedAmount -= appliedAmt;
 
-            // Insert transaction
-            await pool.execute(
-                `INSERT INTO payment_transactions (shipment_id, payment_date, amount, payment_mode, bank, utr, remarks, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                [s.id, payDate, appliedAmt, payment_mode || 'Bank Transfer', bank || 'HDFC Bank', utr || '', remarks ? `${remarks} (Client Lump-sum Auto-adjusted)` : 'Client Lump-sum Auto-adjusted', createdBy]
-            );
+                await conn.execute(
+                    `INSERT INTO payment_transactions (shipment_id, payment_date, amount, payment_mode, bank, utr, remarks, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [s.id, payDate, appliedAmt, payment_mode || 'Bank Transfer', bank || 'HDFC Bank', utr || '', remarks ? `${remarks} (Client Lump-sum Auto-adjusted)` : 'Client Lump-sum Auto-adjusted', createdBy]
+                );
 
-            // Sync shipment payment status & balance
-            const syncResult = await syncShipmentPaymentTotals(s.id);
+                const syncResult = await syncShipmentPaymentTotals(conn, s.id);
 
-            adjustments.push({
-                shipment_id: s.id,
-                date: s.date,
-                sale_amount: saleAmt,
-                previous_received: currentRec,
-                applied_payment: appliedAmt,
-                new_balance: syncResult.remaining_balance,
-                new_status: syncResult.sale_status
-            });
-        }
+                adjustments.push({
+                    shipment_id: s.id,
+                    date: normalizeDateOnly(s.date),
+                    sale_amount: saleAmt,
+                    previous_received: currentRec,
+                    applied_payment: appliedAmt,
+                    new_balance: syncResult.remaining_balance,
+                    new_status: syncResult.sale_status
+                });
+            }
+        });
 
-        let unappliedBalance = unadjustedAmount;
+        const unappliedBalance = unadjustedAmount;
 
         return res.status(201).json({
             success: true,

@@ -1,10 +1,20 @@
 /* ==========================================================================
    AKASHA LOGITRANS LLP - SHIPMENT MASTER CONTROLLER
    Parent Master Transaction Engine (AKASHA/{CLIENT_ID}/{RUNNING_NUMBER})
+   Hardened with Central Financial Engine, Atomic Transactions & Safe JSON
    ========================================================================== */
 
 const pool = require('../config/db');
 const { ensureVendorExists } = require('./vendorController');
+const { 
+    safeNumber, 
+    calculatePurchaseItems, 
+    calculateSaleItems, 
+    calculateNetProfit, 
+    calculateMarginPercentage,
+    parseSafeJson 
+} = require('../utils/financialUtils');
+const { normalizeDateOnly } = require('../utils/dateUtils');
 
 function extractShpId(req) {
     let p = req.params ? (req.params[0] || req.params.id || req.query?.id || '') : req;
@@ -15,25 +25,19 @@ function extractShpId(req) {
     return decodeURIComponent(p || '').replace(/^\//, '').trim();
 }
 
-function formatDate(d) {
-    if (!d || typeof d !== 'string' || !d.trim() || d === 'null' || d === 'undefined') {
-        return new Date().toISOString().split('T')[0];
-    }
-    return d.trim();
-}
-
 // 1. GET ALL SHIPMENTS (With Search, Month/Year/Client/Status Filters, & Pagination)
 async function getShipments(req, res) {
     try {
         const { month, year, client_id, status, search, page = 1, limit = 200 } = req.query;
-        const offset = (Math.max(1, parseInt(page)) - 1) * parseInt(limit);
+        const offset = (Math.max(1, parseInt(page, 10)) - 1) * parseInt(limit, 10);
 
         let sql = `
             SELECT 
                 s.*,
                 COALESCE(vp.total_vendor_paid, 0) AS paid_amount,
                 GREATEST(0, s.purchase_amount - COALESCE(vp.total_vendor_paid, 0)) AS balance_payable,
-                COALESCE(pt.total_cust_rec, 0) AS total_customer_received
+                COALESCE(pt.total_cust_rec, 0) AS total_customer_received,
+                COALESCE(exp.total_direct_exp, 0) AS direct_expense_amount
             FROM shipments s
             LEFT JOIN (
                 SELECT shipment_id, SUM(amount) AS total_vendor_paid 
@@ -45,6 +49,12 @@ async function getShipments(req, res) {
                 FROM payment_transactions 
                 GROUP BY shipment_id
             ) pt ON (s.id COLLATE utf8mb4_general_ci) = (pt.shipment_id COLLATE utf8mb4_general_ci)
+            LEFT JOIN (
+                SELECT shipment_id, SUM(amount) AS total_direct_exp 
+                FROM expenses 
+                WHERE shipment_id IS NOT NULL AND shipment_id != ''
+                GROUP BY shipment_id
+            ) exp ON (s.id COLLATE utf8mb4_general_ci) = (exp.shipment_id COLLATE utf8mb4_general_ci)
             WHERE 1=1
         `;
         const params = [];
@@ -75,30 +85,33 @@ async function getShipments(req, res) {
             params.push(q, q, q, q, q, q);
         }
 
-        sql += ` ORDER BY s.created_at DESC LIMIT ? OFFSET ?`;
-        params.push(parseInt(limit), parseInt(offset));
+        sql += ` ORDER BY s.date DESC, s.created_at DESC LIMIT ? OFFSET ?`;
+        params.push(parseInt(limit, 10), parseInt(offset, 10));
 
         const [rows] = await pool.execute(sql, params);
 
         const sanitizedRows = (rows || []).map(r => {
-            const saleAmt = parseFloat(r.sale_amount) || 0;
-            const purAmt = parseFloat(r.purchase_amount) || 0;
+            const saleAmt = safeNumber(r.sale_amount, 0);
+            const purAmt = safeNumber(r.purchase_amount, 0);
+            const directExp = safeNumber(r.direct_expense_amount, 0);
             
-            // Exact Customer Received & Balance
-            const recAmt = Math.min(saleAmt, Math.max(parseFloat(r.total_customer_received) || 0, parseFloat(r.received_amount) || 0));
+            // Customer payment totals & balances
+            const recAmt = Math.min(saleAmt, Math.max(safeNumber(r.total_customer_received, 0), safeNumber(r.received_amount, 0)));
             const remBal = Math.max(0, saleAmt - recAmt);
             const custStatus = r.sale_status || (recAmt >= saleAmt && saleAmt > 0 ? 'PAID' : (recAmt > 0 ? 'PARTIAL' : 'UNPAID'));
 
-            // Exact Vendor Paid & Balance Payable
-            const paidAmt = Math.min(purAmt, Math.max(0, parseFloat(r.paid_amount) || 0));
+            // Vendor payment totals & balances
+            const paidAmt = Math.min(purAmt, Math.max(0, safeNumber(r.paid_amount, 0)));
             const balPay = Math.max(0, purAmt - paidAmt);
             const vendStatus = r.purchase_status || (paidAmt >= purAmt && purAmt > 0 ? 'PAID' : (paidAmt > 0 ? 'PARTIAL' : 'UNPAID'));
 
-            const profit = saleAmt - purAmt;
-            const margin = saleAmt > 0 ? ((profit / saleAmt) * 100).toFixed(2) : 0;
+            const profit = calculateNetProfit(saleAmt, purAmt, directExp);
+            const margin = calculateMarginPercentage(saleAmt, profit);
 
             return {
                 ...r,
+                date: normalizeDateOnly(r.date),
+                purchase_date: normalizeDateOnly(r.purchase_date || r.date),
                 sale_amount: saleAmt,
                 sales_amount: saleAmt,
                 purchase_amount: purAmt,
@@ -111,8 +124,9 @@ async function getShipments(req, res) {
                 balance_payable: balPay,
                 purchase_status: vendStatus,
                 vendor_status: vendStatus,
+                direct_expense_amount: directExp,
                 net_profit: profit,
-                margin_pct: parseFloat(margin)
+                margin_pct: margin
             };
         });
 
@@ -135,28 +149,35 @@ async function getShipmentById(req, res) {
         }
 
         const r = rows[0];
-        const saleAmt = parseFloat(r.sale_amount) || 0;
-        const purAmt = parseFloat(r.purchase_amount) || 0;
-        const recAmt = Math.min(saleAmt, Math.max(0, parseFloat(r.received_amount) || 0));
+        const saleAmt = safeNumber(r.sale_amount, 0);
+        const purAmt = safeNumber(r.purchase_amount, 0);
+        const recAmt = Math.min(saleAmt, Math.max(0, safeNumber(r.received_amount, 0)));
         const remBal = Math.max(0, saleAmt - recAmt);
-        const profit = saleAmt - purAmt;
+        const profit = calculateNetProfit(saleAmt, purAmt, 0);
+        const margin = calculateMarginPercentage(saleAmt, profit);
 
-        // Fetch Payment timeline
-        const [txs] = await pool.execute(`SELECT * FROM payment_transactions WHERE shipment_id = ? ORDER BY payment_date DESC`, [shpId]);
-        const [vps] = await pool.execute(`SELECT * FROM vendor_payments WHERE shipment_id = ? ORDER BY payment_date DESC`, [shpId]);
+        // Fetch Payment timelines
+        const [txs] = await pool.execute(`SELECT * FROM payment_transactions WHERE shipment_id = ? ORDER BY payment_date DESC, id DESC`, [shpId]);
+        const [vps] = await pool.execute(`SELECT * FROM vendor_payments WHERE shipment_id = ? ORDER BY payment_date DESC, id DESC`, [shpId]);
 
         return res.json({
             success: true,
             shipment: {
                 ...r,
+                date: normalizeDateOnly(r.date),
+                purchase_date: normalizeDateOnly(r.purchase_date || r.date),
+                sale_amount: saleAmt,
+                purchase_amount: purAmt,
                 received_amount: recAmt,
                 remaining_balance: remBal,
-                net_profit: profit
+                net_profit: profit,
+                margin_pct: margin
             },
             customer_payments: txs || [],
             vendor_payments: vps || []
         });
     } catch (err) {
+        console.error('Get Shipment By ID Error:', err);
         return res.status(500).json({ success: false, message: err.message });
     }
 }
@@ -175,18 +196,19 @@ async function getNextShipmentId(req, res) {
         let nextNum = 1;
         if (rows && rows.length > 0) {
             const parts = rows[0].id.split('/');
-            const lastNum = parseInt(parts[parts.length - 1]);
+            const lastNum = parseInt(parts[parts.length - 1], 10);
             if (!isNaN(lastNum)) nextNum = lastNum + 1;
         }
 
         const nextId = `${prefix}${String(nextNum).padStart(3, '0')}`;
         return res.json({ success: true, next_shipment_id: nextId, client_id: clientId });
     } catch (err) {
+        console.error('Get Next Shipment ID Error:', err);
         return res.status(500).json({ success: false, message: err.message });
     }
 }
 
-// 4. CREATE SHIPMENT JOB
+// 4. CREATE SHIPMENT JOB (Atomic Transaction + Central Financial Engine)
 async function createShipment(req, res) {
     try {
         let {
@@ -210,7 +232,7 @@ async function createShipment(req, res) {
             let nextNum = 1;
             if (rows && rows.length > 0) {
                 const parts = rows[0].id.split('/');
-                const lastNum = parseInt(parts[parts.length - 1]);
+                const lastNum = parseInt(parts[parts.length - 1], 10);
                 if (!isNaN(lastNum)) nextNum = lastNum + 1;
             }
             shpId = `${prefix}${String(nextNum).padStart(3, '0')}`;
@@ -222,75 +244,79 @@ async function createShipment(req, res) {
             return res.status(409).json({ success: false, message: `Shipment ID '${shpId}' already exists.` });
         }
 
-        // Calculate Purchase & Sales Totals from Items Array & Auto-Ingest Vendors
-        let calcPurTotal = 0;
-        let parsedPurItems = [];
-        if (purchase_items) {
-            parsedPurItems = typeof purchase_items === 'string' ? JSON.parse(purchase_items) : purchase_items;
-            for (const item of parsedPurItems) {
-                const exRate = parseFloat(item.ex_rate) || 1;
-                const baseAmt = parseFloat(item.foreign_amount) || parseFloat(item.amount) || 0;
-                const gstPct = parseFloat(item.gst_pct) || 0;
-                const taxable = item.taxable !== undefined && parseFloat(item.taxable) > 0 ? parseFloat(item.taxable) : (baseAmt * exRate);
-                const gstAmt = item.gst_amt !== undefined ? parseFloat(item.gst_amt) : ((taxable * gstPct) / 100);
-                const lineTot = item.amount && parseFloat(item.amount) > 0 ? parseFloat(item.amount) : (taxable + gstAmt);
-                calcPurTotal += lineTot;
+        // Central financial calculation for purchase and sales items
+        const purCalc = calculatePurchaseItems(purchase_items);
+        const saleCalc = calculateSaleItems(sale_items);
+        const netProfit = calculateNetProfit(saleCalc.totalSale, purCalc.totalPurchase, 0);
 
-                // Auto-Ingest & Link Vendor in Vendor Master if not a shipping line
-                if (item.vendor_name && item.vendor_name.trim()) {
-                    await ensureVendorExists(item.vendor_name.trim(), item.expense_name || 'General Vendor');
-                }
+        const shpDate = normalizeDateOnly(date);
+        const purDate = normalizeDateOnly(purchase_date || date);
+        const purItemsStr = JSON.stringify(purCalc.items);
+        const saleItemsStr = JSON.stringify(saleCalc.items);
+
+        // Auto-Ingest Vendors asynchronously
+        for (const item of purCalc.items) {
+            if (item.vendor_name && item.vendor_name.trim()) {
+                await ensureVendorExists(item.vendor_name.trim(), item.expense_name || 'General Vendor');
             }
         }
-
-        // Auto-Ingest transport_name as Vendor if present
         if (transport_name && transport_name.trim()) {
             await ensureVendorExists(transport_name.trim(), 'Transporter');
         }
 
-        let calcSaleTotal = 0;
-        let parsedSaleItems = [];
-        if (sale_items) {
-            parsedSaleItems = typeof sale_items === 'string' ? JSON.parse(sale_items) : sale_items;
-            parsedSaleItems.forEach(item => {
-                const exRate = parseFloat(item.ex_rate) || 1;
-                const q = parseFloat(item.qty) || 1;
-                const r = parseFloat(item.rate) || 0;
-                const gstPct = parseFloat(item.gst_pct) || 0;
-                const taxable = item.taxable !== undefined && parseFloat(item.taxable) > 0 ? parseFloat(item.taxable) : (q * r * exRate);
-                const gstAmt = item.gst_amt !== undefined ? parseFloat(item.gst_amt) : ((taxable * gstPct) / 100);
-                const lineTot = item.amount && parseFloat(item.amount) > 0 ? parseFloat(item.amount) : (taxable + gstAmt);
-                calcSaleTotal += lineTot;
-            });
-        }
+        // Insert within atomic transaction with concurrency retry
+        const isAutoGenerated = !id;
+        let insertedId = shpId;
+        let attempts = 0;
+        const maxAttempts = 3;
 
-        const netProfit = calcSaleTotal - calcPurTotal;
-        const shpDate = formatDate(date);
-        const purDate = formatDate(purchase_date || date);
-        const purItemsStr = JSON.stringify(parsedPurItems);
-        const saleItemsStr = JSON.stringify(parsedSaleItems);
-
-        await pool.execute(
-            `INSERT INTO shipments (
-                id, date, client_id, company_name, line_name, transport_name, sb_be_no, shipment_type,
-                purchase_date, purchase_amount, purchase_status, purchase_items,
-                payment_receive_date, sale_amount, received_amount, remaining_balance, sale_status, sale_items, net_profit
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'UNPAID', ?, NULL, ?, 0, ?, 'UNPAID', ?, ?)`,
-            [
-                shpId || '', shpDate, client_id || '', company_name || '', line_name || '', transport_name || '', sb_be_no || '', shipment_type || 'EXPORT FCL',
-                purDate, parseFloat(calcPurTotal) || 0, purItemsStr || '[]',
-                parseFloat(calcSaleTotal) || 0, parseFloat(calcSaleTotal) || 0, saleItemsStr || '[]', parseFloat(netProfit) || 0
-            ]
-        );
+        await pool.transaction(async (conn) => {
+            while (attempts < maxAttempts) {
+                try {
+                    await conn.execute(
+                        `INSERT INTO shipments (
+                            id, date, client_id, company_name, line_name, transport_name, sb_be_no, shipment_type,
+                            purchase_date, purchase_amount, purchase_status, purchase_items,
+                            payment_receive_date, sale_amount, received_amount, remaining_balance, sale_status, sale_items, net_profit
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'UNPAID', ?, NULL, ?, 0, ?, 'UNPAID', ?, ?)`,
+                        [
+                            insertedId, shpDate, client_id || '', company_name || '', line_name || '', transport_name || '', sb_be_no || '', shipment_type || 'EXPORT FCL',
+                            purDate, purCalc.totalPurchase, purItemsStr,
+                            saleCalc.totalSale, saleCalc.totalSale, saleItemsStr, netProfit
+                        ]
+                    );
+                    break;
+                } catch (insErr) {
+                    if (insErr.code === 'ER_DUP_ENTRY' && isAutoGenerated && attempts < maxAttempts - 1) {
+                        attempts++;
+                        const prefix = `AKASHA/${client_id.trim()}/`;
+                        const [rows] = await conn.execute(
+                            `SELECT id FROM shipments WHERE id LIKE ? ORDER BY id DESC LIMIT 1`,
+                            [`${prefix}%`]
+                        );
+                        let nextNum = 1;
+                        if (rows && rows.length > 0) {
+                            const parts = rows[0].id.split('/');
+                            const lastNum = parseInt(parts[parts.length - 1], 10);
+                            if (!isNaN(lastNum)) nextNum = lastNum + 1;
+                        }
+                        insertedId = `${prefix}${String(nextNum).padStart(3, '0')}`;
+                    } else {
+                        throw insErr;
+                    }
+                }
+            }
+        });
 
         return res.status(201).json({
             success: true,
-            message: `Shipment ${shpId} created successfully`,
-            shipment_id: shpId,
+            message: `Shipment ${insertedId} created successfully`,
+            shipment_id: insertedId,
             totals: {
-                sale_amount: calcSaleTotal,
-                purchase_amount: calcPurTotal,
-                net_profit: netProfit
+                sale_amount: saleCalc.totalSale,
+                purchase_amount: purCalc.totalPurchase,
+                net_profit: netProfit,
+                margin_pct: calculateMarginPercentage(saleCalc.totalSale, netProfit)
             }
         });
     } catch (err) {
@@ -299,7 +325,7 @@ async function createShipment(req, res) {
     }
 }
 
-// 5. UPDATE SHIPMENT
+// 5. UPDATE SHIPMENT (Atomic Transaction + Central Financial Engine)
 async function updateShipment(req, res) {
     try {
         const shpId = extractShpId(req);
@@ -310,86 +336,80 @@ async function updateShipment(req, res) {
             return res.status(404).json({ success: false, message: 'Shipment not found' });
         }
 
-        const existingRec = parseFloat(shpRows[0].received_amount) || 0;
+        const existingRec = safeNumber(shpRows[0].received_amount, 0);
 
-        let calcPurTotal = 0;
-        let parsedPurItems = [];
-        if (purchase_items) {
-            parsedPurItems = typeof purchase_items === 'string' ? JSON.parse(purchase_items) : purchase_items;
-            for (const item of parsedPurItems) {
-                const exRate = parseFloat(item.ex_rate) || 1;
-                const baseAmt = parseFloat(item.foreign_amount) || parseFloat(item.amount) || 0;
-                const gstPct = parseFloat(item.gst_pct) || 0;
-                const taxable = item.taxable !== undefined && parseFloat(item.taxable) > 0 ? parseFloat(item.taxable) : (baseAmt * exRate);
-                const gstAmt = item.gst_amt !== undefined ? parseFloat(item.gst_amt) : ((taxable * gstPct) / 100);
-                const lineTot = item.amount && parseFloat(item.amount) > 0 ? parseFloat(item.amount) : (taxable + gstAmt);
-                calcPurTotal += lineTot;
+        // Central financial calculation for purchase and sales items
+        const purCalc = calculatePurchaseItems(purchase_items);
+        const saleCalc = calculateSaleItems(sale_items);
+        const netProfit = calculateNetProfit(saleCalc.totalSale, purCalc.totalPurchase, 0);
 
-                // Auto-Ingest & Link Vendor in Vendor Master if not a shipping line
-                if (item.vendor_name && item.vendor_name.trim()) {
-                    await ensureVendorExists(item.vendor_name.trim(), item.expense_name || 'General Vendor');
-                }
+        // Auto-Ingest Vendors
+        for (const item of purCalc.items) {
+            if (item.vendor_name && item.vendor_name.trim()) {
+                await ensureVendorExists(item.vendor_name.trim(), item.expense_name || 'General Vendor');
             }
         }
-
-        // Auto-Ingest transport_name as Vendor if present
         if (transport_name && transport_name.trim()) {
             await ensureVendorExists(transport_name.trim(), 'Transporter');
         }
 
-        let calcSaleTotal = 0;
-        let parsedSaleItems = [];
-        if (sale_items) {
-            parsedSaleItems = typeof sale_items === 'string' ? JSON.parse(sale_items) : sale_items;
-            parsedSaleItems.forEach(item => {
-                const exRate = parseFloat(item.ex_rate) || 1;
-                const q = parseFloat(item.qty) || 1;
-                const r = parseFloat(item.rate) || 0;
-                const gstPct = parseFloat(item.gst_pct) || 0;
-                const taxable = item.taxable !== undefined && parseFloat(item.taxable) > 0 ? parseFloat(item.taxable) : (q * r * exRate);
-                const gstAmt = item.gst_amt !== undefined ? parseFloat(item.gst_amt) : ((taxable * gstPct) / 100);
-                const lineTot = item.amount && parseFloat(item.amount) > 0 ? parseFloat(item.amount) : (taxable + gstAmt);
-                calcSaleTotal += lineTot;
-            });
-        }
+        const cappedRec = Math.min(saleCalc.totalSale, existingRec);
+        const remBal = Math.max(0, saleCalc.totalSale - cappedRec);
+        const statusStr = cappedRec >= saleCalc.totalSale && saleCalc.totalSale > 0 ? 'PAID' : (cappedRec > 0 ? 'PARTIAL' : 'UNPAID');
 
-        const cappedRec = Math.min(calcSaleTotal, existingRec);
-        const remBal = Math.max(0, calcSaleTotal - cappedRec);
-        const netProfit = calcSaleTotal - calcPurTotal;
-        const statusStr = cappedRec >= calcSaleTotal && calcSaleTotal > 0 ? 'PAID' : (cappedRec > 0 ? 'PARTIAL' : 'UNPAID');
+        const shpDate = normalizeDateOnly(date);
+        const purDate = normalizeDateOnly(purchase_date || date);
+        const purItemsStr = JSON.stringify(purCalc.items);
+        const saleItemsStr = JSON.stringify(saleCalc.items);
 
-        await pool.execute(
-            `UPDATE shipments SET
-                date = ?, line_name = ?, transport_name = ?, sb_be_no = ?, shipment_type = ?,
-                purchase_date = ?, purchase_amount = ?, purchase_items = ?,
-                sale_amount = ?, remaining_balance = ?, sale_status = ?, sale_items = ?, net_profit = ?
-            WHERE id = ?`,
-            [
-                formatDate(date), line_name || '', transport_name || '', sb_be_no || '', shipment_type || 'EXPORT FCL',
-                formatDate(purchase_date || date), parseFloat(calcPurTotal) || 0, JSON.stringify(parsedPurItems || []),
-                parseFloat(calcSaleTotal) || 0, parseFloat(remBal) || 0, statusStr || 'UNPAID', JSON.stringify(parsedSaleItems || []), parseFloat(netProfit) || 0,
-                shpId || ''
-            ]
-        );
+        await pool.transaction(async (conn) => {
+            await conn.execute(
+                `UPDATE shipments SET
+                    date = ?, line_name = ?, transport_name = ?, sb_be_no = ?, shipment_type = ?,
+                    purchase_date = ?, purchase_amount = ?, purchase_items = ?,
+                    sale_amount = ?, remaining_balance = ?, sale_status = ?, sale_items = ?, net_profit = ?
+                WHERE id = ?`,
+                [
+                    shpDate, line_name || '', transport_name || '', sb_be_no || '', shipment_type || 'EXPORT FCL',
+                    purDate, purCalc.totalPurchase, purItemsStr,
+                    saleCalc.totalSale, remBal, statusStr, saleItemsStr, netProfit,
+                    shpId
+                ]
+            );
+        });
 
-        return res.json({ success: true, message: `Shipment ${shpId} updated successfully` });
+        return res.json({
+            success: true,
+            message: `Shipment ${shpId} updated successfully`,
+            totals: {
+                sale_amount: saleCalc.totalSale,
+                purchase_amount: purCalc.totalPurchase,
+                net_profit: netProfit,
+                margin_pct: calculateMarginPercentage(saleCalc.totalSale, netProfit)
+            }
+        });
     } catch (err) {
+        console.error('Update Shipment Error:', err);
         return res.status(500).json({ success: false, message: err.message });
     }
 }
 
-// 6. DELETE SHIPMENT
+// 6. DELETE SHIPMENT (Atomic Cascade Deletion)
 async function deleteShipment(req, res) {
     try {
         const shpId = extractShpId(req);
         if (!shpId) return res.status(400).json({ success: false, message: 'Shipment ID required' });
 
-        await pool.execute(`DELETE FROM payment_transactions WHERE shipment_id = ?`, [shpId]);
-        await pool.execute(`DELETE FROM vendor_payments WHERE shipment_id = ?`, [shpId]);
-        await pool.execute(`DELETE FROM shipments WHERE id = ?`, [shpId]);
+        await pool.transaction(async (conn) => {
+            await conn.execute(`DELETE FROM payment_transactions WHERE shipment_id = ?`, [shpId]);
+            await conn.execute(`DELETE FROM vendor_payments WHERE shipment_id = ?`, [shpId]);
+            await conn.execute(`UPDATE expenses SET shipment_id = NULL WHERE shipment_id = ?`, [shpId]);
+            await conn.execute(`DELETE FROM shipments WHERE id = ?`, [shpId]);
+        });
 
         return res.json({ success: true, message: `Shipment ${shpId} deleted successfully` });
     } catch (err) {
+        console.error('Delete Shipment Error:', err);
         return res.status(500).json({ success: false, message: err.message });
     }
 }

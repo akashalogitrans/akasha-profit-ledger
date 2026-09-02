@@ -7,6 +7,7 @@ router.use(authenticateJWT);
 
 router.get('/', vendorPaymentController.getVendorPayments);
 router.post('/', vendorPaymentController.recordVendorPayment);
+router.put('/:id', vendorPaymentController.updateVendorPayment);
 router.delete('/:id', vendorPaymentController.deleteVendorPayment);
 
 module.exports = router;

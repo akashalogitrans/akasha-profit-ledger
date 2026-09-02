@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Akasha LogiTrans LLP | Freight Forwarding & Accounting ERP</title>
     
-    <!-- Fonts & FontAwesome -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="styles.css?v=29.0.0">
+    <!-- Core Application Stylesheet (Loaded first & immediately) -->
+    <link rel="stylesheet" href="styles.css?v=36.0.0">
+    
+    <!-- Icons & Async Resources -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="all">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 </head>
 <body>
 
@@ -24,7 +23,9 @@
                 <!-- LEFT SIDE: BRANDING & LOGO -->
                 <div class="login-left">
                     <div class="login-logo-container">
-                        <img src="https://www.akashalogitrans.com/logo.png" alt="Akasha LogiTrans LLP" style="max-width: 240px; height: auto; display: inline-block; object-fit: contain;" onerror="this.onerror=null; this.src='https://akashalogitrans.com/logo.png';">
+                        <div style="font-size: 24px; font-weight: 900; letter-spacing: -0.5px; color: #ffffff; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <span style="color: var(--brand-red); font-size: 26px;">▲</span> AKASHA <span style="color: var(--neon-blue); font-size: 15px; font-weight: 700; letter-spacing: 2px;">LOGITRANS</span>
+                        </div>
                         <div class="login-portal-subtitle">LOGISTICS & FINANCIAL TRACKING PORTAL</div>
                     </div>
 
@@ -345,18 +346,18 @@
 
                             <div class="panel-body" style="padding: 16px 20px;">
                                 <!-- 3 Top Mini Stats for Quick Executive Overview -->
-                                <div class="grid-12" style="gap: 12px; margin-bottom: 18px;">
-                                    <div class="col-4" style="background: var(--bg-surface-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 16px; border-left: 4px solid #10b981;">
+                                <div class="dashboard-chart-mini-stats">
+                                    <div class="dashboard-chart-mini-card" style="border-left: 4px solid #10b981;">
                                         <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">BEST MONTH (PROFIT)</div>
                                         <div id="chart-stat-best-month" style="font-size: 18px; font-weight: 900; color: #10b981; margin-top: 2px;">-</div>
                                         <div id="chart-stat-best-profit" style="font-size: 11.5px; font-weight: 700; color: var(--text-secondary); margin-top: 2px;">₹0.00</div>
                                     </div>
-                                    <div class="col-4" style="background: var(--bg-surface-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 16px; border-left: 4px solid #f59e0b;">
+                                    <div class="dashboard-chart-mini-card" style="border-left: 4px solid #f59e0b;">
                                         <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">AVERAGE MONTHLY MARGIN</div>
                                         <div id="chart-stat-avg-margin" style="font-size: 18px; font-weight: 900; color: #f59e0b; margin-top: 2px;">0.00%</div>
                                         <div style="font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">Overall Operating Margin</div>
                                     </div>
-                                    <div class="col-4" style="background: var(--bg-surface-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 16px; border-left: 4px solid #3b82f6;">
+                                    <div class="dashboard-chart-mini-card" style="border-left: 4px solid #3b82f6;">
                                         <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">TOTAL SHIPMENTS TRACKED</div>
                                         <div id="chart-stat-total-jobs" style="font-size: 18px; font-weight: 900; color: #3b82f6; margin-top: 2px;">0 Jobs</div>
                                         <div style="font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">Across all active months</div>
@@ -364,7 +365,7 @@
                                 </div>
 
                                 <!-- Chart Canvas Container -->
-                                <div style="position: relative; width: 100%; height: 340px;">
+                                <div class="dashboard-chart-wrapper">
                                     <canvas id="dashboardMonthlyAnalyticsChart"></canvas>
                                 </div>
                             </div>
@@ -379,22 +380,51 @@
                                 <p class="page-subtitle">Parent shipment transaction jobs linked to sales, purchases, & payments</p>
                             </div>
                             <div class="page-header-actions">
-                                <button class="btn-action" style="background: #ffffff;" onclick="exportTableToCSV('table-shipments-body', 'Shipment_Master_Report')"><i class="fa-solid fa-file-excel" style="color: #059669;"></i> Export Excel</button>
+                                <button class="btn-action btn-export-excel" onclick="exportTableToCSV('table-shipments-body', 'Shipment_Master_Report')"><i class="fa-solid fa-file-excel" style="color: #10b981;"></i> Export Excel</button>
                                 <button class="quick-add-btn" onclick="navigateRoute('/shipment-entry/new')">+ Create Shipment</button>
                             </div>
+                        </div>
+
+                        <!-- 3 TOP SUMMARY CARDS (Like Expenses & Vendors) -->
+                        <div class="vendor-kpi-grid">
+                            <div class="panel-card" style="padding: 16px 20px; border-left: 4px solid var(--neon-blue);">
+                                <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">TOTAL SALES INVOICED</div>
+                                <div id="shipment-kpi-total-sales" style="font-size: 22px; font-weight: 900; color: var(--neon-blue); margin-top: 4px;">₹0.00</div>
+                                <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">Gross Billed to All Clients</div>
+                            </div>
+                            <div class="panel-card" style="padding: 16px 20px; border-left: 4px solid var(--brand-red);">
+                                <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">TOTAL PURCHASE COST</div>
+                                <div id="shipment-kpi-total-purchase" style="font-size: 22px; font-weight: 900; color: var(--brand-red); margin-top: 4px;">₹0.00</div>
+                                <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">Direct Vendor / Freight Costs</div>
+                            </div>
+                            <div class="panel-card" style="padding: 16px 20px; border-left: 4px solid var(--neon-green);">
+                                <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">NET OPERATING PROFIT</div>
+                                <div id="shipment-kpi-total-profit" style="font-size: 22px; font-weight: 900; color: var(--neon-green); margin-top: 4px;">₹0.00</div>
+                                <div id="shipment-kpi-margin-sub" style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">Overall Margin: 0.00%</div>
+                            </div>
+                        </div>
+
+                        <!-- VIEW TOGGLE TABS -->
+                        <div class="vendor-tabs-wrapper">
+                            <button type="button" id="btn-shipment-tab-party" class="erp-tab-btn active" onclick="switchShipmentTab('party')">
+                                <i class="fa-solid fa-building-user"></i> Party-Wise Shipments (Accordion)
+                            </button>
+                            <button type="button" id="btn-shipment-tab-flat" class="erp-tab-btn" onclick="switchShipmentTab('flat')">
+                                <i class="fa-solid fa-table-list"></i> All Shipments Flat Register
+                            </button>
                         </div>
 
                         <!-- FILTERS BAR -->
                         <div class="panel-card" style="margin-bottom: 20px;">
                             <div class="panel-body" style="padding: 14px;">
-                                <div class="grid-12" style="align-items: center; gap: 10px;">
-                                    <div class="col-4">
-                                        <input type="text" id="shipment-search-input" class="form-control" placeholder="Search Shipment ID, Client ID, Company..." onkeyup="filterShipmentsTable()">
+                                <div class="vendor-filter-wrapper">
+                                    <div style="flex: 1; min-width: 200px;">
+                                        <input type="text" id="shipment-search-input" class="form-control" placeholder="Search Shipment ID, Client ID, Company, Line..." onkeyup="filterShipmentsTable()">
                                     </div>
-                                    <div class="col-3">
+                                    <div style="width: 180px;">
                                         <input type="month" id="shipment-month-filter" class="form-control" onchange="filterShipmentsTable()">
                                     </div>
-                                    <div class="col-3">
+                                    <div style="width: 160px;">
                                         <select id="shipment-status-filter" class="form-control" onchange="filterShipmentsTable()">
                                             <option value="">All Customer Statuses</option>
                                             <option value="UNPAID">UNPAID</option>
@@ -403,15 +433,18 @@
                                             <option value="OVERDUE">OVERDUE</option>
                                         </select>
                                     </div>
-                                    <div class="col-2" style="text-align: right;">
-                                        <button class="btn-action" onclick="resetShipmentFilters()"><i class="fa-solid fa-rotate-left"></i> Reset</button>
-                                    </div>
+                                    <button class="btn-action" onclick="resetShipmentFilters()" style="padding: 0 14px; height: 38px;"><i class="fa-solid fa-rotate-left"></i> Reset</button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- TABLE -->
-                        <div class="panel-card">
+                        <!-- 1. PARTY-WISE ACCORDION CONTAINER (Default) -->
+                        <div id="shipments-party-accordion-container" style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px;">
+                            <!-- Injected via JavaScript -->
+                        </div>
+
+                        <!-- 2. FLAT ALL SHIPMENTS TABLE (Toggled) -->
+                        <div id="shipments-flat-table-container" class="panel-card" style="display: none;">
                             <div class="panel-body" style="padding: 0;">
                                 <div class="table-container">
                                     <table class="erp-table">
@@ -707,7 +740,7 @@
                                                     <th style="width: 90px;">Ex. Rate</th>
                                                     <th>Foreign Amt</th>
                                                     <th>Taxable (₹)</th>
-                                                    <th style="width: 75px;">GST %</th>
+                                                    <th style="width: 85px;">GST %</th>
                                                     <th>GST Amount (₹)</th>
                                                     <th>Bill Total (₹)</th>
                                                     <th style="width: 50px; text-align: center;">Action</th>
@@ -736,7 +769,7 @@
                                                     <th style="width: 70px;">Qty</th>
                                                     <th>Rate</th>
                                                     <th>Taxable (₹)</th>
-                                                    <th style="width: 75px;">GST %</th>
+                                                    <th style="width: 85px;">GST %</th>
                                                     <th>GST Amount (₹)</th>
                                                     <th>Line Total (₹)</th>
                                                     <th style="width: 50px; text-align: center;">Action</th>
@@ -1047,47 +1080,95 @@
                     <div id="view-vendors" class="view-section" style="display: none;">
                         <div class="page-header">
                             <div>
-                                <h2 class="page-title">Vendor Master Registry</h2>
-                                <p class="page-subtitle">Transporters, Custom House Agents (CHA), Port & Service Providers</p>
+                                <h2 class="page-title"><i class="fa-solid fa-truck-ramp-box" style="color: #2563eb; margin-right: 8px;"></i> Vendor Master & Month-Wise Ledger</h2>
+                                <p class="page-subtitle">Month-wise vendor purchase ledger, linked jobs, disbursements & master registry</p>
                             </div>
                             <div class="page-header-actions">
-                                <button class="btn-action" onclick="syncAllVendorsNow()" style="background: #ffffff; color: #1c2024; font-weight: 700; border: 1px solid #cbd5e1; height: 38px; padding: 0 14px;"><i class="fa-solid fa-rotate"></i> Sync Shipments</button>
+                                <button class="btn-action" onclick="syncAllVendorsNow()"><i class="fa-solid fa-rotate"></i> Sync Shipments</button>
                                 <button class="quick-add-btn" onclick="openVendorModal()">+ Add New Vendor</button>
                             </div>
                         </div>
 
-                        <!-- FILTERS BAR -->
+                        <!-- 3 TOP KPI SUMMARY CARDS (Like Expenses) -->
+                        <div class="vendor-kpi-grid">
+                            <div class="panel-card" style="padding: 16px 20px; border-left: 4px solid var(--brand-red);">
+                                <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">TOTAL VENDOR PURCHASES (FY)</div>
+                                <div id="vendor-kpi-total-pur" style="font-size: 22px; font-weight: 900; color: var(--brand-red); margin-top: 4px;">₹0.00</div>
+                                <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">Gross Billed by All Vendors</div>
+                            </div>
+                            <div class="panel-card" style="padding: 16px 20px; border-left: 4px solid var(--neon-green);">
+                                <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">TOTAL DISBURSED / PAID</div>
+                                <div id="vendor-kpi-total-paid" style="font-size: 22px; font-weight: 900; color: var(--neon-green); margin-top: 4px;">₹0.00</div>
+                                <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">Settled Vendor Payments</div>
+                            </div>
+                            <div class="panel-card" style="padding: 16px 20px; border-left: 4px solid var(--neon-amber);">
+                                <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">OUTSTANDING PAYABLE (BAKI)</div>
+                                <div id="vendor-kpi-total-bal" style="font-size: 22px; font-weight: 900; color: var(--neon-amber); margin-top: 4px;">₹0.00</div>
+                                <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">Remaining Balance Due</div>
+                            </div>
+                        </div>
+
+                        <!-- VIEW TOGGLE TABS -->
+                        <div class="vendor-tabs-wrapper">
+                            <button type="button" id="btn-vendor-tab-monthly" class="erp-tab-btn active" onclick="switchVendorTab('monthly')">
+                                <i class="fa-solid fa-calendar-days"></i> Month-Wise Vendor Ledger (Accordion)
+                            </button>
+                            <button type="button" id="btn-vendor-tab-directory" class="erp-tab-btn" onclick="switchVendorTab('directory')">
+                                <i class="fa-solid fa-address-book"></i> Vendor Profiles Directory (A-Z)
+                            </button>
+                        </div>
+
+                        <!-- SEARCH & FILTERS BAR -->
                         <div class="panel-card" style="margin-bottom: 16px;">
-                            <div class="panel-body" style="padding: 12px 14px;">
-                                <div style="display: flex; gap: 10px; align-items: center;">
-                                    <div style="flex: 1; position: relative;">
-                                        <input type="text" id="vendor-search-input" class="form-control" placeholder="Search Vendor ID, Vendor Name..." onkeyup="handleGlobalSearch(this.value)">
+                            <div class="panel-body" style="padding: 12px 16px;">
+                                <div class="vendor-filter-wrapper">
+                                    <div style="flex: 1; min-width: 200px;">
+                                        <input type="text" id="vendor-search-input" class="form-control" placeholder="Search Vendor Name, Shipment ID, Service, Client..." onkeyup="filterVendors()">
                                     </div>
-                                    <button class="btn-action" onclick="handleGlobalSearch(document.getElementById('vendor-search-input').value)" style="background: #0f172a; color: #ffffff; padding: 0 16px; font-weight: 700; height: 38px;">
-                                        <i class="fa-solid fa-magnifying-glass"></i> Search
-                                    </button>
+                                    <div style="width: 180px;">
+                                        <select id="vendor-month-filter" class="form-control" onchange="filterVendors()">
+                                            <option value="">-- All Months --</option>
+                                        </select>
+                                    </div>
+                                    <div style="width: 150px;">
+                                        <select id="vendor-status-filter" class="form-control" onchange="filterVendors()">
+                                            <option value="">-- All Statuses --</option>
+                                            <option value="UNPAID">UNPAID</option>
+                                            <option value="PARTIAL">PARTIAL</option>
+                                            <option value="PAID">PAID</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn-action" onclick="resetVendorFilters()" style="padding: 0 14px; height: 38px;"><i class="fa-solid fa-filter-circle-xmark"></i> Reset</button>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="panel-card">
-                            <div class="panel-body" style="padding: 0;">
-                                <div class="table-container">
-                                    <table class="erp-table">
-                                        <thead>
-                                            <tr>
-                                                <th style="width: 32px; text-align: center; padding: 8px 4px;">+</th>
-                                                <th style="width: 80px;">Vendor ID</th>
-                                                <th>Vendor Name</th>
-                                                <th style="text-align: right; width: 16%;">Total Purchases</th>
-                                                <th style="text-align: right; width: 16%;">Total Paid</th>
-                                                <th style="text-align: right; width: 16%;">Balance Payable</th>
-                                                <th style="text-align: center; width: 75px;">Status</th>
-                                                <th class="action-col" style="text-align: right; width: 75px;">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="table-vendors-body"></tbody>
-                                    </table>
+                        <!-- 1. MONTH-WISE COLLAPSIBLE ACCORDIONS (Like Expenses) -->
+                        <div id="vendors-month-accordion-container" style="display: flex; flex-direction: column; gap: 14px;">
+                            <!-- Populated dynamically month-wise by JS -->
+                        </div>
+
+                        <!-- 2. VENDOR DIRECTORY TABLE (A-Z Master Directory) -->
+                        <div id="vendors-directory-container" style="display: none;">
+                            <div class="panel-card">
+                                <div class="panel-body" style="padding: 0;">
+                                    <div class="table-container">
+                                        <table class="erp-table">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width: 32px; text-align: center; padding: 8px 4px;">+</th>
+                                                    <th style="width: 80px;">Vendor ID</th>
+                                                    <th>Vendor Name</th>
+                                                    <th style="text-align: right; width: 16%;">Total Purchases</th>
+                                                    <th style="text-align: right; width: 16%;">Total Paid</th>
+                                                    <th style="text-align: right; width: 16%;">Balance Payable</th>
+                                                    <th style="text-align: center; width: 75px;">Status</th>
+                                                    <th class="action-col" style="text-align: right; width: 75px;">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="table-vendors-body"></tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1813,6 +1894,6 @@
     </div>
 
     <!-- MAIN APP JAVASCRIPT ENGINE -->
-    <script src="app.js?v=29.0.0"></script>
+    <script src="app.js?v=44.0.0"></script>
 </body>
 </html>

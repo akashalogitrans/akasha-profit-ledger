@@ -35,7 +35,7 @@ console.log(`[MySQL Config] Connecting to Hostinger Database: ${dbConfig.databas
 let mysqlPool = mysql.createPool(dbConfig);
 let isDbConnected = false;
 
-// Safe Proxy Object wrapping pool.execute and pool.query with Auto-Reconnect & Retry
+// Safe Proxy Object wrapping pool.execute and pool.query with Auto-Reconnect, Transaction Support & Retry
 const pool = {
     async query(sql, params = []) {
         return this.execute(sql, params);
@@ -65,6 +65,23 @@ const pool = {
                 console.error('[MySQL Query Error]:', err.message, '| Query:', sql);
                 throw err;
             }
+        }
+    },
+    async getConnection() {
+        return await mysqlPool.getConnection();
+    },
+    async transaction(callback) {
+        const conn = await mysqlPool.getConnection();
+        try {
+            await conn.beginTransaction();
+            const result = await callback(conn);
+            await conn.commit();
+            return result;
+        } catch (err) {
+            await conn.rollback();
+            throw err;
+        } finally {
+            conn.release();
         }
     }
 };
@@ -136,6 +153,17 @@ async function runAutoMigration() {
             id INT AUTO_INCREMENT PRIMARY KEY, shipment_id VARCHAR(100) NOT NULL, vendor_id VARCHAR(50), vendor_name VARCHAR(200), bill_no VARCHAR(100), payment_date DATE NOT NULL, amount DECIMAL(14, 2) NOT NULL,
             payment_mode VARCHAR(50) DEFAULT 'NEFT', bank VARCHAR(100) DEFAULT 'HDFC Bank', reference_no VARCHAR(100), remarks TEXT, created_by VARCHAR(100) DEFAULT 'Director', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
+
+        await mysqlPool.query(`CREATE TABLE IF NOT EXISTS expenses (
+            id VARCHAR(50) PRIMARY KEY, shipment_id VARCHAR(100) NULL, expense_date DATE NOT NULL, category VARCHAR(100) NOT NULL,
+            paid_to VARCHAR(200) NOT NULL, amount DECIMAL(14,2) NOT NULL DEFAULT 0.00, payment_mode VARCHAR(50) DEFAULT 'Bank Transfer',
+            reference_no VARCHAR(100), purpose TEXT, recorded_by VARCHAR(100) DEFAULT 'Director',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )`);
+
+        try {
+            await mysqlPool.query(`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS shipment_id VARCHAR(100) NULL AFTER id`);
+        } catch (e) {}
 
         await mysqlPool.query(`CREATE TABLE IF NOT EXISTS login_logs (
             id INT AUTO_INCREMENT PRIMARY KEY, user_name VARCHAR(100), ip VARCHAR(50), browser TEXT, status VARCHAR(50), login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP

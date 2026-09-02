@@ -126,12 +126,14 @@ CREATE TABLE vendor_payments (
     reference_no VARCHAR(100),
     remarks TEXT,
     created_by VARCHAR(100) DEFAULT 'Director',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_vendor_pay_shipment_date (shipment_id, payment_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 7B. EXPENSES TABLE (Operational, Office & Direct Expenses)
+-- 7B. EXPENSES TABLE (Operational, Office & Direct Shipment Expenses)
 CREATE TABLE IF NOT EXISTS expenses (
     id VARCHAR(50) PRIMARY KEY,
+    shipment_id VARCHAR(100) NULL,
     expense_date DATE NOT NULL,
     category VARCHAR(100) NOT NULL,
     paid_to VARCHAR(200) NOT NULL,
@@ -141,7 +143,8 @@ CREATE TABLE IF NOT EXISTS expenses (
     purpose TEXT,
     recorded_by VARCHAR(100) DEFAULT 'Director',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_expenses_date_shipment (expense_date, shipment_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 8. LOGIN AUDIT LOGS TABLE

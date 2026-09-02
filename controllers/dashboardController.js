@@ -1,13 +1,16 @@
 /* ==========================================================================
    AKASHA LOGITRANS LLP - DASHBOARD CONTROLLER
    Actual Received Revenue, Pending Receivables, & Executive KPI Widgets
+   Hardened with Central Financial Engine & Indian FY Consistency
    ========================================================================== */
 
 const pool = require('../config/db');
+const { safeNumber, calculateMarginPercentage } = require('../utils/financialUtils');
+const { normalizeDateOnly, calculateFinancialYear, getFinancialYearDates } = require('../utils/dateUtils');
 
 async function getKPIs(req, res) {
     try {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = normalizeDateOnly(new Date());
         const monthStr = todayStr.substring(0, 7);
 
         // 1. Overall Financial & Shipment Metrics
@@ -72,41 +75,64 @@ async function getKPIs(req, res) {
 
         // 5. Total Expenses for Current Financial Year
         const now = new Date();
+        const curFYLabel = calculateFinancialYear(now);
         const curYear = now.getFullYear();
         const curMonth = now.getMonth() + 1;
         const fyStartYear = curMonth >= 4 ? curYear : curYear - 1;
-        const fyStartDate = `${fyStartYear}-04-01`;
-        const fyEndDate = `${fyStartYear + 1}-03-31`;
+        const fyDates = getFinancialYearDates(fyStartYear);
 
         let fyExpense = 0;
         let fyExpenseCount = 0;
         try {
             const [expRows] = await pool.execute(
                 `SELECT COALESCE(SUM(amount), 0) AS fy_expense, COUNT(id) AS fy_expense_count FROM expenses WHERE expense_date >= ? AND expense_date <= ?`,
-                [fyStartDate, fyEndDate]
+                [fyDates.startDate, fyDates.endDate]
             );
-            fyExpense = expRows ? parseFloat(expRows[0].fy_expense) || 0 : 0;
-            fyExpenseCount = expRows ? parseInt(expRows[0].fy_expense_count) || 0 : 0;
+            fyExpense = expRows ? safeNumber(expRows[0].fy_expense, 0) : 0;
+            fyExpenseCount = expRows ? parseInt(expRows[0].fy_expense_count, 10) || 0 : 0;
         } catch (e) {}
+
+        // 6. Client Opening Balances Total
+        let clientOpeningBalTotal = 0;
+        try {
+            const [clRows] = await pool.execute(`SELECT COALESCE(SUM(opening_balance), 0) AS total_opening_bal FROM clients WHERE status = 'ACTIVE'`);
+            clientOpeningBalTotal = clRows ? safeNumber(clRows[0].total_opening_bal, 0) : 0;
+        } catch (e) {}
+
+        const totalBilled = safeNumber(kpi.total_sale_billed, 0);
+        const netProfit = safeNumber(kpi.net_profit, 0);
+        const marginPct = calculateMarginPercentage(totalBilled, netProfit);
+        const pendingReceivables = safeNumber(kpi.pending_payment, 0) + clientOpeningBalTotal;
 
         return res.json({
             success: true,
-            monthly_revenue: parseFloat(kpi.total_revenue) || 0,
-            total_sale_billed: parseFloat(kpi.total_sale_billed) || 0,
-            total_purchase: parseFloat(kpi.total_purchase) || 0,
-            net_profit: parseFloat(kpi.net_profit) || 0,
-            pending_payment: parseFloat(kpi.pending_payment) || 0,
-            vendor_payable: parseFloat(kpi.vendor_payable) || 0,
-            total_shipments: parseInt(kpi.total_shipments) || 0,
-            completed_shipments: parseInt(kpi.completed_shipments) || 0,
-            pending_shipments: parseInt(kpi.pending_shipments) || 0,
-            todays_collection: parseFloat(coll.todays_collection) || 0,
-            monthly_collection: parseFloat(coll.monthly_collection) || 0,
+            monthly_revenue: safeNumber(kpi.total_revenue, 0),
+            total_sale_billed: totalBilled,
+            total_purchase: safeNumber(kpi.total_purchase, 0),
+            net_profit: netProfit,
+            margin_pct: marginPct,
+            pending_payment: pendingReceivables,
+            shipment_receivable: safeNumber(kpi.pending_payment, 0),
+            client_opening_balance: clientOpeningBalTotal,
+            vendor_payable: safeNumber(kpi.vendor_payable, 0),
+            total_shipments: parseInt(kpi.total_shipments, 10) || 0,
+            completed_shipments: parseInt(kpi.completed_shipments, 10) || 0,
+            pending_shipments: parseInt(kpi.pending_shipments, 10) || 0,
+            todays_collection: safeNumber(coll.todays_collection, 0),
+            monthly_collection: safeNumber(coll.monthly_collection, 0),
             total_expense: fyExpense,
             fy_expense_count: fyExpenseCount,
-            fy_label: `FY ${fyStartYear}-${String(fyStartYear + 1).slice(-2)}`,
-            top_clients: topClients || [],
-            recent_payments: recentPayments || []
+            fy_label: curFYLabel,
+            top_clients: (topClients || []).map(c => ({
+                ...c,
+                billed: safeNumber(c.billed, 0),
+                received: safeNumber(c.received, 0)
+            })),
+            recent_payments: (recentPayments || []).map(p => ({
+                ...p,
+                payment_date: normalizeDateOnly(p.payment_date),
+                amount: safeNumber(p.amount, 0)
+            }))
         });
     } catch (err) {
         console.error('KPI Fetch Error:', err);
